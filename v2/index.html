@@ -1427,6 +1427,8 @@ function blocked(x, y){
   return false;
 }
 function moveBy(o, dx, dy){
+  // 이미 막힌 자리(예: 발밑에 나무를 심음)면 빠져나갈 수 있게 그냥 움직임
+  if (blocked(o.x, o.y)) { o.x += dx; o.y += dy; return true; }
   if (!blocked(o.x + dx, o.y + dy)) { o.x += dx; o.y += dy; return true; }
   if (dx && !blocked(o.x + dx, o.y)) { o.x += dx; return true; }
   if (dy && !blocked(o.x, o.y + dy)) { o.y += dy; return true; }
@@ -2528,6 +2530,7 @@ function finishAct(){
   const i = P.actI, r = doTask(i, 'me');
   if (!r) return;
   const p = treePos(i);
+  if (r.k === 'plant' && blocked(P.x, P.y)) { P.y = p.y + 46; }
   const txt = {plant:'🌱 심었다!', prune:'✂️ 싹둑!', blossom:'🌸 꽃솎기!', thin:'🍏 솎았다!'}[r.k] || `🍎 ${r.g.name} ${r.bx}상자!`;
   floats.push({x:p.x, y:p.y - 160, s:txt, t:1.4, c:r.k === 'harvest' ? r.g.col : INK});
   if (!AUTO || !G.facts[r.k]) factCard(r.k);
