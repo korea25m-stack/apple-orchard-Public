@@ -1,0 +1,11 @@
+{
+  "name": "사과 과수원",
+  "short_name": "사과 과수원",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#fff6f1",
+  "theme_color": "#ff8a80",
+  "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}]
+}
