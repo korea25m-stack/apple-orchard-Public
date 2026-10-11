@@ -471,7 +471,9 @@ function fit(){
   stage.style.transform = `translate(${(innerWidth - SW * scale) / 2}px, ${(innerHeight - SH * scale) / 2}px) scale(${scale})`;
   if(R){ R.setPixelRatio(Math.min(1, scale * (devicePixelRatio || 1) * 1.0)); R.setSize(SW, SH, false); }
 }
-const std = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:.85, metalness:0}, o));
+// 아기자기한 카툰 톤: 4단 그라데이션 셰이딩
+const TOON_GRAD = (() => { const d = new Uint8Array([150, 150, 150, 255, 190, 190, 190, 255, 228, 228, 228, 255, 255, 255, 255, 255]); const t = new THREE.DataTexture(d, 4, 1, THREE.RGBAFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; })();
+const std = (c, o = {}) => { const q = Object.assign({}, o); delete q.roughness; delete q.metalness; delete q.flatShading; return new THREE.MeshToonMaterial(Object.assign({color:c, gradientMap:TOON_GRAD}, q)); };
 function M(geo, mat, x = 0, y = 0, z = 0, cast = true){ const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; return m; }
 function jitter(geo, amt, seed = 1){
   const p = geo.attributes.position, v = new THREE.Vector3();
@@ -491,33 +493,36 @@ function initScene(){
   try{ R = new THREE.WebGLRenderer({canvas:cv, antialias:!TOUCH}); }catch(e){ R = null; }
   if(!R){ stage.insertAdjacentHTML('beforeend', '<div class="nogl">이 브라우저에서는 3D 화면을 열 수 없어요.</div>'); return false; }
   R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
-  R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.2;
+  R.toneMapping = THREE.NoToneMapping;
   fit();
   scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xe2f1e2, 80, 300);
+  scene.fog = new THREE.Fog(0xd6efff, 90, 320);
   cam = new THREE.PerspectiveCamera(40, SW / SH, .3, 700);
   const sky = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({
     side:THREE.BackSide, depthWrite:false, fog:false,
-    uniforms:{top:{value:new THREE.Color(0x6fbcf0)}, mid:{value:new THREE.Color(0xbfe4f2)}, bot:{value:new THREE.Color(0xf2f2dc)}},
+    uniforms:{top:{value:new THREE.Color(0x4fb6ff)}, mid:{value:new THREE.Color(0xa8e2ff)}, bot:{value:new THREE.Color(0xfff0dc)}},
     vertexShader:'varying vec3 vp; void main(){ vp = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
     fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vp; void main(){ float h = vp.y; vec3 c = h > .1 ? mix(mid, top, smoothstep(.1,.55,h)) : mix(bot, mid, smoothstep(-.02,.1,h)); gl_FragColor = vec4(c,1.); }'
   }));
   scene.add(sky); scene.userData.sky = sky;
-  scene.add(new THREE.HemisphereLight(0xe3f3ff, 0x8a7a4a, .85));
-  sun = new THREE.DirectionalLight(0xffe0a0, 1.5);
+  scene.add(new THREE.HemisphereLight(0xfff4ec, 0xb4d8a4, .56)); scene.add(new THREE.AmbientLight(0xffffff, .09));
+  sun = new THREE.DirectionalLight(0xfff0d8, .66);
   sun.castShadow = true; sun.shadow.mapSize.set(TOUCH ? 1024 : 2048, TOUCH ? 1024 : 2048); sun.shadow.bias = -.0004;
   Object.assign(sun.shadow.camera, {left:-38, right:38, top:38, bottom:-38, near:5, far:160});
   scene.add(sun); scene.add(sun.target);
 
-  const grassTex = canvasTex(256, 256, (x, w, h) => { x.fillStyle = '#7fb23a'; x.fillRect(0, 0, w, h); for(let k = 0; k < 2600; k++){ x.fillStyle = ['#72a632','#8cc04a','#98c854','#6b9e2c','#a6cf5e'][k % 5]; x.fillRect(rnd(0,w), rnd(0,h), rnd(1,3), rnd(2,5)); } });
-  grassTex.repeat.set(70, 70);
+  const softTex = (base, blobs, dots, n = 70) => canvasTex(512, 512, (x, w, h) => { x.fillStyle = base; x.fillRect(0, 0, w, h);
+    for(let k = 0; k < n; k++){ const cx = rnd(0, w), cy = rnd(0, h), r = rnd(30, 110), g = x.createRadialGradient(cx, cy, 0, cx, cy, r); const c = blobs[k % blobs.length]; g.addColorStop(0, c); g.addColorStop(1, c.replace(/[\d.]+\)$/, '0)')); x.fillStyle = g; for(const ox of [-w, 0, w]) for(const oy of [-h, 0, h]){ x.save(); x.translate(ox, oy); x.fillRect(cx - r, cy - r, r * 2, r * 2); x.restore(); } }
+    for(let k = 0; k < 900; k++){ x.fillStyle = dots[k % dots.length]; const px = rnd(0, w), py = rnd(0, h); x.beginPath(); x.ellipse(px, py, rnd(1, 2.2), rnd(2, 4.5), rnd(-.4, .4), 0, Math.PI * 2); x.fill(); } });
+  const grassTex = softTex('#82cc60', ['rgba(140,212,104,.55)', 'rgba(98,178,80,.5)', 'rgba(160,220,120,.4)'], ['rgba(88,160,66,.55)', 'rgba(150,214,112,.6)', 'rgba(255,255,255,.14)']);
+  grassTex.repeat.set(36, 36);
   const ground = M(new THREE.PlaneGeometry(700, 700), std(0xffffff, {map:grassTex}), 0, 0, 0, false);
   ground.rotation.x = -Math.PI / 2; scene.add(ground);
-  scene.userData.alleyTex = canvasTex(256, 256, (x, w, h) => { x.fillStyle = '#7f9a36'; x.fillRect(0, 0, w, h); for(let k = 0; k < 2200; k++){ x.fillStyle = ['#6f8d2c','#8daa40','#99b04a','#748f30'][k % 4]; x.fillRect(rnd(0,w), rnd(0,h), rnd(1,3), rnd(2,4)); } x.fillStyle = 'rgba(120,95,50,.45)'; x.fillRect(0, h * .22, w, h * .1); x.fillRect(0, h * .68, w, h * .1); });
-  scene.userData.stripTex = canvasTex(256, 64, (x, w, h) => { x.fillStyle = '#8a5a30'; x.fillRect(0, 0, w, h); for(let k = 0; k < 1500; k++){ x.fillStyle = ['#7a4e28','#9c6a3c','#6c4422','#a8784a'][k % 4]; x.fillRect(rnd(0,w), rnd(0,h), rnd(1,4), rnd(1,3)); } });
+  scene.userData.alleyTex = softTex('#94cf6c', ['rgba(170,222,128,.5)', 'rgba(126,192,92,.4)'], ['rgba(108,176,80,.5)', 'rgba(196,232,156,.5)'], 40);
+  scene.userData.stripTex = softTex('#c98f5c', ['rgba(214,160,110,.6)', 'rgba(176,120,76,.5)'], ['rgba(150,98,60,.6)', 'rgba(230,186,140,.6)'], 50);
 
   buildTreeInstances();
-  buildFarm(); try{ buildHealing(); }catch(er){ console.warn(er); }
+  buildFarm(); try{ buildHealing(); buildCute(); }catch(er){ console.warn(er); }
   try{ if(localStorage.getItem('orch_fold')) $('tasks').classList.add('folded'); if(localStorage.getItem('orch_nokeys')) stage.classList.add('nokeys'); }catch(er){}
   farmer = makeFarmer(); scene.add(farmer);
   sprayer = makeSprayer(); sprayer.visible = true; scene.add(sprayer);
@@ -706,6 +711,39 @@ function buildHealing(){
     const l = new THREE.Mesh(wg, wm), r = new THREE.Mesh(wg, wm); l.position.x = -.11; r.position.x = .11; bf.add(l); bf.add(r);
     g.add(bf); let [hx, hz] = inSpot(); const ph = k * 1.3;
     healAnim.push(t => { const a = t * .6 + ph; bf.position.set(hx + Math.cos(a) * 2.5, 1.1 + Math.sin(t * 2 + ph) * .4, hz + Math.sin(a * 1.3) * 2.5); const f = Math.sin(t * 18 + ph) * 1.1; l.rotation.y = f; r.rotation.y = -f; bf.rotation.y = -a; });
+  }
+}
+function buildCute(){
+  // 몽글몽글 구름
+  const cg = new THREE.Group(); scene.add(cg); const wm = new THREE.MeshBasicMaterial({color:0xffffff, fog:false}), sh = new THREE.MeshBasicMaterial({color:0xe3f1ff, fog:false});
+  for(let k = 0; k < 14; k++){
+    const c = new THREE.Group(), n = 4 + (k % 3);
+    for(let q = 0; q < n; q++){ const r = 4 + Math.random() * 4; const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), q === 0 ? sh : wm); m.position.set((q - n / 2) * 5.5 + Math.random() * 2, Math.random() * 3 + (q === 0 ? -1.5 : 0), Math.random() * 3); m.scale.y = .75; c.add(m); }
+    const a = k / 14 * Math.PI * 2 + Math.random() * .3, R0 = 160 + Math.random() * 70;
+    c.position.set(Math.cos(a) * R0, 55 + Math.random() * 35, Math.sin(a) * R0 - 40); c.lookAt(0, c.position.y, -40); cg.add(c);
+  }
+  healAnim.push(t => { cg.rotation.y = t * .004; });
+  // 풀숲 (작은 잎 뭉치)
+  const tuft = new THREE.ConeGeometry(.12, .5, 4); tuft.translate(0, .25, 0);
+  const N = 2400, im = new THREE.InstancedMesh(tuft, std(0xffffff), N), o = new THREE.Object3D(), col = new THREE.Color();
+  im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(N * 3), 3);
+  const zMin = () => rowZ(RULE.maxRows - 1) - PITCH;
+  let n = 0;
+  for(let k = 0; k < N * 3 && n < N; k++){
+    const x = rnd(-70, 70), z = rnd(-120, 40);
+    if(Math.abs(x) < RULE.rowLen / 2 + 4 && z < PITCH / 2 + 2 && z > zMin()) continue;
+    if(z > 4 && z < 30 && Math.abs(x) < 42 && Math.random() < .7) continue;
+    for(let q = 0; q < 3 && n < N; q++){ o.position.set(x + rnd(-.25, .25), 0, z + rnd(-.25, .25)); o.rotation.set(rnd(-.35, .35), rnd(0, 6), rnd(-.35, .35)); o.scale.setScalar(rnd(.7, 1.4)); o.updateMatrix(); im.setMatrixAt(n, o.matrix); im.setColorAt(n, col.setHex(pick([0x6cc04a, 0x7fd257, 0x9be06a, 0x5fb345]))); n++; }
+  }
+  im.count = n; im.receiveShadow = true; scene.add(im);
+  // 동글동글 덤불
+  const bush = jitter(new THREE.IcosahedronGeometry(1, 2), .06, 11);
+  for(let k = 0; k < 40; k++){
+    const x = (Math.random() < .5 ? -1 : 1) * rnd(24, 62), z = rnd(-110, 34); if(z > 2 && Math.abs(x) < 42) continue;
+    const g = new THREE.Group(), c = pick([0x7ccf5a, 0x68c04c, 0x93da6c]);
+    [[0, .55, 0, .8], [.6, .4, .2, .55], [-.55, .42, -.1, .6]].forEach(([a, b, d, r]) => { const m = M(bush, std(c), a, b, d); m.scale.setScalar(r); g.add(m); });
+    if(Math.random() < .5) for(let q = 0; q < 4; q++) g.add(M(new THREE.SphereGeometry(.09, 8, 6), std(pick([0xff6f91, 0xffd23f, 0xffffff])), rnd(-.6, .6), rnd(.6, 1.1), rnd(-.4, .5), false));
+    g.position.set(x, 0, z); g.scale.setScalar(rnd(.9, 1.5)); scene.add(g);
   }
 }
 function healTick(dt){ healT += dt; for(const f of healAnim) f(healT, dt); }
@@ -1252,7 +1290,7 @@ function sunByTime(tx, tz){
   const k = clamp((S.tod || 0) / DAY_MIN, 0, 1), a = Math.PI * (.08 + .84 * k);
   sun.position.set(tx - Math.cos(a) * 50, 8 + Math.sin(a) * 42, tz + 22); sun.target.position.set(tx, 0, tz);
   const base = sun.userData.base || 1.5, low = Math.sin(a);
-  sun.intensity = base * (.55 + .45 * low);
+  sun.intensity = base * (.6 + .4 * low);
   sun.color.setHSL(.1, .9, .72 + .14 * low);
 }
 
@@ -1760,7 +1798,7 @@ function rebuildTrees(){
       const thinned = t.thinFr;
       const n = thinned ? Math.floor(T.spots.length * .55) : T.spots.length;
       const grow = clamp((w - 19) / (V.harvest[0] - 19), 0, 1);
-      const rad = (.03 + grow * .06) * (thinned ? 1.1 : .8);
+      const rad = (.04 + grow * .085) * (thinned ? 1.1 : .85);
       const ripe = clamp((w - (V.harvest[0] - 7)) / 7, 0, 1);
       T.spots.slice(0, n).forEach((p, k) => {
         _m.compose(p, _q.identity(), _s.set(rad, rad * .9, rad));
@@ -1780,10 +1818,10 @@ function rebuildCrates(){
 }
 function seasonLook(){
   const w = S.week;
-  scene.fog.color.setHex(w < 12 || w > 46 ? 0xe9eef0 : w > 40 ? 0xf1e7cc : 0xe2f1e2);
+  scene.fog.color.setHex(w < 12 || w > 46 ? 0xe6f0f7 : w > 40 ? 0xfbe9d2 : 0xd6efff);
   const sky = scene.userData.sky.material.uniforms;
-  sky.bot.value.setHex(w < 12 || w > 46 ? 0xf2f4f0 : 0xf2f2dc);
-  const wx = wxNow(); sun.intensity = sun.userData.base = wx.rain >= 70 ? 1.05 : wx.rain >= 45 ? 1.3 : 1.55;
+  sky.bot.value.setHex(w < 12 || w > 46 ? 0xf4f7fb : w > 40 ? 0xffe6c8 : 0xfff0dc);
+  const wx = wxNow(); sun.intensity = sun.userData.base = wx.rain >= 70 ? .46 : wx.rain >= 45 ? .57 : .66;
 }
 
 /* ================== input & camera ================== */
