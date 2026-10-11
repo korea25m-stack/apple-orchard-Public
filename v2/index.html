@@ -1578,11 +1578,11 @@ function render(ctx, dt, T){
   for (const c of critters) if (vis(c.x, c.y)) add(c.y, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
   if (raidAnim) add(raidAnim.y, () => drawAnimal(ctx, raidAnim.kind, raidAnim.x, raidAnim.y, T, raidAnim.flip));
   if (ssAnim) add(ssAnim.y, () => drawSS(ctx, ssAnim.x, ssAnim.y, ssAnim.a));
-  else add(P.y, () => drawPerson(ctx, P.x, P.y, 'haru', P.dir, P.walk, P.act));
+  else add(P.y, () => drawPerson(ctx, P.x, P.y, 'haru', P.dir, P.walk, P.sw > 0 ? P.sw * 9 : 0));
   E.sort((a, b) => a[0] - b[0]);
   for (const e of E) e[1]();
   // 나무 뒤에 가려도 하루가 보이게 반투명으로 한 번 더
-  if (!ssAnim) { ctx.globalAlpha = .38; drawPerson(ctx, P.x, P.y, 'haru', P.dir, P.walk, P.act); ctx.globalAlpha = 1; }
+  if (!ssAnim) { ctx.globalAlpha = .38; drawPerson(ctx, P.x, P.y, 'haru', P.dir, P.walk, P.sw > 0 ? P.sw * 9 : 0); ctx.globalAlpha = 1; }
 
   // 우박망
   if (G.b.hailnet && w >= 14 && w <= 46) {
@@ -1763,7 +1763,7 @@ function popup(ic, title, msg, extra){
 function factCard(k){
   if (G.facts[k]) return;
   G.facts[k] = 1;
-  popup(TASKS[k].ic, TASKS[k].name + ' 상식', TASKS[k].fact);
+  toast(`💡 ${TASKS[k].name} 상식: ${TASKS[k].fact}`); // 창 대신 알림으로 (멈추지 않게)
 }
 
 // ----- HUD -----
@@ -2519,7 +2519,7 @@ function act(t){
     if (k === 'plant' && AUTO) { const opts = VAR_KEYS.filter(unlocked); G.selVar = opts[Math.floor(t.i / PER_ROW) % opts.length]; }
     const p = treePos(t.i);
     P.dir = Math.abs(p.x - P.x) > Math.abs(p.y - P.y) ? (p.x < P.x ? 2 : 3) : (p.y < P.y ? 1 : 0);
-    P.act = AUTO ? .35 : .5; P.actI = t.i;
+    P.actI = t.i; P.sw = .3; finishAct(); // 기다림 없이 바로
   }
   else if (t.kind === 'grandma') talkGrandma();
   else if (t.kind === 'chief') talkChief();
@@ -2569,7 +2569,7 @@ function update(dt){
     if (P.tgt && moved < .5) { P.stuck = (P.stuck || 0) + dt; if (P.stuck > .4) { P.stuck = 0; detour(); } } else P.stuck = 0;
     cam.ox *= .9; cam.oy *= .9;
   } else P.walk = 0;
-  if (P.act > 0) { P.act -= dt; if (P.act <= 0) { P.act = 0; finishAct(); } }
+  if (P.sw > 0) P.sw -= dt;
   // 인부
   if (workerS.on) {
     const dx = workerS.tx - workerS.x, dy = workerS.ty - workerS.y, d = Math.hypot(dx, dy);
