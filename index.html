@@ -232,6 +232,11 @@ table.t th{border-bottom:2px solid var(--line)}table.t td{border-bottom:1px soli
 .bact{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 14px;border-radius:16px;border:none;background:#fff;box-shadow:0 0 0 2px var(--line),0 4px 0 #efd5c7;font-family:var(--display);font-size:20px;color:var(--ink);cursor:pointer;text-align:left}
 .bact small{font-family:var(--body);font-size:14px;color:var(--muted)}
 .bact:hover:not(:disabled){background:#fff4c2}.bact:disabled{opacity:.45;cursor:default}
+#tasks .hd{cursor:pointer;user-select:none}#tasks .fold{display:inline-block;font-size:.8em;transition:transform .2s}
+#tasks.folded .bd{display:none}#tasks.folded .fold{transform:rotate(-90deg)}
+#keybtn{position:absolute;left:24px;bottom:20px;font-size:18px;padding:6px 14px;cursor:pointer;border:none;z-index:4}
+#keys{bottom:72px !important}#stage.nokeys #keys{display:none}
+#stage.mob #keybtn{display:none}#stage.driving #keybtn{display:none}
 /* 운전 모드 */
 #stage.driving #wx,#stage.driving #top,#stage.driving #tasks,#stage.driving #bottom,#stage.driving #keys,#stage.driving #labels,#stage.driving #labels2,#stage.driving #toast{display:none}
 #drive{position:absolute;inset:0;pointer-events:none;font-family:var(--display);color:var(--ink)}
@@ -293,9 +298,10 @@ body.touch #mc,body.touch #mc *{touch-action:pan-y;-webkit-user-select:text}
 
   <div id="wx" class="plank"></div>
   <div id="top"></div>
-  <div id="tasks"><div class="hd plank txt">이번 주 할 일</div><div class="bd parch" id="tasklist"></div></div>
+  <div id="tasks"><div class="hd plank txt" data-act="tasks">이번 주 할 일 <span class="fold">▾</span></div><div class="bd parch" id="tasklist"></div></div>
   <button id="autobtn" data-act="auto"></button>
   <div id="toast" class="parch"><span class="g" aria-hidden="true">👴</span><span id="toasttxt"></span></div>
+  <button id="keybtn" class="chip plank txt" data-act="keys">⌨️ 조작법</button>
   <div id="keys" class="parch"><b>WASD</b> 이동 · <b>Shift</b> 달리기 · <b>클릭</b> 그곳으로 이동<br><b>마우스 드래그</b> 시점 · <b>휠</b> 확대 · <b>1~6</b> 도구 · <b>F</b> 작업<br>시간은 저절로 흘러요 · <b>N</b> 다음 주로 넘기기</div>
   <div id="bottom">
     <div id="prompt" class="plank txt"></div>
@@ -348,7 +354,8 @@ const RULE = {
   seedling: 20000,            // 묘목 1그루 2만원
   pyeongPrice: 100000,        // 밭 확장 1평 10만원
   sprayPer300: 60000,         // 방제 1회 300평당 6만원
-  sprayMin: 15, sprayMax: 20, // 1년 방제 15~20회
+  sprayMin: 3, sprayMax: 10, // 위험 높을 때만 뿌리면 1년 보통 4~7회
+  sprayRisk: 65,              // 병·해충 위험이 이 값(‘높음’) 이상일 때만 방제 가능
   boxMin: 30000, boxMax: 100000, // 상자당 경매가 3~10만원
   treeGap: 2.5,               // 나무 간격 2.5m
   alley: 4,                   // 줄 사이 농기계 길 4m
@@ -373,7 +380,7 @@ const VAR = {
   sweet:{name:'시나노스위트', base:72000, harvest:[41,43], a:0xd0352c, b:0xe8653a, lock:60, desc:'단맛이 강한 빨간 사과예요. 10월 중순에 따요.'},
   fuji:{name:'부사', base:65000, harvest:[43,46], a:0xae2b2a, b:0xd8703c, desc:'우리나라에서 가장 많이 키우는 품종이에요. 빨간 바탕에 줄무늬가 있고 10월 말~11월에 따요.'}
 };
-const GRADES = [{min:88, name:'특', m:1.35}, {min:75, name:'상', m:1.0}, {min:60, name:'보통', m:.75}, {min:0, name:'하', m:.5}];
+const GRADES = [{min:80, name:'특', m:1.35}, {min:65, name:'상', m:1.0}, {min:48, name:'보통', m:.75}, {min:0, name:'하', m:.5}];
 const gradeOf = q => GRADES.find(g => q >= g.min);
 
 const WIN = { prune:[5,12], plant:[9,16], plant2:[44,47], flower:[16,19], fruit:[20,26], spray:[13,40] };
@@ -510,7 +517,8 @@ function initScene(){
   scene.userData.stripTex = canvasTex(256, 64, (x, w, h) => { x.fillStyle = '#8a5a30'; x.fillRect(0, 0, w, h); for(let k = 0; k < 1500; k++){ x.fillStyle = ['#7a4e28','#9c6a3c','#6c4422','#a8784a'][k % 4]; x.fillRect(rnd(0,w), rnd(0,h), rnd(1,4), rnd(1,3)); } });
 
   buildTreeInstances();
-  buildFarm();
+  buildFarm(); try{ buildHealing(); }catch(er){ console.warn(er); }
+  try{ if(localStorage.getItem('orch_fold')) $('tasks').classList.add('folded'); if(localStorage.getItem('orch_nokeys')) stage.classList.add('nokeys'); }catch(er){}
   farmer = makeFarmer(); scene.add(farmer);
   sprayer = makeSprayer(); sprayer.visible = true; scene.add(sprayer);
   // mist particles
@@ -606,6 +614,101 @@ function buildFarm(){
   for(let i = 0; i < 90; i++){ o.position.set(rnd(-220, 220), 3, rnd(-210, -175)); o.scale.setScalar(rnd(.8, 1.7)); o.updateMatrix(); ci.setMatrixAt(i, o.matrix); } scene.add(ci);
   [[-140, -330, 90, 70], [-20, -380, 120, 95], [120, -340, 90, 70], [240, -360, 100, 60]].forEach(([x, z, r, h], k) => scene.add(M(jitter(new THREE.ConeGeometry(r, h, 10, 4), .12, k * 2), std(0x9fbf98, {roughness:1, flatShading:true}), x, h / 2 - 5, z, false)));
 }
+
+/* ---- 힐링 꾸미기: 빈 땅의 나무·꽃·귀여운 동물 ---- */
+const healAnim = []; let healT = 0;
+function buildHealing(){
+  const ad = (grp, m) => (grp.add(m), m);
+  const g = new THREE.Group(); scene.add(g);
+  const R = mulberry(4242), rr = (a, b) => a + R() * (b - a);
+  const spots = [[24, 56, -70, -2], [-56, -24, -70, -2], [-14, 12, 22, 34]];
+  const inSpot = () => { const [x0, x1, z0, z1] = spots[Math.floor(R() * spots.length)]; return [rr(x0, x1), rr(z0, z1)]; };
+  const busy = [[24, 5], [-34, 17], [36, 9], [-33, 6], [26, 17], [-24, 16], [-17, 20], [5, 11], [18.5, 11.5], [-9, 11], [-27, 11], [-40, -30], [-40, -27], [-40, -33]];
+  const free = (x, z, r) => !busy.some(([bx, bz]) => Math.hypot(bx - x, bz - z) < r);
+  // 몽글몽글 나무 (초록·분홍 꽃나무)
+  const blob = jitter(new THREE.IcosahedronGeometry(1, 1), .12, 7);
+  for(let i = 0; i < 22; i++){
+    let [x, z] = inSpot(); if(!free(x, z, 6.5)) continue;
+    const t = new THREE.Group(), s = rr(.8, 1.3), pink = R() < .35;
+    t.add(M(new THREE.CylinderGeometry(.16, .24, 1.6, 7), std(0x7a5232), 0, .8, 0));
+    const col = pink ? [0xffb7cf, 0xff9ec0, 0xffd1e0] : [0x7cc957, 0x5fb447, 0x95d66a];
+    [[0, 2.2, 0, 1.25], [.6, 1.9, .3, .85], [-.55, 1.95, -.2, .9], [0, 2.8, -.1, .8]].forEach(([a, b, c, r], k) => { const m = M(blob, std(col[k % 3], {roughness:.8}), a, b, c); m.scale.setScalar(r); t.add(m); });
+    t.position.set(x, 0, z); t.scale.setScalar(s); t.rotation.y = R() * 6; g.add(t);
+  }
+  // 꽃밭 (작은 꽃 여러 송이)
+  const petal = new THREE.SphereGeometry(.15, 7, 5), stem = new THREE.CylinderGeometry(.02, .02, .4, 4);
+  const pcols = [0xff7a9a, 0xffd23f, 0xffffff, 0xb08cff, 0xff9f43, 0x7ec8ff];
+  const N = 520, fi = new THREE.InstancedMesh(petal, std(0xffffff, {roughness:.6}), N), si = new THREE.InstancedMesh(stem, std(0x5aa040), N), o = new THREE.Object3D();
+  fi.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(N * 3), 3); const c = new THREE.Color();
+  let n = 0;
+  for(let p = 0; p < 26 && n < N; p++){
+    let [cx, cz] = inSpot(); if(!free(cx, cz, 6)) continue;
+    const pc = pcols[Math.floor(R() * pcols.length)];
+    for(let k = 0; k < 20 && n < N; k++){
+      const x = cx + rr(-1.3, 1.3), z = cz + rr(-1.3, 1.3);
+      o.position.set(x, .42, z); o.scale.set(1, .7, 1); o.updateMatrix(); fi.setMatrixAt(n, o.matrix); fi.setColorAt(n, c.setHex(R() < .8 ? pc : pcols[Math.floor(R() * pcols.length)]));
+      o.position.set(x, .2, z); o.scale.set(1, 1, 1); o.updateMatrix(); si.setMatrixAt(n, o.matrix); n++;
+    }
+  }
+  fi.count = si.count = n; g.add(fi); g.add(si);
+  // 연못 + 오리
+  const pond = M(new THREE.CircleGeometry(4.2, 28), new THREE.MeshStandardMaterial({color:0x7fd0f0, roughness:.15, metalness:.1}), -40, .03, -30, false); pond.rotation.x = -Math.PI / 2; pond.scale.set(1.3, 1, 1); g.add(pond);
+  for(let k = 0; k < 14; k++){ const a = k / 14 * Math.PI * 2; g.add(M(new THREE.DodecahedronGeometry(rr(.3, .5), 0), std(0xbdb6ad, {flatShading:true}), -40 + Math.cos(a) * 5.5, .1, -30 + Math.sin(a) * 4.3)); }
+  for(let k = 0; k < 3; k++){
+    const d = new THREE.Group(), wh = std(k ? 0xfff8e6 : 0xffe36b);
+    ad(d, M(new THREE.SphereGeometry(.3, 12, 10), wh, 0, .2, 0)).scale.set(1.3, .8, 1);
+    d.add(M(new THREE.SphereGeometry(.18, 10, 8), wh, .3, .45, 0));
+    ad(d, M(new THREE.ConeGeometry(.07, .18, 8), std(0xff9a2e), .5, .43, 0)).rotation.z = -Math.PI / 2;
+    [-.07, .07].forEach(zz => d.add(M(new THREE.SphereGeometry(.03, 6, 5), std(0x222222), .42, .52, zz, false)));
+    if(k) d.scale.setScalar(.6);
+    g.add(d); const ph = k * 2.1, rad = 2.2 - k * .4;
+    healAnim.push(t => { const a = t * .35 + ph; d.position.set(-40 + Math.cos(a) * rad * 1.3, .02 + Math.sin(t * 3 + k) * .03, -30 + Math.sin(a) * rad); d.rotation.y = -a - Math.PI / 2 + Math.PI; });
+  }
+  // 토끼 (깡충깡충)
+  const bunny = col => { const b = new THREE.Group(), m = std(col);
+    ad(b, M(new THREE.SphereGeometry(.28, 12, 10), m, 0, .28, 0)).scale.set(1, .9, 1.2);
+    b.add(M(new THREE.SphereGeometry(.2, 12, 10), m, 0, .55, .25));
+    [-.08, .08].forEach(x => { const e = M(new new THREE.SphereGeometry(.06, 8, 6), m, x, .82, .2); e.scale.set(1, 3, .8); b.add(e); });
+    [-.08, .08].forEach(x => b.add(M(new THREE.SphereGeometry(.025, 6, 5), std(0x222222), x, .6, .43, false)));
+    b.add(M(new THREE.SphereGeometry(.09, 8, 6), std(0xffffff), 0, .3, -.33));
+    return b; };
+  [[34, -12, 0xf5efe6], [-30, -8, 0xd8b48c], [40, -40, 0xffffff], [-46, -52, 0xc9a27a]].forEach(([x, z, col], k) => {
+    const b = bunny(col); g.add(b); let tx = x, tz = z, cx = x, cz = z, wait = R() * 3, hop = 0;
+    healAnim.push((t, dt) => {
+      if(wait > 0){ wait -= dt; if(wait <= 0){ tx = x + rr(-5, 5); tz = z + rr(-5, 5); hop = 0; } }
+      else { const dx = tx - cx, dz = tz - cz, L = Math.hypot(dx, dz); if(L < .1){ wait = rr(1.5, 4); } else { const sp = Math.min(L, dt * 1.6); cx += dx / L * sp; cz += dz / L * sp; hop += dt * 9; b.rotation.y = Math.atan2(dx, dz); } }
+      b.position.set(cx, wait > 0 ? 0 : Math.abs(Math.sin(hop)) * .35, cz);
+    });
+  });
+  // 병아리·닭 (헛간 옆)
+  for(let k = 0; k < 5; k++){
+    const big = k < 2, h = new THREE.Group(), m = std(big ? 0xffffff : 0xffe36b);
+    h.add(M(new THREE.SphereGeometry(big ? .3 : .16, 10, 8), m, 0, big ? .32 : .17, 0));
+    h.add(M(new THREE.SphereGeometry(big ? .17 : .1, 10, 8), m, 0, big ? .62 : .32, big ? .2 : .1));
+    ad(h, M(new THREE.ConeGeometry(.04, .12, 6), std(0xff9a2e), 0, big ? .6 : .31, big ? .38 : .2)).rotation.x = Math.PI / 2;
+    if(big) h.add(M(new THREE.BoxGeometry(.04, .12, .14), std(0xe8343a), 0, .8, .2));
+    g.add(h); const bx = -21 + k * 1.2, bz = 23 + (k % 2) * 1.5, ph = k * 1.7;
+    healAnim.push(t => { const a = t * .5 + ph; h.position.set(bx + Math.sin(a) * 1.2, 0, bz + Math.cos(a * .7) * .8); h.rotation.y = a + Math.PI / 2; h.rotation.x = Math.max(0, Math.sin(t * 4 + ph)) * .35; });
+  }
+  // 고양이 (원두막 쪽 풀밭에서 낮잠)
+  { const ct = new THREE.Group(), m = std(0xffa94d);
+    ad(ct, M(new THREE.SphereGeometry(.35, 12, 10), m, 0, .25, 0)).scale.set(1.3, .7, 1);
+    const hd = M(new THREE.SphereGeometry(.22, 12, 10), m, .4, .32, 0); ct.add(hd);
+    [-.1, .1].forEach(z => { const e = M(new THREE.ConeGeometry(.07, .14, 4), m, .45, .52, z); ct.add(e); });
+    const tail = M(new THREE.CylinderGeometry(.04, .05, .6, 6), m, -.5, .2, .1); tail.rotation.z = 1.2; ct.add(tail);
+    ct.position.set(-6, 0, 26); ct.rotation.y = .6; g.add(ct);
+    healAnim.push(t => { ct.children[0].scale.y = .7 + Math.sin(t * 1.6) * .03; tail.rotation.x = Math.sin(t * 1.2) * .4; });
+  }
+  // 나비
+  for(let k = 0; k < 8; k++){
+    const bf = new THREE.Group(), col = [0xffffff, 0xffd23f, 0xff9ec0, 0x9fd8ff][k % 4];
+    const wg = new THREE.PlaneGeometry(.22, .18), wm = new THREE.MeshBasicMaterial({color:col, side:THREE.DoubleSide});
+    const l = new THREE.Mesh(wg, wm), r = new THREE.Mesh(wg, wm); l.position.x = -.11; r.position.x = .11; bf.add(l); bf.add(r);
+    g.add(bf); let [hx, hz] = inSpot(); const ph = k * 1.3;
+    healAnim.push(t => { const a = t * .6 + ph; bf.position.set(hx + Math.cos(a) * 2.5, 1.1 + Math.sin(t * 2 + ph) * .4, hz + Math.sin(a * 1.3) * 2.5); const f = Math.sin(t * 18 + ph) * 1.1; l.rotation.y = f; r.rotation.y = -f; bf.rotation.y = -a; });
+  }
+}
+function healTick(dt){ healT += dt; for(const f of healAnim) f(healT, dt); }
 
 /* ---- 한옥: 기단·기둥·흰 벽·창호·곡선 기와지붕 ---- */
 let hanokTex;
@@ -852,7 +955,7 @@ const ACH = [
   {id:'harvest', ico:'🧺', name:'첫 수확', desc:'사과를 처음 땄어요', ok:() => S.stat.boxes > 0},
   {id:'teuk', ico:'💎', name:'특등급', desc:'특등급 사과를 땄어요', ok:() => S.stat.teuk > 0},
   {id:'allvar', ico:'🌈', name:'품종 박사', desc:'여섯 품종을 모두 수확했어요', ok:() => Object.keys(VAR).every(k => S.dex[k])},
-  {id:'spray', ico:'🛡️', name:'방제 달인', desc:'한 해 방제를 15~20회로 지켰어요', ok:() => S.stat.sprayYear},
+  {id:'spray', ico:'🛡️', name:'방제 달인', desc:'한 해 위험할 때 맞춰 방제를 3~10회 했어요', ok:() => S.stat.sprayYear},
   {id:'order', ico:'📦', name:'믿음직한 농장', desc:'주문 3건을 완수했어요', ok:() => S.stat.orders >= 3},
   {id:'rich', ico:'💰', name:'부자 농부', desc:'돈 1억 원을 모았어요', ok:() => S.money >= 1e8},
   {id:'big', ico:'🗺️', name:'넓은 과수원', desc:'밭이 600평을 넘었어요', ok:() => pyeongOf(S.rows) >= 600},
@@ -1363,7 +1466,7 @@ function battleAct(id){
   b.hp = Math.max(0, b.hp);
   if(b.hp <= 0) return endBattle(true, msg);
   b.turn = 'beast'; renderBattle(msg);
-  setTimeout(beastTurn, auto ? 600 : 1000);
+  setTimeout(beastTurn, 1000);
 }
 function beastTurn(){
   const b = battle; if(!b || b.over) return;
@@ -1390,7 +1493,9 @@ function endBattle(win, msg){
   renderBattle(msg, `${res}<div class="row"><button class="btn" data-close>확인</button></div>`);
 }
 function botBattleAct(){
-  const b = battle;
+  const b = battle; b.turns = (b.turns || 0) + 1;
+  // 자동플레이에서도 약 10초 보이도록 처음 몇 턴은 약하게
+  if(b.turns <= 2 && b.hp <= 6) return battleAct('guard');
   if(b.me <= 8 && b.water) return battleAct('water');
   if(b.dog) return battleAct('dog');
   return battleAct(b.hp > 6 && Math.random() < .35 ? 'gong' : 'stick');
@@ -1413,9 +1518,9 @@ function botSell(){
 function shouldSpray(){
   const w = S.week, wx = wxNow();
   if(!inWin(w, WIN.spray) || !allTrees().some(({t}) => bearing(t))) return false;
-  if(S.sprays >= 19 || S.money < sprayCost() || wx.ev === 'typhoon' || (wx.wind >= 5 && !own('drone'))) return false;
+  if(S.sprays >= RULE.sprayMax || S.money < sprayCost() || wx.ev === 'typhoon' || (wx.wind >= 5 && !own('drone'))) return false;
   if(w <= S.prot.fung && w <= S.prot.ins) return false;
-  return wx.disease >= 45 || wx.pest >= 45 || w - lastBotSpray >= 2;
+  return sprayOk(wx);
 }
 function botBuy(){
   const order = ['hive', 'wondu', 'hive', 'hive', 'EXP', 'proc', 'cold', 'fan', 'net', 'efence', 'drone', 'EXP', 'sarang', ...DECO_KEYS, 'EXP'];
@@ -1459,8 +1564,8 @@ function botPlan(){
 }
 function botTick(dt){
   if(!auto || drive) return;
-  if(battle && !battle.over){ botBattleT += dt; if(battle.turn === 'me' && botBattleT > 1){ botBattleT = 0; botBattleAct(); } return; }
-  if(!$('modal').hidden){ botModalT += dt; if(botModalT > 2.2){ botModalT = 0; closeModal(); } return; }
+  if(battle && !battle.over){ botBattleT += dt; if(battle.turn === 'me' && botBattleT > 1.6){ botBattleT = 0; botBattleAct(); } return; }
+  if(!$('modal').hidden){ botModalT += dt; if(botModalT > 5){ botModalT = 0; closeModal(); } return; }
   botModalT = 0;
   if(sprayer.userData.path) return;
   botT -= dt; if(botT > 0) return; botT = .2;
@@ -1811,15 +1916,17 @@ function windowText(tool){
 }
 
 /* ---- spray ---- */
+const sprayOk = (wx = wxNow()) => Math.max(wx.disease, wx.pest) >= RULE.sprayRisk;
 function openSpray(){
   const wx = wxNow(), cost = sprayCost();
+  if(!sprayOk(wx)) return toast(`🚜 지금은 병·해충 위험이 높지 않아요(병 ${wx.disease} · 해충 ${wx.pest}). 왼쪽 날씨 판에 <b>높음</b>이 뜨면 방제할 수 있어요.`);
   const warn = [];
   if(wx.wind >= 5) warn.push(own('drone') ? `바람이 ${wx.wind}m/s로 세지만 방제 드론이 있어 괜찮아요.` : `바람이 ${wx.wind}m/s로 세요. 약이 날아가서 효과가 절반이에요.`);
   if(wx.rain >= 60) warn.push(`이번 주 비 올 확률 ${wx.rain}%. 약이 씻겨 효과가 짧아요.`);
   if(S.sprays >= RULE.sprayMax) warn.push(`올해 벌써 ${S.sprays}회 뿌렸어요. ${RULE.sprayMax}회를 넘기면 약해(약 때문에 생기는 피해)가 생길 수 있어요.`);
   const busy = sprayer.userData.path;
   modal('🚜 SS기 방제', `
-    <p>${pyeongOf(S.rows)}평 전체에 한 번 뿌리는 데 약값 <b class="num">${won(cost)}</b> (300평당 6만원). 올해 <b class="num">${S.sprays}회</b> / 권장 ${RULE.sprayMin}~${RULE.sprayMax}회.</p>
+    <p>${pyeongOf(S.rows)}평 전체에 한 번 뿌리는 데 약값 <b class="num">${won(cost)}</b> (300평당 6만원). 올해 <b class="num">${S.sprays}회</b>. 지금 ${wx.disease >= RULE.sprayRisk ? '🦠 병' : ''}${wx.disease >= RULE.sprayRisk && wx.pest >= RULE.sprayRisk ? '·' : ''}${wx.pest >= RULE.sprayRisk ? '🐛 해충' : ''} 위험이 높아요.</p>
     <label class="check"><input type="checkbox" id="sp1" checked> 🦠 살균제 <small>탄저병·갈색무늬병 같은 병을 막아요. 비가 잦을 때 중요해요.</small></label>
     <label class="check"><input type="checkbox" id="sp2" checked> 🐛 살충제 <small>진딧물·응애·복숭아순나방 같은 벌레를 막아요. 더울 때 많아요.</small></label>
     <label class="check"><input type="checkbox" id="sp3"> 🌿 영양제 <small>잎과 열매에 양분을 줘서 품질을 조금 올려요.</small></label>
@@ -1935,15 +2042,15 @@ function nextWeek(){
   const w = S.week, wx = wxNow(), lines = [], bear = allTrees().filter(({t}) => bearing(t));
   const hit = (amt, list = bear) => list.forEach(({t}) => t.q = clamp(t.q - amt, 0, 100));
   if(inWin(w, WIN.spray) && bear.length){
-    if(wx.disease >= 50){
+    if(wx.disease >= RULE.sprayRisk){
       const name = w >= 26 && w <= 33 ? '탄저병' : pick(['갈색무늬병', '탄저병', '겹무늬썩음병']);
-      let d = Math.round((wx.disease - 40) / 5); const p = w <= S.prot.fung ? S.prot.fungE : 0; d = Math.round(d * (1 - p));
+      let d = Math.round((wx.disease - 50) / 4); const p = w <= S.prot.fung ? S.prot.fungE : 0; d = Math.round(d * (1 - p));
       if(d > 0){ hit(d); lines.push(`🦠 비가 잦아 <b>${name}</b>이 돌았어요. 품질 −${d}${p ? ' (살균제로 절반 막음)' : ''}`); }
       else lines.push(`🦠 ${name} 위험이 높았지만 살균제 덕분에 무사해요.`);
     }
-    if(wx.pest >= 50){
+    if(wx.pest >= RULE.sprayRisk){
       const name = pick(['진딧물', '응애', '복숭아순나방']);
-      let d = Math.round((wx.pest - 40) / 6); const p = w <= S.prot.ins ? S.prot.insE : 0; d = Math.round(d * (1 - p));
+      let d = Math.round((wx.pest - 50) / 5); const p = w <= S.prot.ins ? S.prot.insE : 0; d = Math.round(d * (1 - p));
       if(d > 0){ hit(d); lines.push(`🐛 <b>${name}</b>가 늘었어요. 품질 −${d}${p ? ' (살충제로 절반 막음)' : ''}`); }
       else lines.push(`🐛 ${name}가 늘 때였지만 살충제 덕분에 무사해요.`);
     }
@@ -1985,7 +2092,7 @@ function seasonHint(){
 }
 function yearEnd(lines){
   const sp = S.sprays;
-  if(sp < RULE.sprayMin && allTrees().some(({t}) => bearing(t))) lines.push(`🚜 올해 방제 ${sp}회: 권장(${RULE.sprayMin}~${RULE.sprayMax}회)보다 적었어요.`);
+  if(sp > RULE.sprayMax) lines.push(`🚜 올해 방제 ${sp}회: 너무 많이 뿌렸어요.`);
   if(sp >= RULE.sprayMin && sp <= RULE.sprayMax) S.stat.sprayYear = true;
   orderWeek(99, lines);
   const cup = contest();
@@ -2055,8 +2162,8 @@ function renderUI(){
     add('🍏', '열매솎기', f(WIN.fruit), status(WIN.fruit, bear.filter(({t}) => !t.thinFr).length, bear.length));
     Object.entries(VAR).forEach(([k, v]) => { const mine = bear.filter(({t}) => t.v === k); if(!mine.length) return; add('🧺', `${v.name} 수확`, f(v.harvest), status(v.harvest, mine.filter(({t}) => !t.harvested && t.fruit !== false).length, mine.length)); });
   } else add('🌸', '꽃·열매 관리', '심은 이듬해부터 꽃이 피어요', ['', '내년']);
-  const spSt = S.sprays >= RULE.sprayMin && S.sprays <= RULE.sprayMax ? 'done' : inWin(w, WIN.spray) ? 'now' : '';
-  add('🚜', '방제', `올해 ${RULE.sprayMin}~${RULE.sprayMax}회 · 1회 ${won(sprayCost())}`, [spSt, `${S.sprays}회`]);
+  const spNow = inWin(w, WIN.spray) && sprayOk(wx), spSt = spNow ? 'now' : '';
+  add('🚜', '방제', `병·해충 위험 ‘높음’일 때만 · 1회 ${won(sprayCost())}`, [spSt, spNow ? '지금!' : `${S.sprays}회`]);
   if(nBox) add('🔨', '경매 출하', `창고에 ${nBox}상자`, ['now', '팔기']);
   $('tasklist').innerHTML = items.join('');
   // tool bar
@@ -2080,7 +2187,7 @@ function updatePrompt(){
   const T = TOOLS.find(t => t.id === S.tool);
   const np = nearNPC();
   if(np) html = `<kbd>F</kbd> ${josa(NPCS[np].name, '과', '와')} 이야기하기`;
-  else if(S.tool === 'spray') html = `<kbd>F</kbd> SS기로 과수원 전체 방제 · ${won(sprayCost())}`;
+  else if(S.tool === 'spray') html = sprayOk() ? `<kbd>F</kbd> SS기로 과수원 전체 방제 · ${won(sprayCost())}` : '🚜 병·해충 위험이 ‘높음’일 때만 방제할 수 있어요';
   else if(nearExpansion()) html = `<kbd>F</kbd> 이 땅 사서 밭 넓히기 · ${won(Math.round(rowPyeong) * RULE.pyeongPrice)}`;
   else {
     const r = currentRow();
@@ -2107,6 +2214,8 @@ document.addEventListener('click', e => {
   if(a.dataset.act === 'dex') openDex();
   if(a.dataset.act === 'saveio') openSaveIO();
   if(a.dataset.act === 'auto') toggleAuto();
+  if(a.dataset.act === 'tasks'){ const f = $('tasks').classList.toggle('folded'); try{ localStorage.setItem('orch_fold', f ? '1' : ''); }catch(er){} }
+  if(a.dataset.act === 'keys'){ const f = stage.classList.toggle('nokeys'); try{ localStorage.setItem('orch_nokeys', f ? '1' : ''); }catch(er){} }
   if(a.dataset.act === 'next') nextWeek();
   if($('modal').hidden) $('c').focus();
 });
@@ -2178,7 +2287,7 @@ function loop(now){
     }
   }
   if(drive) updateDrive(dt);
-  updateMist(dt);
+  updateMist(dt); healTick(dt);
   bldAnim.forEach(o => { if(o.userData.blades) o.userData.blades.rotation.z += dt * (inWin(S.week, [14, 18]) ? 9 : 1.5); if(o.userData.tail) o.userData.tail.rotation.y = Math.sin(now / 120) * .6; });
   R.render(scene, cam);
   // labels
