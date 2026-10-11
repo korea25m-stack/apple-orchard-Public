@@ -112,6 +112,13 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .opt.have{background:#e9fbe9}
 .gstat{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-family:var(--display);font-size:21px;background:#fff7dc;border:2.5px solid var(--ink);border-radius:16px;padding:10px 16px}
 .xpb{display:inline-block;width:160px;height:16px;border:2.5px solid var(--ink);border-radius:9px;background:#fff;overflow:hidden}.xpb i{display:block;height:100%;background:#ffb13b}
+.ivh{font-family:var(--display);font-size:24px;margin:16px 2px 8px}.ivh small{font-size:15px;color:var(--muted)}
+.ivg{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.ivc{position:relative;border:2.5px solid var(--ink);border-radius:16px;background:#fff;padding:10px 6px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:default}
+.ivc[data-eq]{cursor:pointer}.ivc.on{background:#fff3c4;box-shadow:0 0 0 3px #ffd25e}
+.ivc i{font-style:normal;font-size:44px;line-height:1.1}.ivc b{font-family:var(--display);font-size:17px;font-weight:400}.ivc small{font-size:14px;color:var(--muted)}
+.ivn{position:absolute;right:8px;top:6px;font-family:var(--display);font-size:20px;color:#d6372c}
+.ivt{font-size:13px;background:#ffd25e;border:1.5px solid var(--ink);border-radius:8px;padding:1px 6px}.ivt.off{background:#eee}
 .gnote{font-size:16px;color:var(--muted);margin:10px 2px}
 .ggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .gslot{border:2.5px solid var(--ink);border-radius:16px;background:#fff;padding:10px 12px}
@@ -205,6 +212,7 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
     <div><b>마우스 드래그</b>화면 둘러보기</div>
     <div><b>F</b>일하기·말 걸기 (싸울 땐 누르고 있으면 막기)</div>
     <div><b>Space</b>휘두르기 공격</div>
+    <div><b>I</b>가방 (전리품·장비)</div>
     <div><b>Q</b>꽹과리 (산짐승 깜짝)</div>
     <div><b>P</b>멈춤 / 계속</div>
     <div><b>농막</b>자고 일어나면 다음 할 일까지</div>
@@ -217,7 +225,8 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
     <button class="tb" data-ui="store"><b>📦</b>창고</button>
     <button class="tb" data-ui="build"><b>🏡</b>건물</button>
     <button class="tb" data-ui="land"><b>🗺️</b>땅</button>
-    <button class="tb" data-ui="gear"><b>🎒</b>장비</button>
+    <button class="tb" data-ui="inv"><b>🎒</b>가방</button>
+    <button class="tb" data-ui="gear"><b>🔨</b>장비</button>
     <button class="tb" data-ui="book"><b>📖</b>도감</button>
     <button class="tb" data-ui="save"><b>💾</b>저장</button>
   </div>
@@ -2718,7 +2727,7 @@ function nearestOf(k){
 }
 
 // ----- 아래 도구 창들 -----
-function openUI(k){ if (!UI.free()) return; ({plant:uiPlant, spray:uiSpray, worker:uiWorker, store:uiStore, build:uiBuild, land:uiLand, book:uiBook, save:uiSave, gear:uiGear})[k](); }
+function openUI(k){ if (!UI.free()) return; ({plant:uiPlant, spray:uiSpray, worker:uiWorker, store:uiStore, build:uiBuild, land:uiLand, book:uiBook, save:uiSave, gear:uiGear, inv:uiInv})[k](); }
 
 function uiPlant(){
   UI.open({ic:'🌱', title:'묘목 고르기', render(o){
@@ -3165,6 +3174,28 @@ function uiGear(){
   }});
 }
 
+// ----- 인벤토리 (I 키) : 전리품·장비 한눈에 -----
+function uiInv(){
+  ensureGear();
+  UI.open({ic:'🎒', title:'우주의 가방', w:1180, inv:1, render(o){
+    const g = G.gear, have = LOOT_KEYS.filter(k => G.bag[k] > 0);
+    const total = have.reduce((a, k) => a + lootPrice(k) * G.bag[k], 0);
+    const loot = have.length ? have.map(k => { const L = LOOT[k]; return `<div class="ivc" title="${esc(L.desc)}"><i>${L.ic}</i><b>${L.name}</b><span class="ivn">×${G.bag[k]}</span><small>오늘 ${won(lootPrice(k))}</small></div>`; }).join('')
+      : '<div class="gnote">아직 전리품이 없어요. 과수원 동쪽·남쪽 사냥터에서 산짐승을 쫓거나 반짝이는 자리를 캐 보세요! 🌲</div>';
+    const gear = SLOTS.flatMap(s => GEAR[s].items.filter(it => it.id in g.own).map(it => {
+      const lv = g.own[it.id] || 0, on = g[s] === it.id;
+      return `<div class="ivc ${on ? 'on' : ''}" data-eq="${s}|${it.id}"><i>${GEAR[s].ic}</i><b>${it.name}${lv ? ` +${lv}` : ''}</b><small>${GEAR[s].unit} ${itemStat(s, it.id, lv)}</small>${on ? '<span class="ivt">끼는 중</span>' : '<span class="ivt off">눌러서 끼기</span>'}</div>`;
+    })).join('');
+    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 우주 Lv.${farmer().lv}</b><span>💰 ${won(G.money)}</span><span>💎 강화석 ${g.stones || 0}개</span><span>🧺 전리품 ${bagCount()}개 · 팔면 약 ${won(total)}</span></div>
+      <h3 class="ivh">🧺 전리품</h3><div class="ivg">${loot}</div>
+      <h3 class="ivh">🛠️ 장비 <small>눌러서 바꿔 끼기</small></h3><div class="ivg">${gear}</div>`;
+    o.body.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.eq.split('|'); if (G.gear[s] !== id) { G.gear[s] = id; toast(`🎒 ${jo(gearItem(s, id).name, '을', '를')} 꼈어요!`, 'good'); } o.render(o); });
+    o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">I 키로 열고 닫아요 · 전리품은 금비상회에서 팔아요</span><button class="btn" id="ivGear">🔨 장비 사기·강화</button><button class="btn pri" id="ivOk">닫기</button>`;
+    $('#ivGear').onclick = () => { UI.close(); setTimeout(uiGear, 160); };
+    $('#ivOk').onclick = () => UI.close();
+  }});
+}
+
 // ===== 미니게임 1: 방제기 운전 (3인칭, 아래에서 위로, 최대 30초) =====
 const MINI = {on:false};
 const keys = {};
@@ -3577,6 +3608,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyF' && !e.repeat && !inCombat()) pressF();
   if (e.code === 'Space' || e.code === 'KeyJ') { e.preventDefault(); if (UI.free()) heroAttack(); }
   if (e.code === 'KeyQ' && UI.free()) heroGong();
+  if (e.code === 'KeyI' && !e.repeat) { if (UI.modal && UI.modal.inv) UI.close(); else if (UI.free()) uiInv(); }
   if (e.code === 'KeyP') { if (UI.free()) { speed = speed ? 0 : 1; updateHUD(true); } }
   if (e.code === 'Escape' && UI.modal && !UI.modal.noX) UI.close();
   if (e.code.startsWith('Arrow')) e.preventDefault();
