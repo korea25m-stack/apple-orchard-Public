@@ -75,7 +75,7 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .tb.alert{background:#ffe1dc;animation:pulse 1.2s infinite}
 @keyframes pulse{50%{background:#ffb8ad}}
 
-#autoBtn{left:20px;top:470px;width:150px;height:150px;border-radius:30px;border:3px solid var(--ink);background:var(--plum);color:#fff;font-size:24px;box-shadow:0 6px 0 var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+#autoBtn{z-index:55;left:20px;top:470px;width:150px;height:150px;border-radius:30px;border:3px solid var(--ink);background:var(--plum);color:#fff;font-size:24px;box-shadow:0 6px 0 var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 #autoBtn b{font-size:52px;font-weight:400}
 #autoBtn.on{background:#ff8f3a;animation:glow 1s infinite}
 @keyframes glow{50%{filter:brightness(1.18)}}
@@ -2178,7 +2178,7 @@ function bindUI(){
   document.querySelectorAll('.tb').forEach(b => b.onclick = () => openUI(b.dataset.ui));
   document.querySelectorAll('.sp[data-sp]').forEach(b => b.onclick = () => { speed = +b.dataset.sp; updateHUD(true); });
   $('#skipW').onclick = skipWeek;
-  $('#autoBtn').onclick = () => { AUTO = !AUTO; if (AUTO && speed < 2) speed = 2; if (!AUTO) { P.tgt = null; speed = 1; } toast(AUTO ? '🤖 자동플레이를 켰어요. 하루가 알아서 일해요.' : '자동플레이를 껐어요.'); updateHUD(true); };
+  $('#autoBtn').onclick = () => { AUTO = !AUTO; if (!AUTO && UI.modal && UI.modal.timer) { clearTimeout(UI.modal.timer); UI.modal.timer = null; } if (AUTO && speed < 2) speed = 2; if (!AUTO) { P.tgt = null; speed = 1; } toast(AUTO ? '🤖 자동플레이를 켰어요. 하루가 알아서 일해요.' : '자동플레이를 껐어요.'); updateHUD(true); };
   $('#helpBtn').onclick = () => { const h = $('#help'); h.hidden = !h.hidden; store.set('haru-help', h.hidden ? '0' : '1'); };
   $('#help').hidden = store.get('haru-help', '1') !== '1';
   const fold = store.get('haru-todo', '0') === '1';
@@ -2606,7 +2606,7 @@ function detour(){
 }
 
 // ----- 자동플레이 -----
-let autoT = 0;
+let autoT = 0, autoIdle = 0;
 function autoTick(dt){
   if (!AUTO || !UI.free() || P.act > 0 || ssAnim) return;
   autoT -= dt; if (autoT > 0) return; autoT = .2;
@@ -2626,11 +2626,13 @@ function autoTick(dt){
   if (G.errand && totalStock() >= G.errand.need) return walkTo('chief');
   const i = nearestTask(P, false);
   if (i >= 0 && !(taskFor(i) === 'plant' && G.money < 1500000 + SAPLING && G.year > 1)) { const p = treePos(i); P.tgt = {x:p.x, y:p.y + 46}; P.pend = {kind:'tree', i}; return; }
-  if (G.quizDay !== weekId() && G.week % 3 === 0) return walkTo('grandma');
+  if (G.quizDay !== weekId() && G.week % 4 === 2 && G.quizDay < weekId() - 21) return walkTo('grandma');
   if (!G.errand && G.year >= 2 && Math.random() < .3) return walkTo('chief');
   if (totalStock() > 0 && !G.orders.some(o => stockAtLeast(o.g) < o.n && G.week <= o.due)) { auction(Object.keys(G.stock)); return; }
   if (totalStock() > 60) { auction(Object.keys(G.stock)); return; }
-  skipWeek();
+  // 할 일이 없으면 잠깐 쉬었다가 다음 주로 (너무 빨리 넘기지 않게)
+  autoIdle += .2;
+  if (autoIdle >= 3) { autoIdle = 0; skipWeek(); }
 }
 function walkTo(who){ P.tgt = {x:SPOT[who].x + 60, y:SPOT[who].y + 30}; P.pend = {kind:who}; }
 const AUTO_BUY = [['b', 'beehive'], ['d', 'flowers'], ['d', 'dog'], ['b', 'beehive'], ['b', 'wondumak'], ['b', 'beehive'], ['b', 'fence'], ['d', 'pond'], ['b', 'frostfan'], ['b', 'hailnet'], ['d', 'rabbit'], ['d', 'chicken'], ['d', 'cat'], ['d', 'blossom'], ['L'], ['b', 'cold'], ['d', 'jangdok'], ['d', 'sotdae'], ['b', 'drone'], ['L'], ['b', 'factory'], ['L'], ['b', 'sarang'], ['L'], ['L'], ['L'], ['L'], ['L'], ['L']];
