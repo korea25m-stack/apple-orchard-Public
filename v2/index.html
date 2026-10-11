@@ -163,7 +163,12 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
 #joy i{position:absolute;left:95px;top:95px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.85);border:4px solid var(--ink)}
 #fBtn{position:absolute;right:70px;bottom:170px;width:220px;height:220px;border-radius:50%;background:var(--sun);border:4px solid var(--ink);z-index:20;font-family:var(--display);font-size:80px;box-shadow:0 8px 0 var(--ink)}
 #fBtn small{display:block;font-size:26px;margin-top:-6px}
-#fsBtn{position:absolute;left:20px;top:330px;z-index:20;width:70px;height:62px;font-size:30px}
+#atkBtn,#gongBtn{position:absolute;width:150px;height:150px;border-radius:50%;background:#ff8a6a;border:4px solid var(--ink);z-index:20;font-size:58px;box-shadow:0 6px 0 var(--ink);line-height:1}
+#atkBtn{right:310px;bottom:150px} #gongBtn{right:300px;bottom:330px;width:120px;height:120px;font-size:44px;background:#ffd25e}
+#atkBtn small,#gongBtn small{display:block;font-size:22px;font-family:var(--display)}
+#sleepFx{position:absolute;inset:0;z-index:300;background:#140f22;color:#fff6d8;font-family:var(--display);font-size:72px;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .7s}
+#sleepFx.on{opacity:1;pointer-events:auto}
+#fsBtn{position:absolute;left:20px;top:545px;z-index:20;width:70px;height:62px;font-size:30px}
 .touch .touch #helpBtn,.touch #help{display:none}
 .touch .tb{width:128px;height:110px;font-size:21px}
 .touch .tb b{font-size:44px}
@@ -188,7 +193,6 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
       <button class="sp" data-sp="1" title="보통">▶</button>
       <button class="sp" data-sp="2" title="2배">×2</button>
       <button class="sp" data-sp="4" title="4배">×4</button>
-      <button class="sp" id="skipW" title="다음 주로 (N)">⏭</button>
     </div>
   </div>
 
@@ -199,9 +203,11 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
     <div><b>WASD·방향키</b>걷기</div>
     <div><b>마우스 클릭</b>그 자리로 걷기</div>
     <div><b>마우스 드래그</b>화면 둘러보기</div>
-    <div><b>F</b>나무·사람에게 일하기</div>
-    <div><b>N</b>다음 주로 건너뛰기</div>
-    <div><b>Space</b>멈춤 / 계속</div>
+    <div><b>F</b>일하기·말 걸기 (싸울 땐 누르고 있으면 막기)</div>
+    <div><b>Space</b>휘두르기 공격</div>
+    <div><b>Q</b>꽹과리 (산짐승 깜짝)</div>
+    <div><b>P</b>멈춤 / 계속</div>
+    <div><b>농막</b>자고 일어나면 다음 할 일까지</div>
   </div>
 
   <div id="bar" class="hud card">
@@ -219,6 +225,8 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
   <div id="touchUI">
     <div id="joy"><i></i></div>
     <button id="fBtn">F<small id="fLab">일하기</small></button>
+    <button id="atkBtn">⚔️<small>공격</small></button>
+    <button id="gongBtn">💥<small>기합</small></button>
     <button id="fsBtn" class="card">⛶</button>
   </div>
 
@@ -250,7 +258,7 @@ const SPRAY_UNIT = 60000;           // 300평당 1회
 const RISK_HIGH = 65;
 const WORKER_PAY = 130000;
 const DAY_SEC = 10;                 // 1배속 하루 10초
-const WORLD_W = 2700;
+const WORLD_W = 8600, WORLD_H = 9800;   // 2026-10-11 맵 넓이 약 10배 (동쪽·남쪽은 사냥터)
 const worldH = rows => OY + rows * ROW_H + 520;
 
 const VARS = {
@@ -391,6 +399,9 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const rint = (a, b) => Math.floor(rnd(a, b + 1));
 const pick = a => a[Math.floor(Math.random() * a.length)];
 function srand(seed){ let s = seed >>> 0 || 1; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+
+// 받침에 맞춰 을/를, 이/가 붙이기
+function jo(w, a, b){ const k = w.replace(/[^가-힣]+$/, ''), c = k.charCodeAt(k.length - 1); return w + (c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? a : b); }
 
 // 주차 → 달력
 function weekLabel(w){
@@ -1237,7 +1248,7 @@ const SPOT = {
   hives:[[2300, 1040], [2350, 1075], [2300, 1110]], drone:{x:900, y:830},
   pond:{x:660, y:1470}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
   rabbit:{x:2440, y:1360}, chicken:{x:900, y:1260}, cat:{x:350, y:858}, dog:{x:690, y:980},
-  jangdok:{x:110, y:960}, sotdae:{x:190, y:1560}
+  jangdok:{x:110, y:960}, sotdae:{x:190, y:1560}, nongmak:{x:2620, y:1180}
 };
 const ROAD = [[-60, 1700], [300, 1440], [650, 1250], [905, 1175], [930, 1150]];
 const YARD = {x:520, y:925, rx:270, ry:85};
@@ -1264,19 +1275,19 @@ function nearRoad(x, y, d){
   return false;
 }
 function buildFeats(){
-  const R = srand(4242), WH = worldH(MAX_ROWS);
+  const R = srand(4242), WH = WORLD_H;
   feats = {blobs:[], tufts:[], flw:[]};
-  for (let i = 0; i < 260; i++) {
+  for (let i = 0; i < 2600; i++) {
     const x = R() * WORLD_W, y = R() * WH, r = 40 + R() * 110, pts = [];
     const n = 9; for (let k = 0; k < n; k++) { const a = k / n * 6.283, rr2 = r * (.7 + R() * .45); pts.push([x + Math.cos(a) * rr2, y + Math.sin(a) * rr2 * .55]); }
     feats.blobs.push({x, y, r, pts, dark:R() < .55});
   }
-  for (let i = 0; i < 4200; i++) {
+  for (let i = 0; i < 26000; i++) {
     const x = R() * WORLD_W, y = R() * WH;
     if (inOrchard(x, y) || nearRoad(x, y, 70) || inYard(x, y)) continue;
     feats.tufts.push([x, y, R()]);
   }
-  for (let i = 0; i < 900; i++) {
+  for (let i = 0; i < 6000; i++) {
     const x = R() * WORLD_W, y = R() * WH;
     if (inOrchard(x, y, 20) || nearRoad(x, y, 80) || inYard(x, y)) continue;
     feats.flw.push([x, y, Math.floor(R() * 4)]);
@@ -1310,6 +1321,7 @@ function drawGround(c, x0, y0, w, h){
   road(ROAD, 118, win ? '#d8dfe6' : '#c99d62'); road(ROAD, 100, win ? '#f2f5f8' : '#ecd29a');
   road([[650, 1250], [560, 1000]], 84, win ? '#d8dfe6' : '#c99d62'); road([[650, 1250], [560, 1000]], 68, win ? '#f2f5f8' : '#ecd29a');
   drawVillageGround(c, win);
+  drawHuntGround(c, x0, y0, w, h, win);
   c.beginPath(); ell(c, YARD.x, YARD.y, YARD.rx + 8, YARD.ry + 8); c.fillStyle = win ? '#d8dfe6' : '#c99d62'; c.fill();
   c.beginPath(); ell(c, YARD.x, YARD.y, YARD.rx, YARD.ry); c.fillStyle = win ? '#f2f5f8' : '#ecd29a'; c.fill();
   // 자갈 점
@@ -1523,6 +1535,7 @@ function solids(){
   if (G.b.factory) s.push({x:SPOT.factory.x - 82, y:SPOT.factory.y - 64, w:164, h:64});
   if (G.b.wondumak) s.push({x:SPOT.wondumak.x - 70, y:SPOT.wondumak.y - 50, w:140, h:50});
   villageSolids(s);
+  s.push({x:SPOT.nongmak.x - 95, y:SPOT.nongmak.y - 70, w:190, h:70});
   return s;
 }
 function blocked(x, y){
@@ -1557,11 +1570,12 @@ function findTarget(){
   const cands = [];
   for (let i = 0; i < G.trees.length; i++) { const p = treePos(i); cands.push({kind:'tree', i, x:p.x, y:p.y + 10}); }
   cands.push({kind:'grandma', x:SPOT.grandma.x, y:SPOT.grandma.y}, {kind:'chief', x:SPOT.chief.x, y:SPOT.chief.y},
-             {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 10}, {kind:'hanok', x:SPOT.hanok.x, y:SPOT.hanok.y + 10});
+             {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 10}, {kind:'hanok', x:SPOT.hanok.x, y:SPOT.hanok.y + 10}, {kind:'nongmak', x:SPOT.nongmak.x, y:SPOT.nongmak.y + 10});
+  huntTargets(cands);
   for (const n of NPCS) cands.push({kind:'npc', n:n.i, x:n.x, y:n.y});
   for (const c of cands) {
     const d = (c.x - P.x) ** 2 + ((c.y - P.y) * 1.3) ** 2;
-    const lim = c.kind === 'hanok' ? 160 * 160 : c.kind === 'tree' ? 70 * 70 : bd;
+    const lim = c.kind === 'hanok' || c.kind === 'nongmak' ? 150 * 150 : c.kind === 'tree' ? 70 * 70 : bd;
     if (d < lim && d < (best ? best.d : 1e9)) best = {...c, d};
   }
   return best;
@@ -1570,7 +1584,8 @@ function targetLabel(t){
   if (!t) return '';
   if (t.kind === 'tree') { const k = taskFor(t.i); if (k) return TASKS[k].verb; return G.trees[t.i] ? '살펴보기' : ''; }
   if (t.kind === 'npc') return NPCS[t.n].name;
-  return {grandma:'김순자 할머니', chief:'고만수 이장님', shed:'창고 열기', hanok:'저장하기'}[t.kind];
+  if (t.kind === 'forage') return '캐기: ' + LOOT[t.f.item].name;
+  return {grandma:'김순자 할머니', chief:'고만수 이장님', shed:'창고 열기', hanok:'저장하기', nongmak:'농막 들어가기'}[t.kind];
 }
 
 // ----- 동물·나비 -----
@@ -1684,11 +1699,12 @@ function render(ctx, dt, T){
   for (let x = 30; x < WORLD_W; x += 95) { const y = 470 + R() * 40, s = .9 + R() * .4; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
   for (let y = 600; y < worldBot(); y += 130) { const x = WORLD_W - 40 - R() * 30, s = .9 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
   for (let y = 1880; y < worldBot(); y += 140) { if (y > 2110 && y < 2280) continue; const x = 30 + R() * 20, s = .85 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
-  for (let x = 60; x < WORLD_W; x += 110) { if (x > 370 && x < 490) continue; const y = worldBot() - 6 - R() * 20, s = .9 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
+  for (let x = 60; x < WORLD_W; x += 110) { const y = worldBot() - 6 - R() * 20, s = .9 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
   villageEntities(ctx, add, vis);
+  huntEntities(ctx, add, vis, T);
   const R3 = srand(55);
-  for (let k = 0; k < 40; k++) {
-    const x = R3() * WORLD_W, y = 560 + R3() * (worldH(G.rows) - 600), s = .7 + R3() * .5;
+  for (let k = 0; k < 60; k++) {
+    const x = R3() * 2880, y = 560 + R3() * 3800, s = .7 + R3() * .5;
     if (inVillage(x, y) || inOrchard(x, y, 60) || nearRoad(x, y, 90) || inYard(x, y) || blockedSpot(x, y)) continue;
     if (vis(x, y)) add(y, () => drawBush(ctx, x, y, s));
   }
@@ -1699,11 +1715,11 @@ function render(ctx, dt, T){
   for (const c of critters) if (vis(c.x, c.y)) add(c.y, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
   if (raidAnim) add(raidAnim.y, () => drawAnimal(ctx, raidAnim.kind, raidAnim.x, raidAnim.y, T, raidAnim.flip));
   if (ssAnim) add(ssAnim.y, () => drawSS(ctx, ssAnim.x, ssAnim.y, ssAnim.a));
-  else add(P.y, () => drawPerson(ctx, P.x, P.y, 'haru', P.dir, P.walk, P.sw > 0 ? P.sw * 9 : 0));
+  else add(P.y, () => drawHero(ctx));
   E.sort((a, b) => a[0] - b[0]);
   for (const e of E) e[1]();
   // 나무 뒤에 가려도 하루가 보이게 반투명으로 한 번 더
-  if (!ssAnim) { ctx.globalAlpha = .38; drawPerson(ctx, P.x, P.y, 'haru', P.dir, P.walk, P.sw > 0 ? P.sw * 9 : 0); ctx.globalAlpha = 1; }
+  if (!ssAnim) { ctx.globalAlpha = .38; drawHero(ctx); ctx.globalAlpha = 1; }
 
   // 우박망
   if (G.b.hailnet && w >= 14 && w <= 46) {
@@ -1760,6 +1776,7 @@ function render(ctx, dt, T){
   // 화면 효과
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawSkyFx(ctx, dt, T);
+  drawHuntOverlay(ctx, T);
 }
 let curTarget = null;
 const mist = [];
@@ -1844,7 +1861,7 @@ const VB = [
   {x:660, y:2910, roof:'#3a5aa0', wall:'#f2f6fb', sign:'사과골 파출소'}
 ];
 const JEONGJA = {x:300, y:2320}, BIGTREE = {x:575, y:2330};
-const worldBot = () => Math.max(3080, worldH(G.rows));
+const worldBot = () => WORLD_H;
 function inVillage(x, y){ return x < 960 && y > 1720; }
 function villageSolids(s){
   for (const b of VB) { const hw = b.big ? 120 : 90; s.push({x:b.x - hw, y:b.y - 80, w:hw * 2, h:80}); }
@@ -1856,7 +1873,7 @@ const NPC_DATA = [
   {name:'오복순 할머니', role:'떡방앗간', home:[210, 1950], r:[60, 20], sp:30,
    look:{skin:'#f6d3b6', hair:'#e6e6e6', hs:'bun', top:'#7fc2a0', outfit:'apron', o2:'#ffffff', pants:'#5a7a6a', shoe:'#5a4040', old:1, girl:1},
    lines:['떡 하나 먹고 가! 사과 넣은 사과떡도 있단다.', '사과는 껍질째 먹어야 좋은 게 더 많대.', '우리 방앗간 떡은 마을에서 제일 쫄깃해.']},
-  {name:'황금비 사장님', role:'금비상회', home:[660, 1950], r:[60, 20], sp:40,
+  {name:'황금비 사장님', role:'금비상회 · 전리품 삽니다', buyer:1, home:[660, 1950], r:[60, 20], sp:40,
    look:{skin:'#ffdcc0', hair:'#3a2a20', hs:'bob', eye:'#5a3a2a', top:'#ffffff', outfit:'apron', o2:'#e8423a', pants:'#3a3a4a', shoe:'#2a2a2a', girl:1},
    lines:['어서 와요, 금비상회예요! 사과 상자 테이프는 여기 다 있어요.', '요즘 손님들이 꿀 든 사과를 찾더라고요.', '사과는 서늘한 데 두면 오래 가요.']},
   {name:'최봉구 아저씨', role:'농기계 수리', home:[540, 1790], r:[50, 25], sp:35,
@@ -1932,6 +1949,12 @@ function talkNpc(n){
   if (n.shop) {
     talk(n, esc(line) + '<br>장비 사고 강화하는 건 우리 가게에서!', `<button class="btn" id="tOk">다음에요</button><button class="btn pri" id="gearGo">🎒 장비 보기</button>`);
     $('#gearGo').onclick = () => { UI.close(); setTimeout(uiGear, 160); };
+    return;
+  }
+  if (n.buyer) {
+    const c = bagCount();
+    talk(n, esc(line) + `<br>${c ? `가방에 ${c}개 있네? 산에서 캔 거면 내가 좋은 값에 사 줄게!` : '산에서 버섯이나 산삼 캐 오면 내가 사 줄게!'}`, `<button class="btn" id="tOk">다음에요</button><button class="btn pri" id="sellGo">🧺 전리품 팔기</button>`);
+    $('#sellGo').onclick = () => { UI.close(); setTimeout(uiSellLoot, 160); };
     return;
   }
   talk(n, esc(line));
@@ -2019,6 +2042,543 @@ function drawVillageTags(ctx){
     ctx.fillStyle = INK; ctx.fillText(n.name, n.x, ty);
   }
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
+}
+
+// ===== 뒷산 사냥터: 넓은 숲, 같은 화면에서 실시간 전투, 전리품 =====
+// 사냥터 = 동쪽 숲(x > 2900) + 남쪽 숲(y > 4420). 집에서 멀수록 센 산짐승과 귀한 전리품.
+const HUNT_X = 2900, HUNT_Y = 4420;
+const GATES = [{x:2900, y:1200}, {x:450, y:4420}];
+function inHunt(x, y){ return x > HUNT_X || y > HUNT_Y; }
+function gateDist(x, y){ return Math.min(...GATES.map(g => Math.hypot(x - g.x, y - g.y))); }
+function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = gateDist(x, y); return d < 2300 ? 0 : d < 4300 ? 1 : d < 6500 ? 2 : 3; }
+const ZONES = [
+  {name:'얕은 숲', stars:'★'}, {name:'깊은 숲', stars:'★★'}, {name:'골짜기', stars:'★★★'}, {name:'전설의 산', stars:'★★★★'}
+];
+const TRAILS = [
+  [[2880, 1200], [3600, 1300], [4300, 1100], [5200, 1500], [6100, 1300], [7000, 1800], [7900, 1600]],
+  [[3600, 1300], [3900, 2400], [4600, 3300], [5600, 4200], [6600, 5200], [7600, 6400], [8000, 7600]],
+  [[450, 4400], [700, 5200], [1500, 6000], [2600, 6600], [3800, 7200], [5200, 7800], [6600, 8600], [7700, 9200]],
+  [[4600, 3300], [3600, 5000], [2600, 6600]], [[1500, 6000], [1000, 7600], [1800, 9000]], [[5200, 1500], [5600, 2700], [6600, 3400]]
+];
+const CLEARINGS = TRAILS.flat().filter(([x, y]) => inHunt(x, y) && gateDist(x, y) > 500).map(([x, y]) => ({x, y, r:230}));
+function nearTrail(x, y, d){
+  for (const R of TRAILS) for (let i = 0; i < R.length - 1; i++) {
+    const [ax, ay] = R[i], [bx, by] = R[i + 1];
+    const t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2), 0, 1);
+    if ((x - ax - t * (bx - ax)) ** 2 + (y - ay - t * (by - ay)) ** 2 < d * d) return true;
+  }
+  return false;
+}
+const inClearing = (x, y, pad = 0) => CLEARINGS.some(c => (x - c.x) ** 2 + ((y - c.y) * 1.3) ** 2 < (c.r + pad) ** 2);
+
+// ----- 전리품 (값은 그날그날 시세, 30만~300만원) -----
+const LOOT = {
+  pyogo:{name:'참나무 표고버섯', ic:'🍄', lo:300000, hi:600000, desc:'참나무 원목에서 자라요. 말리면 향이 더 진해져요.'},
+  deodeok:{name:'묵은 산더덕', ic:'🌿', lo:300000, hi:800000, desc:'깊은 산 더덕은 향이 아주 진해요. 덩굴로 자라는 식물이에요.'},
+  cheonma:{name:'천마', ic:'🌱', lo:400000, hi:900000, desc:'잎이 없는 신기한 식물이라 땅속 버섯 균의 도움을 받아 자라요.'},
+  yeongji:{name:'영지버섯', ic:'🍄', lo:500000, hi:1200000, desc:'반짝반짝 윤이 나는 버섯이에요. 나무 그루터기에서 자라요.'},
+  seokcheong:{name:'석청 (바위 꿀)', ic:'🍯', lo:500000, hi:1500000, desc:'산에 사는 벌이 바위틈에 모아 둔 귀한 꿀이에요.'},
+  neungi:{name:'능이버섯', ic:'🍄', lo:600000, hi:1500000, desc:'"1능이 2표고 3송이"라는 말이 있을 만큼 향이 좋아요.'},
+  songi:{name:'송이버섯', ic:'🍄', lo:800000, hi:2000000, desc:'살아 있는 소나무 뿌리랑 함께 살아서 사람이 기르기가 아주 어려워요.'},
+  sanghwang:{name:'상황버섯', ic:'🍄', lo:1000000, hi:2500000, desc:'뽕나무 같은 나무에서 몇 해에 걸쳐 아주 천천히 자라요.'},
+  sansam:{name:'산삼', ic:'🌿', lo:1500000, hi:3000000, desc:'깊은 산에서 오래오래 자란 귀한 삼이에요. 잎이 다섯 갈래로 갈라져요.'}
+};
+const LOOT_KEYS = Object.keys(LOOT);
+// 구역별로 나오는 전리품 (숫자 = 잘 나오는 정도)
+const LOOT_TABLE = [
+  {pyogo:5, deodeok:4, cheonma:3, yeongji:1},
+  {deodeok:3, cheonma:3, yeongji:3, seokcheong:2, neungi:2, songi:1},
+  {yeongji:2, seokcheong:3, neungi:3, songi:3, sanghwang:2, sansam:.6},
+  {neungi:2, songi:3, sanghwang:3, sansam:2}
+];
+const FORAGE_TABLE = [{pyogo:5, deodeok:3}, {pyogo:2, deodeok:3, cheonma:3}, {cheonma:3, yeongji:3, seokcheong:1}, {yeongji:3, seokcheong:2, neungi:1}];
+function rollLoot(tab){ let s = 0; for (const k in tab) s += tab[k]; let r = Math.random() * s; for (const k in tab) { r -= tab[k]; if (r <= 0) return k; } return Object.keys(tab)[0]; }
+function lootPrice(id){ const L = LOOT[id], i = LOOT_KEYS.indexOf(id); const f = srand(absDay() * 31 + i * 7 + 3)(); return Math.round((L.lo + (L.hi - L.lo) * f) / 10000) * 10000; }
+function addLoot(id, n = 1){ ensureGear(); G.bag[id] = (G.bag[id] || 0) + n; G.stats.loot = (G.stats.loot || 0) + n; }
+const bagCount = () => { ensureGear(); return Object.values(G.bag).reduce((a, b) => a + b, 0); };
+
+// ----- 숲 그림 -----
+let FOREST = null;
+function buildForest(){
+  FOREST = [];
+  const R = srand(808);
+  for (let gy = 300; gy < WORLD_H - 60; gy += 200) for (let gx = 140; gx < WORLD_W - 60; gx += 200) {
+    const x = gx + (R() - .5) * 150, y = gy + (R() - .5) * 150, k = R(), s = .85 + R() * .5;
+    if (!inHunt(x, y) || x < HUNT_X + 60 && y < HUNT_Y || y < HUNT_Y + 60 && x < HUNT_X) continue;
+    if (nearTrail(x, y, 120) || inClearing(x, y, 40)) continue;
+    if (R() < .18) continue;
+    FOREST.push({x, y, k:k < .45 ? 'pine' : k < .85 ? 'oak' : k < .95 ? 'bush' : 'rock', s});
+  }
+}
+function drawOak(c, x, y, s){
+  const S = seasonOf(G.week);
+  const lf = S === 'autumn' ? '#e8a03a' : S === 'winter' ? '#e6edf2' : S === 'spring' ? '#7fcf5a' : '#4fae48';
+  const ls = S === 'autumn' ? '#b0602a' : S === 'winter' ? '#b8c8d4' : '#2c7a35';
+  c.save(); c.translate(x, y); c.scale(s, s);
+  shadow(c, 0, 4, 60, 16, .22);
+  cel(c, cc => { cc.moveTo(-10, 0); cc.quadraticCurveTo(-6, -40, -14, -80); cc.lineTo(14, -80); cc.quadraticCurveTo(6, -40, 10, 0); cc.closePath(); }, '#8a5a3a', '#5e3a22', 3, 2, 2.6);
+  celBlob(c, [[0, -122, 50], [-44, -98, 36], [44, -98, 36], [-24, -150, 34], [26, -152, 34]], lf, ls, 9, 10, 2.8);
+  c.restore();
+}
+function drawRock(c, x, y, s){
+  c.save(); c.translate(x, y); c.scale(s, s);
+  shadow(c, 0, 2, 40, 10, .22);
+  cel(c, cc => { cc.moveTo(-40, 0); cc.quadraticCurveTo(-44, -36, -6, -44); cc.quadraticCurveTo(38, -48, 42, -8); cc.lineTo(38, 0); cc.closePath(); }, '#b2aca8', '#7d7772', 8, 7, 3);
+  hl(c, -14, -30, 10, 4, .4);
+  c.restore();
+}
+function drawHuntGround(c, x0, y0, w, h, win){
+  if (x0 + w < HUNT_X && y0 + h < HUNT_Y) return;
+  const pal = PAL[seasonOf(G.week)], base = win ? '#dfe8ee' : pal.g2, dark = win ? '#c6d4de' : '#3f7a34';
+  // 숲 바닥: 깊이 들어갈수록 조금씩 짙어져요
+  for (let cy = y0; cy < y0 + h; cy += 64) for (let cx = x0; cx < x0 + w; cx += 64) {
+    if (!inHunt(cx + 32, cy + 32)) continue;
+    const t = clamp(gateDist(cx + 32, cy + 32) / 9000, 0, 1);
+    c.fillStyle = mix(base, dark, .1 + t * .35); c.fillRect(cx, cy, 65, 65);
+  }
+  const R = srand((x0 / 512 | 0) * 977 + (y0 / 512 | 0) * 131 + 5);
+  for (let k = 0; k < 14; k++) { const x = x0 + R() * w, y = y0 + R() * h; if (!inHunt(x, y)) continue; c.beginPath(); ell(c, x, y, 40 + R() * 70, 16 + R() * 26); c.fillStyle = win ? '#e9eff3' : 'rgba(30,70,25,.16)'; c.fill(); }
+  // 빈터 + 오솔길
+  for (const cl of CLEARINGS) { if (cl.x < x0 - 300 || cl.x > x0 + w + 300 || cl.y < y0 - 300 || cl.y > y0 + h + 300) continue; c.beginPath(); ell(c, cl.x, cl.y, cl.r, cl.r / 1.3); c.fillStyle = win ? '#f2f6f9' : pal.g; c.fill(); }
+  const road = (pts, wd, col) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.lineWidth = wd; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(); };
+  for (const T of TRAILS) road(T, 96, win ? '#d8dfe6' : '#a8794e');
+  for (const T of TRAILS) road(T, 80, win ? '#f2f5f8' : '#c99d62');
+  // 낙엽·돌 점
+  for (let k = 0; k < 60; k++) { const x = x0 + R() * w, y = y0 + R() * h; if (!inHunt(x, y)) continue; c.beginPath(); ell(c, x, y, 4, 2.4); c.fillStyle = win ? '#ffffff' : ['#c98a3a', '#8a6a3a', '#5a8a3a'][k % 3]; c.fill(); }
+}
+
+// ----- 우주 (싸움) -----
+function ensureHero(){
+  const f = farmer();
+  P.max = f.hp;
+  if (P.hp == null) P.hp = P.max;
+  P.hp = Math.min(P.hp, P.max);
+  if (P.face == null) Object.assign(P, {face:1, inv:0, acd:0, asw:0, gong:0, blk:false, blkT:0, hurtT:9, kb:null});
+}
+function inCombat(){ return MONS.some(m => !m.dead && m.eng && Math.hypot(m.x - P.x, m.y - P.y) < 560); }
+function heroAttack(){
+  ensureHero();
+  if (P.acd > 0 || P.blk || ssAnim) return;
+  const f = farmer(); P.acd = .42; P.asw = .25;
+  const reach = 125 * f.reach + 40;
+  let best = null, bd = 1e9;
+  for (const m of MONS) { if (m.dead) continue; const d = Math.hypot(m.x - P.x, (m.y - P.y) * 1.2); if (d < reach && d < bd) { bd = d; best = m; } }
+  if (!best) return;
+  const m = best, dmg = f.atk + rint(0, 4);
+  m.hp -= dmg; m.hitT = 4; m.eng = true;
+  if (!['wind', 'charge', 'kick'].includes(m.st)) {
+    m.stun = f.reach >= 1.25 ? .35 : .2;
+    const k = Math.max(1, bd); m.kb = {x:(m.x - P.x) / k * 520, y:(m.y - P.y) / k * 520, t:.18};
+    if (m.st === 'eat') { m.eat = 0; floats.push({x:m.x, y:m.y - 120, s:'먹지 마!', t:1, c:'#2f6fb8'}); }
+    if (m.kind === 'boar') m.cc = Math.min(m.cc, .6);
+    else { m.st = 'hop'; m.tm = .45; m.hv = {x:(m.x - P.x) / Math.max(1, bd) * 560, y:(m.y - P.y) / Math.max(1, bd) * 560}; m.cc = Math.max(m.cc, .9); }
+    if (m.st !== 'hop') m.st = 'chase';
+  }
+  floats.push({x:m.x, y:m.y - 90, s:'-' + dmg, t:.9, c:'#d6372c'});
+  if (m.hp <= 0) killMon(m);
+}
+function heroGong(){
+  ensureHero(); if (P.gong > 0) return;
+  P.gong = 9;
+  floats.push({x:P.x, y:P.y - 140, s:'🥁 쩌렁쩌렁!', t:1.2, c:'#b2332b'});
+  for (const m of MONS) if (!m.dead && Math.hypot(m.x - P.x, m.y - P.y) < 420) { m.stun = 1.8; m.eat = 0; if (['wind', 'charge', 'kick'].includes(m.st)) m.st = 'chase'; floats.push({x:m.x, y:m.y - 120, s:'💫', t:1.2, c:'#ffb13b'}); }
+}
+function heroHurt(m, base){
+  const f = farmer(), d = Math.hypot(P.x - m.x, P.y - m.y) || 1;
+  let dmg, txt, col = '#d6372c';
+  if (P.blk) {
+    const perfect = P.blkT < 1.1;
+    dmg = perfect ? 0 : Math.max(1, Math.round(base * m.V.dmg * (1 - blockPct() / 100)) - f.def);
+    txt = perfect ? '🛡️ 딱 막았다!' : `🛡️ 막기 -${dmg}`; col = '#2f6fb8';
+    P.kb = {x:(P.x - m.x) / d * 220, y:(P.y - m.y) / d * 220, t:.15};
+    if (perfect) { m.stun = 1.2; m.kb = {x:(m.x - P.x) / d * 420, y:(m.y - P.y) / d * 420, t:.2}; }
+  } else {
+    dmg = Math.max(2, Math.round(base * m.V.dmg) - f.def); txt = '-' + dmg;
+    P.kb = {x:(P.x - m.x) / d * 600, y:(P.y - m.y) / d * 600, t:.2};
+  }
+  P.hp -= dmg; P.inv = .9; P.hurtT = 0;
+  floats.push({x:P.x, y:P.y - 140, s:txt, t:1, c:col});
+  if (P.hp <= 0) heroFaint();
+}
+
+// ----- 산짐승 -----
+const MONS = [];
+let monId = 1, spawnT = 0;
+function makeMon(kind, tier, x, y, raid){
+  const V = {...BEAST[kind][tier], tier};
+  return {id:monId++, kind, V, tier, x, y, hx:x, hy:y, hp:V.hp, max:V.hp, st:raid ? 'raid' : 'wander', tm:0, stun:0, flip:false, cc:1, kb:null,
+    tx:x, ty:y, wait:rnd(0, 2), hitT:0, raid, eng:false, eat:0, bites:0, dead:false, deadT:0, t:rnd(0, 9)};
+}
+function spawnHuntMon(){
+  for (let k = 0; k < 20; k++) {
+    const a = rnd(0, 6.28), d = rnd(1150, 2600), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
+    if (x < 200 || x > WORLD_W - 200 || y < 600 || y > WORLD_H - 200 || !inHunt(x, y) || gateDist(x, y) < 700) continue;
+    const z = zoneAt(x, y), tier = Math.max(0, Math.min(3, z - (Math.random() < .3 ? 1 : 0)));
+    MONS.push(makeMon(Math.random() < .5 ? 'boar' : 'deer', tier, x, y, false));
+    return;
+  }
+}
+function spawnRaid(kind){
+  const trees = G.trees.map((t, i) => t ? i : -1).filter(i => i >= 0);
+  if (!trees.length) return;
+  const fr = trees.filter(i => G.trees[i].fr), i = pick(fr.length ? fr : trees), p = treePos(i);
+  const left = Math.random() < .5, m = makeMon(kind, raidTier(), left ? OX - 300 : OX + ORCH_W + 300, p.y + 46, true);
+  m.tgt = i; m.from = {x:m.x, y:m.y};
+  MONS.push(m);
+  toast(`${kind === 'boar' ? '🐗' : '🦌'} ${jo(m.V.name, '이', '가')} 과수원에 내려왔어요! 사과를 먹기 전에 쫓아내요 (스페이스 공격, F 막기)`, 'bad');
+  todoSig = '';
+}
+function killMon(m){
+  m.dead = true; m.deadT = 0; m.st = 'dead';
+  const f0 = farmer();
+  if (m.raid) {
+    G.money += m.V.pay; G.rep += m.V.rep; G.stats.raids++; unlock('raid');
+    floats.push({x:m.x, y:m.y - 150, s:`🎉 쫓아냈다! +${won(m.V.pay)}`, t:2, c:'#ff6b57'});
+    toast(`🎉 ${m.V.name}를 쫓아냈어요! 이장님 포상금 ${won(m.V.pay)}, 평판 +${m.V.rep}`, 'good');
+    gainXp(m.V.xp);
+    const dr = raidDrop(m.tier); if (dr) setTimeout(() => toast(`🎁 ${dr}`, 'good'), 700);
+  } else {
+    const z = Math.max(0, zoneAt(m.x, m.y)), n = 1 + (Math.random() < .3 ? 1 : 0), got = [];
+    for (let k = 0; k < n; k++) { const id = rollLoot(LOOT_TABLE[Math.max(z, m.tier)]); addLoot(id); got.push(LOOT[id].ic + ' ' + LOOT[id].name); }
+    floats.push({x:m.x, y:m.y - 150, s:got.join(' · '), t:2.2, c:'#2f8a3e'});
+    toast(`🧺 ${m.V.name}가 도망가면서 떨어뜨렸어요: ${got.join(', ')}`, 'good');
+    gainXp(Math.round(m.V.xp * .6));
+    if (Math.random() < [.08, .15, .25, .4][m.tier]) { const dr = raidDrop(Math.min(3, m.tier + 1)); if (dr) setTimeout(() => toast(`🎁 ${dr}`, 'good'), 700); }
+  }
+  todoSig = '';
+  if (f0.lv !== farmer().lv) ensureHero();
+}
+function raidRowPenalty(m){
+  const r = Math.floor(m.tgt / PER_ROW);
+  G.trees.forEach((t, i) => { if (t && Math.floor(i / PER_ROW) === r) { if (t.fr) t.bon -= 10; else t.dmg += 6; } });
+  toast(`😢 ${m.V.name}가 ${r + 1}번째 줄 사과를 헤집어 놓고 갔어요. 그 줄 품질이 떨어져요.`, 'bad');
+  todoSig = '';
+}
+function updateMon(m, dt){
+  m.t += dt;
+  if (m.dead) { m.deadT += dt; return; }
+  if (m.hitT > 0) m.hitT -= dt;
+  if (m.kb) { m.x += m.kb.x * dt; m.y += m.kb.y * dt; m.kb.t -= dt; if (m.kb.t <= 0) m.kb = null; }
+  if (m.stun > 0) { m.stun -= dt; return; }
+  const pd = Math.hypot(P.x - m.x, P.y - m.y), boar = m.kind === 'boar', sp = m.V.spd;
+  m.cc -= dt * (P.hp < P.max * .3 ? .5 : 1); // 우주가 힘들면 덜 덤벼요
+  const ox = m.x, oy = m.y;
+  const moveTo = (tx, ty, s) => { const dx = tx - m.x, dy = ty - m.y, d = Math.hypot(dx, dy) || 1; const st = Math.min(d, s * dt); m.x += dx / d * st; m.y += dy / d * st; if (Math.abs(dx) > 4) m.flip = dx < 0; return d; };
+  const canSee = m.raid || inHunt(P.x, P.y);
+  if ((m.st === 'wander' || m.st === 'raid' || m.st === 'eat') && canSee && pd < (m.raid ? 430 : 360)) { m.st = 'chase'; m.eng = true; m.eat = 0; }
+  if (m.st === 'wander') {
+    if (m.wait > 0) m.wait -= dt;
+    else if (moveTo(m.tx, m.ty, 60 * sp) < 6) { m.wait = rnd(1, 4); m.tx = m.hx + rnd(-260, 260); m.ty = m.hy + rnd(-160, 160); }
+    if (m.hp < m.max) m.hp = Math.min(m.max, m.hp + dt * 4);
+  } else if (m.st === 'raid') {
+    const p = treePos(m.tgt);
+    if (moveTo(p.x + (m.from.x < p.x ? -64 : 64), p.y + 46, 170 * sp) < 8) { m.st = 'eat'; m.eat = 0; m.flip = m.x > p.x; }
+  } else if (m.st === 'eat') {
+    m.eat += dt;
+    if (m.eat > 2.5) {
+      m.bites++; m.eat = 0; floats.push({x:m.x, y:m.y - 120, s:`🍎 아삭! (${m.bites}/3)`, t:1.2, c:'#d6372c'});
+      if (m.bites >= 3) { m.st = 'leave'; raidRowPenalty(m); }
+    }
+  } else if (m.st === 'leave') {
+    moveTo(m.from.x < OX ? -400 : WORLD_W + 400, m.from.y, 260 * sp);
+    if (Math.hypot(m.x - m.from.x, m.y - m.from.y) > 1300) { m.dead = true; m.deadT = 2; }
+  } else if (m.st === 'chase') {
+    const far = m.raid ? pd > 900 : (pd > 750 || Math.hypot(m.x - m.hx, m.y - m.hy) > 1500 || !inHunt(P.x, P.y));
+    if (far) { m.eng = false; m.st = m.raid ? (m.bites >= 3 ? 'leave' : 'raid') : 'wander'; m.tx = m.hx; m.ty = m.hy; }
+    else if (boar && pd < 330 && m.cc <= 0) { m.st = 'wind'; m.tm = .6; m.flip = P.x < m.x; }
+    else if (!boar && pd < 125 && m.cc <= 0) { m.st = 'kick'; m.tm = .35; m.flip = P.x < m.x; }
+    else if (pd > 105) moveTo(P.x, P.y, (boar ? 150 : 190) * sp);
+    else m.flip = P.x < m.x;
+  } else if (m.st === 'wind') {
+    m.tm -= dt; if (m.tm <= 0) { m.st = 'charge'; m.tm = .55; const d = pd || 1; m.cv = {x:(P.x - m.x) / d * 620 * sp, y:(P.y - m.y) / d * 620 * sp}; }
+  } else if (m.st === 'charge') {
+    m.tm -= dt; m.x += m.cv.x * dt; m.y += m.cv.y * dt; if (Math.abs(m.cv.x) > 10) m.flip = m.cv.x < 0;
+    if (pd < 70 && P.inv <= 0) { heroHurt(m, 18); m.st = 'chase'; m.cc = 2.4; }
+    else if (m.tm <= 0) { m.st = 'chase'; m.cc = 2.4; }
+  } else if (m.st === 'kick') {
+    m.tm -= dt;
+    if (m.tm <= 0) { m.st = 'chase'; m.cc = 1.8; if (pd < 125 && P.inv <= 0) heroHurt(m, 11); }
+  } else if (m.st === 'hop') {
+    m.tm -= dt; m.x += m.hv.x * dt; m.y += m.hv.y * dt; if (Math.abs(m.hv.x) > 10) m.flip = m.hv.x < 0;
+    if (m.tm <= 0) m.st = 'chase';
+  }
+  // 사냥터 산짐승은 숲 밖으로 안 나와요
+  if (!m.raid && !inHunt(m.x, m.y)) { m.x = ox; m.y = oy; if (m.st === 'wander') { m.tx = m.hx; m.ty = m.hy; } }
+  m.x = clamp(m.x, -500, WORLD_W + 500); m.y = clamp(m.y, 480, WORLD_H - 30);
+}
+
+// ----- 캐는 자리 (반짝이는 곳) -----
+const FORAGE = [];
+function spawnForage(){
+  for (let k = 0; k < 20; k++) {
+    const a = rnd(0, 6.28), d = rnd(700, 2800), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
+    if (x < 200 || x > WORLD_W - 200 || y < 600 || y > WORLD_H - 200 || !inHunt(x, y) || gateDist(x, y) < 400) continue;
+    const z = zoneAt(x, y);
+    FORAGE.push({x, y, item:rollLoot(FORAGE_TABLE[z]), t:rnd(0, 9)});
+    return;
+  }
+}
+function pickForage(f){
+  const i = FORAGE.indexOf(f); if (i < 0) return;
+  FORAGE.splice(i, 1); addLoot(f.item); gainXp(3);
+  floats.push({x:f.x, y:f.y - 70, s:`${LOOT[f.item].ic} ${LOOT[f.item].name}!`, t:1.6, c:'#2f8a3e'});
+  toast(`🧺 ${jo(LOOT[f.item].name, '을', '를')} 캤어요! 💡 ${LOOT[f.item].desc}`, 'good');
+  P.sw = .3; todoSig = '';
+}
+function huntTargets(cands){ for (const f of FORAGE) cands.push({kind:'forage', f, x:f.x, y:f.y}); }
+
+// ----- 매 프레임 -----
+let zoneShow = {z:-2, t:0};
+function updateHunt(dt){
+  ensureHero();
+  if (!UI.free()) return;
+  for (const k of ['inv', 'acd', 'asw', 'gong']) if (P[k] > 0) P[k] -= dt;
+  P.hurtT += dt;
+  if (P.hurtT > 4 && P.hp < P.max) P.hp = Math.min(P.max, P.hp + dt * 8);
+  P.blk = !!((keys.KeyF || keys.KeyK || P.touchBlock) && inCombat());
+  P.blkT = P.blk ? P.blkT + dt : 0;
+  if (P.pendMon) { const m = P.pendMon; if (m.dead) P.pendMon = null; else if (Math.hypot(m.x - P.x, m.y - P.y) < 130) { P.tgt = null; heroAttack(); P.pendMon = null; } }
+  // 사냥터에 있을 때만 산짐승·캐는 자리가 생겨요
+  const hunting = inHunt(P.x, P.y) || gateDist(P.x, P.y) < 1600;
+  if (hunting) {
+    spawnT -= dt;
+    if (spawnT <= 0 && MONS.filter(m => !m.raid && !m.dead).length < 12) { spawnHuntMon(); spawnT = 2.5; }
+    if (FORAGE.length < 18) spawnForage();
+  }
+  for (let i = MONS.length - 1; i >= 0; i--) {
+    const m = MONS[i];
+    updateMon(m, dt);
+    if ((m.dead && m.deadT > 1.2) || (!m.raid && Math.hypot(m.x - P.x, m.y - P.y) > 4200)) MONS.splice(i, 1);
+  }
+  for (let i = FORAGE.length - 1; i >= 0; i--) { FORAGE[i].t += dt; if (Math.hypot(FORAGE[i].x - P.x, FORAGE[i].y - P.y) > 4800) FORAGE.splice(i, 1); }
+  const z = zoneAt(P.x, P.y);
+  if (z !== zoneShow.z) { zoneShow = {z, t:3}; }
+  if (zoneShow.t > 0) zoneShow.t -= dt;
+}
+
+// ----- 그리기 -----
+function drawHero(c){
+  ensureHero();
+  if (P.inv > 0 && Math.floor(P.inv * 12) % 2) c.globalAlpha *= .55;
+  drawPerson(c, P.x, P.y, 'haru', P.dir, P.walk, P.asw > 0 ? P.asw * 20 : P.sw > 0 ? P.sw * 9 : 0);
+  const armed = P.asw > 0 || inCombat() || inHunt(P.x, P.y);
+  if (armed) {
+    c.save(); c.translate(P.x + (P.dir === 2 ? -10 : P.dir === 3 ? 10 : P.face * 13), P.y - 38);
+    const sw = P.asw > 0 ? 1 - P.asw / .25 : 0;
+    drawWeapon(c, ensureGear().weapon, P.face * (P.asw > 0 ? -1.4 + sw * 3 : .5));
+    c.restore();
+  }
+  if (P.asw > 0) { c.beginPath(); c.arc(P.x, P.y - 50, 125 * farmer().reach, P.face > 0 ? -1.2 : Math.PI - .3, P.face > 0 ? .3 : Math.PI + 1.2); c.lineWidth = 8; c.strokeStyle = `rgba(255,250,241,${P.asw * 3})`; c.stroke(); }
+  if (P.blk) { c.save(); c.translate(P.x + P.face * 22, P.y - 52); cel(c, cc => { cc.moveTo(-13, -20); cc.quadraticCurveTo(0, -27, 13, -20); cc.lineTo(12, 7); cc.quadraticCurveTo(0, 22, -12, 7); cc.closePath(); }, '#7ab0e8', '#4a7ab8', 2, 2, 2.6); c.font = '13px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(blockPct() + '%', 0, 1); c.restore(); }
+  if (P.hp < P.max || inCombat()) {
+    const w = 64, y = P.y - 112;
+    c.beginPath(); rr(c, P.x - w / 2, y, w, 9, 4.5); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke();
+    c.beginPath(); rr(c, P.x - w / 2 + 2, y + 2, (w - 4) * clamp(P.hp / P.max, 0, 1), 5, 2.5); c.fillStyle = P.hp < P.max * .3 ? '#ff6b57' : '#5cc46c'; c.fill();
+  }
+  c.globalAlpha = 1;
+}
+function drawMon(c, m){
+  c.save();
+  if (m.dead) c.globalAlpha = clamp(1 - m.deadT, 0, 1);
+  c.translate(m.x + (m.st === 'wind' ? rnd(-2, 2) : 0), m.y); const s = 1.25 * m.V.sc; c.scale(s, s);
+  drawAnimal(c, m.kind, 0, 0, m.st === 'eat' ? m.t * .5 : m.stun > 0 || m.st === 'wander' && m.wait > 0 ? 0 : m.t, m.flip, m.V);
+  c.restore();
+  if (m.dead) return;
+  const top = m.y - 80 * m.V.sc;
+  if (m.st === 'wind' || m.st === 'kick') { c.font = '44px Jua'; c.textAlign = 'center'; c.lineWidth = 7; c.strokeStyle = '#fffaf1'; c.strokeText('!', m.x, top - 20); c.fillStyle = '#d6372c'; c.fillText('!', m.x, top - 20); }
+  if (m.stun > 0) { c.font = '28px sans-serif'; c.textAlign = 'center'; c.fillText('💫', m.x, top - 18 + Math.sin(m.t * 8) * 4); }
+  if (m.eng || m.hitT > 0 || m.raid || Math.hypot(m.x - P.x, m.y - P.y) < 520) {
+    const w = 96, y = top;
+    c.font = '16px Jua'; c.textAlign = 'center'; c.lineWidth = 4; c.strokeStyle = '#fffaf1';
+    const nm = `${'★'.repeat(m.tier + 1)} ${m.V.name}`; c.strokeText(nm, m.x, y - 6); c.fillStyle = m.raid ? '#b2332b' : INK; c.fillText(nm, m.x, y - 6);
+    c.beginPath(); rr(c, m.x - w / 2, y, w, 10, 5); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke();
+    c.beginPath(); rr(c, m.x - w / 2 + 2, y + 2, (w - 4) * clamp(m.hp / m.max, 0, 1), 6, 3); c.fillStyle = '#ff6b57'; c.fill();
+  }
+  if (m.st === 'eat') { c.beginPath(); rr(c, m.x - 40, top + 16, 80, 10, 5); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); c.beginPath(); rr(c, m.x - 38, top + 18, 76 * clamp(m.eat / 2.5, 0, 1), 6, 3); c.fillStyle = '#ffb13b'; c.fill(); }
+}
+function drawForage(c, f){
+  const b = Math.sin(f.t * 3) * 3;
+  c.beginPath(); ell(c, f.x, f.y, 26, 10); c.fillStyle = 'rgba(255,230,120,.35)'; c.fill();
+  c.font = '30px sans-serif'; c.textAlign = 'center'; c.fillText(LOOT[f.item].ic, f.x, f.y - 6 + b);
+  for (let k = 0; k < 3; k++) { const a = f.t * 2 + k * 2.1, x = f.x + Math.cos(a) * 24, y = f.y - 26 + Math.sin(a) * 12; c.font = '14px sans-serif'; c.fillText('✨', x, y); }
+}
+function drawNongmak(c, x, y){
+  c.save(); c.translate(x, y);
+  shadow(c, 0, 4, 120, 18, .22);
+  cel(c, cc => rr(cc, -88, -76, 176, 76, 3), '#d9b07a', '#a8804a', 5, 5, 3);
+  for (let k = -3; k <= 3; k++) line(c, [k * 24, -76, k * 24, 0], 1.4, '#a8804a');
+  cel(c, cc => { cc.moveTo(-104, -70); cc.lineTo(0, -138); cc.lineTo(104, -70); cc.closePath(); }, '#5a8ad0', '#3a5a9a', 6, 6, 3);
+  cel(c, cc => rr(cc, -16, -52, 32, 52, 3), '#8a5432', '#5e3420', 2, 2, 2.4);
+  c.beginPath(); c.arc(9, -26, 2.4, 0, 7); c.fillStyle = '#ffd25e'; c.fill();
+  cel(c, cc => rr(cc, 34, -56, 34, 26, 3), '#cfeeff', '#9ccbe8', 2, 2, 2.2); line(c, [51, -56, 51, -30], 1.8, INK);
+  // 굴뚝 + 간판
+  cel(c, cc => rr(cc, 50, -128, 16, 30, 2), '#a8a092', '#7a7266', 2, 2, 2.2);
+  c.font = '16px Jua'; const tw = c.measureText('🛖 우주네 농막').width + 18;
+  cel(c, cc => rr(cc, -tw / 2, -100, tw, 24, 7), '#fffaf1', '#e8dcc4', 2, 2, 2.2);
+  c.fillStyle = INK; c.textAlign = 'center'; c.fillText('🛖 우주네 농막', 0, -82);
+  c.restore();
+}
+function huntEntities(ctx, add, vis, T){
+  if (!FOREST) buildForest();
+  if (vis(SPOT.nongmak.x, SPOT.nongmak.y, 300)) add(SPOT.nongmak.y, () => drawNongmak(ctx, SPOT.nongmak.x, SPOT.nongmak.y));
+  // 사냥터 경계: 숲 울타리와 입구 표지판
+  const R = srand(4040);
+  for (let y = 560; y < HUNT_Y; y += 120) { if (y > 1020 && y < 1380) continue; const x = HUNT_X - 20 + R() * 20, s = .95 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
+  for (let x = 60; x < HUNT_X; x += 115) { if (x > 340 && x < 560) continue; const y = HUNT_Y - 10 + R() * 20, s = .95 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
+  if (vis(2800, 1330)) add(1330, () => drawSign(ctx, 2790, 1330, '🌲 뒷산 사냥터 →'));
+  if (vis(620, 4330)) add(4330, () => drawSign(ctx, 640, 4330, '🌲 남쪽 사냥터 ↓'));
+  for (const o of FOREST) if (vis(o.x, o.y)) add(o.y, () => o.k === 'pine' ? drawPine(ctx, o.x, o.y, o.s * 1.1) : o.k === 'oak' ? drawOak(ctx, o.x, o.y, o.s) : o.k === 'rock' ? drawRock(ctx, o.x, o.y, o.s) : drawBush(ctx, o.x, o.y, o.s * 1.2));
+  for (const f of FORAGE) if (vis(f.x, f.y)) add(f.y - 1, () => drawForage(ctx, f));
+  for (const m of MONS) if (vis(m.x, m.y)) add(m.y, () => drawMon(ctx, m));
+}
+// 화면 위: 작은 지도, 습격 화살표, 구역 안내
+let miniBase = null;
+const MM = {x:24, y:292, w:200, h:Math.round(200 * WORLD_H / WORLD_W)};
+function buildMiniBase(){
+  miniBase = mk(MM.w, MM.h); const c = miniBase.getContext('2d'), s = MM.w / WORLD_W;
+  for (let y = 0; y < MM.h; y += 4) for (let x = 0; x < MM.w; x += 4) {
+    const wx = x / s, wy = y / s;
+    c.fillStyle = inHunt(wx, wy) ? mix('#7fbf5a', '#2f5a2a', clamp(gateDist(wx, wy) / 9000, 0, 1) * .8) : '#a6dc78'; c.fillRect(x, y, 4, 4);
+  }
+  c.strokeStyle = '#c99d62'; c.lineWidth = 2; c.lineCap = 'round';
+  for (const T of [...TRAILS, ROAD, ...VROADS]) { c.beginPath(); T.forEach(([x, y], i) => i ? c.lineTo(x * s, y * s) : c.moveTo(x * s, y * s)); c.stroke(); }
+  c.fillStyle = '#b9875a'; c.fillRect(OX * s, OY * s, ORCH_W * s, MAX_ROWS * ROW_H * s);
+  c.fillStyle = '#e8634a'; for (const b of VB) c.fillRect(b.x * s - 2, b.y * s - 3, 5, 4);
+  c.font = '11px Jua'; c.fillStyle = INK; c.textAlign = 'center';
+  c.fillText('과수원', (OX + ORCH_W / 2) * s, OY * s - 2); c.fillText('마을', 430 * s, 2000 * s);
+  [['얕은 숲', 4300, 1900], ['깊은 숲', 6200, 3300], ['골짜기', 3000, 7600], ['전설의 산', 7600, 8700]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
+}
+function drawHuntOverlay(ctx, T){
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (!miniBase) buildMiniBase();
+  const s = MM.w / WORLD_W;
+  ctx.save();
+  ctx.beginPath(); rr(ctx, MM.x - 6, MM.y - 6, MM.w + 12, MM.h + 12, 14); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.drawImage(miniBase, MM.x, MM.y);
+  const vw = W / cam.z, vh = H / cam.z;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(MM.x + (cam.x - vw / 2) * s, MM.y + (cam.y - vh / 2) * s, vw * s, vh * s);
+  ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🛖', MM.x + SPOT.nongmak.x * s, MM.y + SPOT.nongmak.y * s + 4);
+  for (const m of MONS) if (!m.dead) { ctx.beginPath(); ctx.arc(MM.x + m.x * s, MM.y + m.y * s, m.raid ? 4.5 : 2.2, 0, 7); ctx.fillStyle = m.raid ? '#ff3b30' : '#7a2a1a'; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(MM.x + P.x * s, MM.y + P.y * s, 4.5, 0, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.restore();
+  // 습격한 산짐승이 화면 밖이면 화살표
+  for (const m of MONS) {
+    if (!m.raid || m.dead) continue;
+    const sx = (m.x - cam.x) * cam.z + W / 2, sy = (m.y - 40 - cam.y) * cam.z + H / 2;
+    if (sx > 40 && sx < W - 40 && sy > 40 && sy < H - 40) continue;
+    const a = Math.atan2(sy - H / 2, sx - W / 2), r = 420, ax = W / 2 + Math.cos(a) * r * 1.8, ay = H / 2 + Math.sin(a) * r;
+    ctx.save(); ctx.translate(clamp(ax, 80, W - 80), clamp(ay, 80, H - 80)); ctx.rotate(a);
+    ctx.beginPath(); ctx.moveTo(34, 0); ctx.lineTo(-14, -22); ctx.lineTo(-6, 0); ctx.lineTo(-14, 22); ctx.closePath(); ctx.fillStyle = '#ff6b57'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.rotate(-a); ctx.font = '30px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(m.kind === 'boar' ? '🐗' : '🦌', 0, -30);
+    ctx.restore();
+  }
+  // 구역 안내
+  if (zoneShow.t > 0) {
+    ctx.globalAlpha = clamp(zoneShow.t, 0, 1);
+    const txt = zoneShow.z < 0 ? '🏡 집 근처 · 시간이 원래대로 흘러요' : `🌲 ${ZONES[zoneShow.z].name} ${ZONES[zoneShow.z].stars} · 사냥터에선 시간이 천천히 흘러요`;
+    ctx.font = '34px Jua'; ctx.textAlign = 'center'; const tw = ctx.measureText(txt).width + 60;
+    ctx.beginPath(); rr(ctx, W / 2 - tw / 2, 150, tw, 60, 20); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3.5; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.fillStyle = INK; ctx.fillText(txt, W / 2, 192);
+    ctx.globalAlpha = 1;
+  }
+}
+function huntTodo(items){
+  for (const m of MONS) if (m.raid && !m.dead && m.st !== 'leave') items.unshift({ic:m.kind === 'boar' ? '🐗' : '🦌', t:`${m.V.name} 쫓아내기!`, n:`사과 ${m.bites}/3`, hot:true, go:'raid'});
+  const n = bagCount();
+  if (n) items.push({ic:'🧺', t:'금비상회에 전리품 팔기', n:`${n}개`, go:'shop'});
+}
+
+// ----- 금비상회: 전리품 팔기 -----
+function uiSellLoot(){
+  ensureGear();
+  UI.open({ic:'🧺', title:'금비상회 · 산나물·버섯 삽니다', w:1000, render(o){
+    const have = LOOT_KEYS.filter(k => G.bag[k] > 0);
+    const total = have.reduce((a, k) => a + lootPrice(k) * G.bag[k], 0);
+    o.body.innerHTML = `<p style="margin-top:0">값은 날마다 조금씩 바뀌어요(오늘 시세). 사냥터에서 산짐승을 쫓아내거나 반짝이는 자리를 캐면 얻어요.</p>
+      ${have.length ? `<div class="ggrid">${have.map(k => { const L = LOOT[k]; return `<div class="gslot"><div class="gh">${L.ic} ${L.name} <small>× ${G.bag[k]}</small></div>
+        <div class="gd">💡 ${esc(L.desc)}</div><div class="gi"><span>오늘 시세 <b class="gs">${won(lootPrice(k))}</b> <span class="gd">(${won(L.lo)}~${won(L.hi)})</span></span>
+        <span><button class="btn" data-s1="${k}">1개 팔기</button> <button class="btn pri" data-sa="${k}">모두</button></span></div></div>`; }).join('')}</div>`
+        : '<div class="fact">아직 가방이 비었어요. 과수원 동쪽·남쪽 사냥터에 가 보세요! 🌲</div>'}`;
+    const sell = (k, n) => { const p = lootPrice(k) * n; G.bag[k] -= n; if (!G.bag[k]) delete G.bag[k]; G.money += p; G.stats.lootSold = (G.stats.lootSold || 0) + p; toast(`💰 ${LOOT[k].name} ${n}개를 ${won(p)}에 팔았어요!`, 'good'); updateHUD(true); todoSig = ''; o.render(o); };
+    o.body.querySelectorAll('[data-s1]').forEach(b => b.onclick = () => sell(b.dataset.s1, 1));
+    o.body.querySelectorAll('[data-sa]').forEach(b => b.onclick = () => sell(b.dataset.sa, G.bag[b.dataset.sa]));
+    o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">💰 전부 팔면 ${won(total)}</span>${have.length ? '<button class="btn" id="slAll">전부 팔기</button>' : ''}<button class="btn pri" id="slOk">닫기</button>`;
+    const all = $('#slAll'); if (all) all.onclick = () => { for (const k of have) { G.money += lootPrice(k) * G.bag[k]; } G.stats.lootSold = (G.stats.lootSold || 0) + total; G.bag = {}; toast(`💰 전리품을 모두 ${won(total)}에 팔았어요!`, 'good'); updateHUD(true); todoSig = ''; o.render(o); };
+    $('#slOk').onclick = () => UI.close();
+  }});
+}
+
+// ----- 농막: 자고 일어나면 다음 할 일이 있는 날 아침으로 -----
+function hasWork(){
+  if (MONS.some(m => m.raid && !m.dead && m.st !== 'leave')) return true;
+  for (let i = 0; i < G.trees.length; i++) { const k = taskFor(i); if (k && (k !== 'plant' || G.money >= SAPLING)) return true; }
+  if (['dis', 'pest'].some(k => sprayState(k).ok)) return true;
+  if (G.orders.some(o => canDeliver(o))) return true;
+  if (G.errand && totalStock() >= G.errand.need) return true;
+  return false;
+}
+function fadeScreen(txt, mid, done){
+  let el = $('#sleepFx');
+  if (!el) { el = document.createElement('div'); el.id = 'sleepFx'; $('#stage').appendChild(el); }
+  el.innerHTML = `<div>${txt}</div>`; el.classList.add('on'); UI.busy = true;
+  setTimeout(() => { mid(); setTimeout(() => { el.classList.remove('on'); setTimeout(() => { UI.busy = false; done && done(); UI.next(); }, 700); }, 600); }, 900);
+}
+function toMorning(){ const d0 = absDay(); let g = 0; while (absDay() === d0 && g++ < 20) advance(2); G.hour = 6; }
+function sleepUntilWork(){
+  UI.close();
+  const start = absDay();
+  fadeScreen('😴 쿨쿨…', () => {
+    toMorning();
+    let n = 0; while (n++ < 400 && !hasWork()) { advance(14); G.hour = 6; }
+    P.hp = P.max; P.x = SPOT.nongmak.x; P.y = SPOT.nongmak.y + 50; P.dir = 0; P.tgt = null; cam.x = P.x; cam.y = P.y;
+    saveLocal(); todoSig = ''; updateHUD(true);
+  }, () => toast(`🌅 ${absDay() - start}일 푹 자고 일어났어요! ${G.year}년차 ${weekLabel(G.week).m}월 ${weekLabel(G.week).wk}째 주 아침이에요. 체력도 가득!`, 'good'));
+}
+function heroFaint(){
+  P.hp = 0;
+  for (const m of MONS) if (!m.raid) { m.eng = false; m.st = 'wander'; m.tx = m.hx; m.ty = m.hy; }
+  fadeScreen('😵 우주가 지쳐서 쓰러졌어요…', () => {
+    toMorning(); P.hp = P.max; P.x = SPOT.nongmak.x; P.y = SPOT.nongmak.y + 50; P.tgt = null; P.kb = null; cam.x = P.x; cam.y = P.y; todoSig = ''; updateHUD(true);
+  }, () => toast('🛖 농막에서 푹 쉬고 일어났어요. 잃어버린 건 없어요! 막기(F)를 써 보세요.'));
+}
+function uiNongmak(){
+  UI.open({ic:'🛖', title:'우주네 농막', w:960, render(o){
+    o.body.innerHTML = `<canvas id="roomCv" width="880" height="330" style="width:100%;border:3px solid var(--ink);border-radius:18px;display:block"></canvas>
+      <p>푹 자고 일어나면 <b>다음 할 일이 생기는 날 아침</b>까지 시간이 가요. 체력도 가득 차요. ${hasWork() ? '지금은 할 일이 남아 있어서 내일 아침에 깨요.' : ''}</p>`;
+    drawRoom($('#roomCv'));
+    o.footEl.innerHTML = `<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기</button>`;
+    $('#nmSave').onclick = () => { UI.close(); setTimeout(uiSave, 160); };
+    $('#nmOut').onclick = () => UI.close();
+    $('#nmSleep').onclick = sleepUntilWork;
+  }});
+}
+function drawRoom(cv){
+  const c = cv.getContext('2d'), h = G.hour;
+  c.fillStyle = '#e8c89a'; c.fillRect(0, 0, 880, 330);
+  for (let x = 0; x < 880; x += 44) line(c, [x, 0, x, 230], 2, '#d4b080');
+  c.fillStyle = '#b9875a'; c.fillRect(0, 230, 880, 100);
+  for (let x = 0; x < 880; x += 110) line(c, [x, 230, x - 40, 330], 2, '#9a6a44');
+  // 창문 (지금 시간 하늘)
+  const sky = h < 8 ? '#ffd2a0' : h > 17 ? '#ffb07a' : '#a8dcff';
+  cel(c, cc => rr(cc, 90, 40, 180, 130, 6), sky, mix(sky, '#000', .1), 0, 0, 4);
+  line(c, [180, 40, 180, 170], 4, INK); line(c, [90, 105, 270, 105], 4, INK);
+  c.beginPath(); c.arc(h < 12 ? 130 : 230, 80, 16, 0, 7); c.fillStyle = '#fff3a0'; c.fill();
+  // 침대
+  cel(c, cc => rr(cc, 560, 170, 280, 90, 12), '#a8704a', '#7a4a2c', 4, 4, 3.5);
+  cel(c, cc => rr(cc, 570, 150, 260, 60, 16), '#ff8f7a', '#d4604a', 5, 5, 3.5);
+  cel(c, cc => rr(cc, 578, 132, 80, 34, 14), '#fffaf1', '#e8dcc4', 3, 3, 3);
+  for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(690 + k * 36, 182, 6, 0, 7); c.fillStyle = '#ffd25e'; c.fill(); }
+  // 책상 + 사과 바구니 + 달력
+  cel(c, cc => rr(cc, 320, 180, 170, 18, 4), '#c8935e', '#8e6038', 3, 3, 3);
+  for (const lx of [330, 470]) cel(c, cc => rr(cc, lx, 196, 10, 60, 3), '#c8935e', '#8e6038', 2, 0, 2.4);
+  cel(c, cc => { cc.moveTo(360, 180); cc.lineTo(370, 150); cc.lineTo(440, 150); cc.lineTo(450, 180); cc.closePath(); }, '#d9a05a', '#a8703a', 3, 3, 3);
+  for (let k = 0; k < 3; k++) drawApple(c, 382 + k * 22, 146, 11, '#ec3b30', '#a51d16');
+  cel(c, cc => rr(cc, 340, 40, 110, 90, 6), '#ffffff', '#e8e0d4', 3, 3, 3);
+  c.fillStyle = '#e8423a'; c.fillRect(342, 42, 106, 22);
+  c.font = '18px Jua'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(`${G.year}년차`, 395, 59);
+  c.fillStyle = INK; c.font = '30px Jua'; c.fillText(`${G.week}주`, 395, 108);
+  // 우주
+  c.save(); c.translate(520, 300); c.scale(2.4, 2.4); drawPerson(c, 0, 0, 'haru', 0, 0, 0); c.restore();
 }
 
 // ===== 화면 위 카드·창 =====
@@ -2131,8 +2691,9 @@ function renderTodo(needSpray){
   if (G.quizDay !== absDay() - G.day) items.push({ic:'👵', t:'순자 할머니 사과 퀴즈', n:'이번 주', go:'grandma'});
   const upcoming = VAR_KEYS.filter(v => G.trees.some(t => t && t.v === v && t.fr) && G.week < VARS[v].hv[0]);
   for (const v of upcoming) items.push({ic:'⏳', t:`${VARS[v].name} 수확은 ${VARS[v].hv[0]}주부터`, n:`${VARS[v].hv[0] - G.week}주 뒤`, done:true});
+  huntTodo(items);
   if (G.worker > 0) items.push({ic:'👷', t:'인부 아저씨 일하는 중', n:`${G.worker}일`, done:true});
-  if (!items.filter(i => !i.done).length) items.push({ic:'☕', t:'급한 일은 없어요. ⏭ 로 다음 주로 넘어가도 돼요.', n:'', done:true});
+  if (!items.filter(i => !i.done).length) items.push({ic:'☕', t:'급한 일은 없어요. 농막에서 자면 다음 할 일까지 시간이 가요.', n:'', done:true});
   const sig = JSON.stringify(items);
   if (sig === todoSig) return; todoSig = sig;
   const ul = $('#todoL'); ul.innerHTML = '';
@@ -2144,6 +2705,8 @@ function renderTodo(needSpray){
   });
 }
 function goTo(what){
+  if (what === 'raid') { const m = MONS.find(m => m.raid && !m.dead); if (m) { P.tgt = {x:m.x, y:m.y}; P.pendMon = m; } return; }
+  if (what === 'shop') { const n = NPCS.find(n => n.buyer); if (n) { P.tgt = {x:n.x + 55, y:n.y + 20}; P.pend = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20}; } return; }
   if (what === 'chief' || what === 'grandma') { P.tgt = {x:SPOT[what].x + 50, y:SPOT[what].y + 30}; return; }
   const i = nearestOf(what);
   if (i >= 0) { const p = treePos(i); P.tgt = {x:p.x, y:p.y + 50}; }
@@ -2331,7 +2894,7 @@ function buyBuild(k){
   const b = BUILD[k], n = G.b[k] || 0;
   if (n >= (b.max || 1) || G.money < b.price) return false;
   G.money -= b.price; G.b[k] = n + 1; tiles.clear();
-  toast(`${b.ic} ${b.name}을(를) 지었어요!`, 'gold'); return true;
+  toast(`${b.ic} ${jo(b.name, '을', '를')} 지었어요!`, 'gold'); return true;
 }
 function buyDeco(k){
   const d = DECO[k]; if (G.deco[k] || G.money < d.price) return false;
@@ -2487,7 +3050,6 @@ function intro(){
 function bindUI(){
   document.querySelectorAll('.tb').forEach(b => b.onclick = () => openUI(b.dataset.ui));
   document.querySelectorAll('.sp[data-sp]').forEach(b => b.onclick = () => { speed = +b.dataset.sp; updateHUD(true); });
-  $('#skipW').onclick = skipWeek;
   $('#helpBtn').onclick = () => { const h = $('#help'); h.hidden = !h.hidden; store.set('haru-help', h.hidden ? '0' : '1'); };
   $('#help').hidden = store.get('haru-help', '1') !== '1';
   const fold = store.get('haru-todo', '0') === '1';
@@ -2523,6 +3085,7 @@ const MAX_UP = 5;
 function ensureGear(){
   if (!G.gear) G.gear = {weapon:'stick', armor:'cloth', boots:'rubber', hat:'straw', own:{stick:0, cloth:0, rubber:0, straw:0}};
   if (!G.fm) G.fm = {lv:1, xp:0};
+  if (!G.bag) G.bag = {};
   return G.gear;
 }
 const gearItem = (slot, id) => GEAR[slot].items.find(x => x.id === id);
@@ -2586,9 +3149,10 @@ function uiGear(){
     };
     o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 우주 Lv.${f.lv}</b><span class="xpb"><i style="width:${f.xp / f.need * 100}%"></i></span><span>${f.xp}/${f.need}</span>
       <span>💪 힘 ${f.atk}</span><span>🛡️ 방어 ${f.def}</span><span>❤️ 체력 ${f.hp}</span><span>👟 빠르기 +${f.spd}%</span><span>✋ 솜씨 +${f.skill}</span><span>🛡️ 막기 ${blockPct()}%</span><span>💎 강화석 ${g.stones || 0}</span></div>
-      <p class="gnote">평판(⭐ ${G.rep})이 오르면 더 좋은 장비를 살 수 있고, 강화도 할 수 있어요. 우주가 강해지면 더 센 산짐승이 오지만 이기면 장비·강화석을 떨어뜨려요. 솜씨는 사과 품질을 올리고, 힘·방어·체력은 산짐승을 쫓을 때 써요. 경험치는 일하기·방제 운전·산짐승 쫓기로 얻어요.</p>
-      <div class="ggrid">${SLOTS.map(card).join('')}</div>`;
-    o.body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.buy.split('|'), it = gearItem(s, id); if (G.money < it.price || G.rep < it.rep) return; G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id; toast(`🎒 ${it.name}을(를) 샀어요!`, 'good'); updateHUD(true); o.render(o); });
+      <p class="gnote">평판(⭐ ${G.rep})이 오르면 더 좋은 장비를 살 수 있고, 강화도 할 수 있어요. 우주가 강해지면 더 센 산짐승이 오지만 이기면 장비·강화석을 떨어뜨려요. 솜씨는 사과 품질을 올리고, 힘·방어·체력은 산짐승을 쫓을 때 써요. 경험치는 일하기·방제 운전·산짐승 쫓기·사냥터에서 얻어요.</p>
+      <div class="ggrid">${SLOTS.map(card).join('')}</div>
+      <div class="gnote" style="margin-top:12px"><b>🧺 가방</b> ${LOOT_KEYS.filter(k => G.bag[k] > 0).map(k => `${LOOT[k].ic} ${LOOT[k].name} ×${G.bag[k]}`).join(' · ') || '비어 있어요. 사냥터에서 버섯·산삼을 찾아봐요!'}${bagCount() ? ' → 금비상회 황금비 사장님한테 팔아요.' : ''}</div>`;
+    o.body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.buy.split('|'), it = gearItem(s, id); if (G.money < it.price || G.rep < it.rep) return; G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id; toast(`🎒 ${jo(it.name, '을', '를')} 샀어요!`, 'good'); updateHUD(true); o.render(o); });
     o.body.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.eq.split('|'); G.gear[s] = id; o.render(o); });
     o.body.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.st.split('|'), it = gearItem(s, id); if (!(G.gear.stones > 0) || G.gear.own[id] >= MAX_UP) return; G.gear.stones--; G.gear.own[id]++; toast(`💎 ${it.name} +${G.gear.own[id]} 강화!`, 'good'); o.render(o); });
     o.body.querySelectorAll('[data-up]').forEach(b => b.onclick = () => {
@@ -2791,7 +3355,6 @@ function drawObj(c, o, x, y, s){
 }
 
 // ===== 미니게임 2: 산짐승 쫓기 (실시간) =====
-const ARENA_TREES = [[520, 380], [960, 340], [1400, 380]];
 // 우주가 강해질수록 더 센 산짐승이 나와요 (보상도 커짐). 아이들이 하니까 너무 세지 않게.
 const BEAST = {
   boar:[
@@ -2813,242 +3376,12 @@ function raidTier(){
   if (t > 0 && Math.random() < .3) t--; // 가끔은 한 단계 약한 녀석
   return t;
 }
-function startRaid(kind){
-  const boar = kind === 'boar', f = farmer(), tier = raidTier(), V = {...BEAST[kind][tier], tier};
-  const cv = $('#mini'); cv.hidden = false;
-  for (const k in MINI) delete MINI[k];
-  const side = Math.random() < .5 ? -1 : 1;
-  Object.assign(MINI, {on:true, mode:'battle', cv, c:cv.getContext('2d'), phase:'count', t:0, run:0, kind, name:V.name, V, tier, f, block:blockPct(),
-    me:{x:960, y:760, hp:f.hp, max:f.hp, inv:0, sw:0, cd:0, gong:0, dir:1, face:1, walk:0, kb:null, blk:false, blkT:0},
-    an:{x:side < 0 ? -120 : W + 120, y:820, hp:V.hp, max:V.hp, st:'seek', tm:0, stun:0, flip:side > 0, eat:0, cc:1.5, kb:null, tgt:null},
-    dog:G.deco.dog ? {x:200, y:900, cd:3, t:0, flip:false} : null,
-    trees:ARENA_TREES.map(([x, y]) => ({x, y, ap:3})), eaten:0, fx:[], shake:0, over:null, endT:0});
-  document.body.classList.add('battleOn');
-  UI.busy = true;
-}
-function battleAttack(){
-  const M = MINI; if (!M.on || M.mode !== 'battle' || M.phase !== 'run' || M.me.cd > 0 || M.me.blk) return;
-  const me = M.me, an = M.an, f = M.f;
-  me.cd = .42; me.sw = .25;
-  const reach = 125 * f.reach, d = Math.hypot(an.x - me.x, (an.y - me.y) * 1.2);
-  if (d < reach + 40 && an.st !== 'gone') {
-    const dmg = f.atk + rint(0, 4);
-    an.hp -= dmg;
-    const armor = an.st === 'wind' || an.st === 'charge' || an.st === 'kick'; // 돌진·발차기 중엔 안 밀려요
-    if (!armor) {
-      an.stun = f.reach >= 1.25 ? .35 : .2;
-      const k = Math.max(1, d); an.kb = {x:(an.x - me.x) / k * 520, y:(an.y - me.y) / k * 520, t:.18};
-      if (an.st === 'eat') { an.st = 'seek'; an.eat = 0; M.fx.push({x:an.x, y:an.y - 120, s:'먹지 마!', t:1, c:'#2f6fb8'}); }
-      if (M.kind === 'boar') an.cc = Math.min(an.cc, .6);
-      else { an.st = 'hop'; an.tm = .45; const k2 = Math.max(1, d); an.hv = {x:(an.x - me.x) / k2 * 560, y:(an.y - me.y) / k2 * 560}; an.cc = Math.max(an.cc, .9); }
-    }
-    M.fx.push({x:an.x, y:an.y - 90, s:'-' + dmg, t:.9, c:'#d6372c'}); M.shake = .15;
-    if (an.hp <= 0) endBattle('win');
-  } else M.fx.push({x:me.x + me.face * 60, y:me.y - 110, s:'휙!', t:.5, c:'#8a7a70'});
-}
-function battleGong(){
-  const M = MINI; if (!M.on || M.mode !== 'battle' || M.phase !== 'run' || M.me.gong > 0) return;
-  M.me.gong = 9; M.shake = .4;
-  M.fx.push({x:M.me.x, y:M.me.y - 140, s:'🥁 쩌렁쩌렁!', t:1.2, c:'#b2332b'});
-  if (Math.hypot(M.an.x - M.me.x, M.an.y - M.me.y) < 420) { M.an.stun = 1.8; M.an.st = 'seek'; M.an.eat = 0; M.fx.push({x:M.an.x, y:M.an.y - 120, s:'💫 깜짝!', t:1.2, c:'#ffb13b'}); }
-}
-function updateBattle(dt){
-  const M = MINI, me = M.me, an = M.an, f = M.f, boar = M.kind === 'boar';
-  M.t += dt;
-  if (M.phase === 'count') { if (M.t > 1.6) { M.phase = 'run'; M.t = 0; } drawBattle(dt); return; }
-  if (M.phase === 'end') { M.endT += dt; an.x += (an.flip ? -1 : 1) * 700 * dt; if (M.endT > 4.2) closeBattle(); drawBattle(dt); return; }
-  M.run += dt;
-  // 우주 움직이기
-  let mx = 0, my = 0;
-  if (keys.KeyW || keys.ArrowUp) my -= 1; if (keys.KeyS || keys.ArrowDown) my += 1;
-  if (keys.KeyA || keys.ArrowLeft) mx -= 1; if (keys.KeyD || keys.ArrowRight) mx += 1;
-  if (joy.on) { mx = joy.x; my = joy.y; }
-  me.blk = !!(keys.KeyF || keys.KeyK || M.touchBlock || (M.ai && M.ai.block && (an.st === 'wind' || an.st === 'charge' || an.st === 'kick')));
-  me.blkT = me.blk ? me.blkT + dt : 0;
-  if (M.ai) { const dx = an.x - me.x, dy = an.y - me.y, d = Math.hypot(dx, dy) || 1; if (d > 90) { mx = dx / d; my = dy / d; } if (d < 150 && Math.random() < (M.ai.rate || 1)) battleAttack(); if (an.st === 'eat' && M.ai.gong !== false) battleGong(); }
-  const m = Math.hypot(mx, my), spd = 330 * (1 + f.spd / 100) * (me.blk ? .45 : 1);
-  if (me.kb) { me.x += me.kb.x * dt; me.y += me.kb.y * dt; me.kb.t -= dt; if (me.kb.t <= 0) me.kb = null; }
-  else if (m > .1) {
-    me.x += mx / Math.max(1, m) * spd * dt; me.y += my / Math.max(1, m) * spd * dt; me.walk += dt * 12;
-    me.dir = Math.abs(mx) > Math.abs(my) ? (mx < 0 ? 2 : 3) : (my < 0 ? 1 : 0);
-    if (Math.abs(mx) > .2) me.face = mx < 0 ? -1 : 1;
-  } else me.walk = 0;
-  me.x = clamp(me.x, 80, W - 80); me.y = clamp(me.y, 430, H - 60);
-  for (const k of ['inv', 'sw', 'cd', 'gong']) if (me[k] > 0) me[k] -= dt;
-  // 산짐승 생각하기
-  if (an.kb) { an.x += an.kb.x * dt; an.y += an.kb.y * dt; an.kb.t -= dt; if (an.kb.t <= 0) an.kb = null; }
-  an.cc -= dt * (me.hp < me.max * .3 ? .5 : 1); // 우주가 힘들면 덜 덤벼요
-  const pd = Math.hypot(me.x - an.x, me.y - an.y);
-  const moveTo = (tx, ty, sp) => { const dx = tx - an.x, dy = ty - an.y, d = Math.hypot(dx, dy) || 1; const s = Math.min(d, sp * dt); an.x += dx / d * s; an.y += dy / d * s; if (Math.abs(dx) > 4) an.flip = dx < 0; return d; };
-  if (an.stun > 0) an.stun -= dt;
-  else if (an.st === 'seek') {
-    const live = M.trees.filter(t => t.ap > 0);
-    if (!an.tgt || an.tgt.ap <= 0) an.tgt = live.sort((a, b) => Math.hypot(a.x - an.x, a.y - an.y) - Math.hypot(b.x - an.x, b.y - an.y))[0];
-    if (boar && pd < 300 && an.cc <= 0) { an.st = 'wind'; an.tm = .6; an.flip = me.x < an.x; }
-    else if (!boar && pd < 120 && an.cc <= 0) { an.st = 'kick'; an.tm = .35; an.flip = me.x < an.x; }
-    else if (an.tgt) { const d = moveTo(an.tgt.x + (an.x < an.tgt.x ? -70 : 70), an.tgt.y + 50, (boar ? 200 : 260) * M.V.spd); if (d < 12) { an.st = 'eat'; an.eat = 0; an.flip = an.x > an.tgt.x; } }
-  } else if (an.st === 'eat') {
-    an.eat += dt;
-    if (an.eat > 2) { an.tgt.ap--; M.eaten++; an.st = 'seek'; an.tgt = null; M.fx.push({x:an.x, y:an.y - 120, s:'🍎 아삭!', t:1.1, c:'#d6372c'}); if (M.eaten >= 3) endBattle('lose'); }
-  } else if (an.st === 'wind') {
-    an.tm -= dt; if (an.tm <= 0) { an.st = 'charge'; an.tm = .55; const d = pd || 1; an.cv = {x:(me.x - an.x) / d * 680 * M.V.spd, y:(me.y - an.y) / d * 680 * M.V.spd}; }
-  } else if (an.st === 'charge') {
-    an.tm -= dt; an.x += an.cv.x * dt; an.y += an.cv.y * dt; if (Math.abs(an.cv.x) > 10) an.flip = an.cv.x < 0;
-    if (an.tm <= 0) { an.st = 'seek'; an.cc = 2.4; }
-  } else if (an.st === 'kick') {
-    an.tm -= dt;
-    if (an.tm <= 0) {
-      an.st = 'seek'; an.cc = 1.8;
-      if (pd < 120 && me.inv <= 0 && blockHit(11)) {} else if (pd < 120 && me.inv <= 0) { const dmg = Math.max(2, Math.round(11 * M.V.dmg) - f.def); me.hp -= dmg; me.inv = .9; const d = pd || 1; me.kb = {x:(me.x - an.x) / d * 600, y:(me.y - an.y) / d * 600, t:.2}; M.shake = .3; M.fx.push({x:me.x, y:me.y - 140, s:'뻥! -' + dmg, t:.9, c:'#d6372c'}); if (me.hp <= 0) { me.hp = 0; endBattle('lose'); } }
-    }
-  } else if (an.st === 'hop') {
-    an.tm -= dt; an.x += an.hv.x * dt; an.y += an.hv.y * dt; if (Math.abs(an.hv.x) > 10) an.flip = an.hv.x < 0;
-    if (an.tm <= 0) an.st = 'seek';
-  }
-  an.x = clamp(an.x, -150, W + 150); an.y = clamp(an.y, 430, H - 40);
-  // 부딪히면 아파요
-  if (!M.over && me.inv <= 0 && pd < 70 && an.st === 'charge' && blockHit(18)) {}
-  else if (!M.over && me.inv <= 0 && pd < 70 && an.st === 'charge') {
-    const dmg = Math.max(2, Math.round(18 * M.V.dmg) - f.def);
-    me.hp -= dmg; me.inv = .9; const d = pd || 1; me.kb = {x:(me.x - an.x) / d * 600, y:(me.y - an.y) / d * 600, t:.2}; M.shake = .3;
-    M.fx.push({x:me.x, y:me.y - 140, s:'-' + dmg, t:.9, c:'#d6372c'});
-    if (an.st === 'charge') { an.st = 'seek'; an.cc = 2.4; }
-    if (me.hp <= 0) { me.hp = 0; endBattle('lose'); }
-  }
-  // 바둑이가 도와줘요
-  if (M.dog && !M.over) {
-    const dg = M.dog; dg.t += dt; dg.cd -= dt;
-    const dx = an.x - 60 - dg.x, dy = an.y + 10 - dg.y, d = Math.hypot(dx, dy) || 1;
-    if (d > 20) { dg.x += dx / d * 300 * dt; dg.y += dy / d * 300 * dt; dg.flip = dx < 0; }
-    if (dg.cd <= 0 && d < 80) { dg.cd = 3.5; an.hp -= 6; an.stun = Math.max(an.stun, .5); M.fx.push({x:an.x, y:an.y - 100, s:'멍멍! -6', t:1, c:'#2f6fb8'}); if (an.hp <= 0) endBattle('win'); }
-  }
-  if (M.run >= 60 && !M.over) endBattle('time');
-  M.fx.forEach(f2 => { f2.t -= dt; f2.y -= dt * 40; }); M.fx = M.fx.filter(f2 => f2.t > 0);
-  drawBattle(dt);
-}
-function endBattle(res){
-  const M = MINI; if (M.over) return;
-  M.over = res; M.phase = 'end'; M.endT = 0;
-  const boar = M.kind === 'boar';
-  if (res === 'win' || res === 'time') {
-    const V = M.V, pay = V.pay / (res === 'time' ? 2 : 1), rep = res === 'win' ? V.rep : Math.ceil(V.rep / 2);
-    G.money += pay; G.rep += rep; G.stats.raids++; unlock('raid');
-    M.msg = res === 'win' ? `${M.name}가 산으로 도망갔어요! 이장님 포상금 ${won(pay)}, 평판 +${rep}` : `${M.name}가 지쳐서 돌아갔어요. 포상금 ${won(pay)}, 평판 +${rep}`;
-    M.xp = res === 'win' ? V.xp : Math.round(V.xp / 2);
-    M.drop = res === 'win' ? raidDrop(M.tier) : null;
-  } else {
-    const r = rint(0, G.rows - 1);
-    G.trees.forEach((t, i) => { if (t && Math.floor(i / PER_ROW) === r) { if (t.fr) t.bon -= 10; else t.dmg += 6; } });
-    M.msg = `${M.name}가 ${r + 1}번째 줄 사과를 헤집어 놓고 갔어요. 그 줄 품질이 떨어져요.`;
-    M.xp = 10;
-  }
-  M.an.flip = M.an.x < W / 2; M.an.st = 'gone'; M.an.stun = 0;
-}
-function closeBattle(){
-  const M = MINI;
-  M.on = false; M.cv.hidden = true; UI.busy = false; document.body.classList.remove('battleOn');
-  gainXp(M.xp);
-  toast(`${M.over === 'lose' ? '😢' : '🎉'} ${M.msg}`, M.over === 'lose' ? 'bad' : 'good');
-  if (M.drop) setTimeout(() => toast(`🎁 ${M.drop}`, 'good'), 600);
-  updateHUD(true); UI.next();
-}
-const GONG_BTN = {x:1760, y:930, r:74};
-function drawBattle(dt){
-  const M = MINI, c = M.c, S = seasonOf(G.week), pal = PAL[S], me = M.me, an = M.an;
-  c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
-  if (M.shake > 0) { M.shake -= dt; c.translate(rnd(-10, 10) * M.shake * 2, rnd(-6, 6) * M.shake * 2); }
-  // 땅
-  c.fillStyle = pal.g; c.fillRect(-30, -30, W + 60, H + 60);
-  const R = srand(21);
-  for (let k = 0; k < 40; k++) { c.beginPath(); ell(c, R() * W, 300 + R() * 800, 50 + R() * 90, 20 + R() * 30); c.fillStyle = R() < .5 ? pal.g2 : pal.g3; c.fill(); }
-  c.beginPath(); rr(c, 300, 330, 1320, 80, 30); c.fillStyle = S === 'winter' ? '#e3e8ec' : '#a8794e'; c.fill();
-  for (let x = 20; x < W; x += 90) drawPine(c, x, 250 + (x * 7 % 30), 1.1);
-  // 물체 (y 정렬)
-  const E = [];
-  if (!M.sp) {
-    // 싸움터 나무는 늘 잎과 사과가 달린 여름 모습으로
-    const tr = G.trees.find(t => t && t.fr) || G.trees.find(t => t && t.age >= 1) || {v:'fuji', age:2, fr:1, th:1, s:2, dmg:0, bon:0};
-    const w0 = G.week; G.week = 36;
-    try { M.sp = treeSprite({...tr, age:Math.max(2, tr.age), fr:1, s:Math.max(2, tr.s || 2)}, true); M.sp0 = treeSprite({...tr, age:Math.max(2, tr.age), fr:0}, true); } finally { G.week = w0; }
-  }
-  const sp = M.sp, sp0 = M.sp0;
-  for (const t of M.trees) E.push([t.y, () => {
-    const s = 1.35; c.drawImage(t.ap > 0 ? sp : sp0, t.x - 85 * s, t.y - 222 * s, 170 * s, 240 * s);
-    c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = '#fffaf1'; const txt = '🍎'.repeat(t.ap) || '텅…'; c.strokeText(txt, t.x, t.y + 46); c.fillStyle = INK; c.fillText(txt, t.x, t.y + 46);
-  }]);
-  E.push([an.y, () => {
-    c.save(); c.translate(an.x + (an.st === 'wind' ? rnd(-3, 3) : 0), an.y); c.scale(2.1 * M.V.sc, 2.1 * M.V.sc);
-    drawAnimal(c, M.kind, 0, 0, an.st === 'eat' ? M.t * .5 : (an.stun > 0 ? 0 : M.t), an.flip, M.V);
-    c.restore();
-    if (an.st === 'wind' || an.st === 'kick') { c.font = '64px Jua'; c.textAlign = 'center'; c.lineWidth = 8; c.strokeStyle = '#fffaf1'; c.strokeText('!', an.x, an.y - 130); c.fillStyle = '#d6372c'; c.fillText('!', an.x, an.y - 130); }
-    if (an.stun > 0) { c.font = '40px sans-serif'; c.textAlign = 'center'; c.fillText('💫', an.x, an.y - 130 + Math.sin(M.t * 8) * 6); }
-    if (an.st === 'eat') { c.beginPath(); rr(c, an.x - 50, an.y - 150, 100, 14, 7); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 3; c.strokeStyle = INK; c.stroke(); c.beginPath(); rr(c, an.x - 48, an.y - 148, 96 * clamp(an.eat / 2, 0, 1), 10, 5); c.fillStyle = '#ff6b57'; c.fill(); }
-  }]);
-  if (M.dog) E.push([M.dog.y, () => { c.save(); c.translate(M.dog.x, M.dog.y); c.scale(1.8, 1.8); drawAnimal(c, 'dog', 0, 0, M.dog.t, M.dog.flip); c.restore(); }]);
-  E.push([me.y, () => {
-    if (me.inv > 0 && Math.floor(me.inv * 12) % 2) c.globalAlpha = .5;
-    c.save(); c.translate(me.x, me.y); c.scale(1.7, 1.7);
-    drawPerson(c, 0, 0, 'haru', me.dir, me.walk, me.sw > 0 ? me.sw * 20 : 0);
-    const hx = me.dir === 2 ? -10 : me.dir === 3 ? 10 : me.face * 13, sw = me.sw > 0 ? (1 - me.sw / .25) : 0;
-    c.translate(hx, -38);
-    drawWeapon(c, ensureGear().weapon, me.face * (me.sw > 0 ? -1.4 + sw * 3 : .5));
-    c.restore(); c.globalAlpha = 1;
-    if (me.blk) { c.save(); c.translate(me.x + me.face * 34, me.y - 70); cel(c, cc => { cc.moveTo(-20, -30); cc.quadraticCurveTo(0, -40, 20, -30); cc.lineTo(18, 10); cc.quadraticCurveTo(0, 34, -18, 10); cc.closePath(); }, '#7ab0e8', '#4a7ab8', 3, 3, 3.5); c.font = '22px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(M.block + '%', 0, 2); c.restore(); }
-    if (me.sw > 0) { c.beginPath(); c.arc(me.x, me.y - 60, 125 * M.f.reach, me.face > 0 ? -1.2 : Math.PI - .3, me.face > 0 ? .3 : Math.PI + 1.2); c.lineWidth = 10; c.strokeStyle = `rgba(255,250,241,${me.sw * 3})`; c.stroke(); }
-  }]);
-  E.sort((a, b) => a[0] - b[0]).forEach(e => e[1]());
-  for (const f of M.fx) { c.globalAlpha = clamp(f.t * 1.5, 0, 1); c.font = '44px Jua'; c.textAlign = 'center'; c.lineWidth = 8; c.strokeStyle = '#fffaf1'; c.strokeText(f.s, f.x, f.y); c.fillStyle = f.c; c.fillText(f.s, f.x, f.y); c.globalAlpha = 1; }
-  // 체력 막대
-  const bar = (x, label, v, max, col) => {
-    c.font = '28px Jua'; c.textAlign = 'left'; c.fillStyle = INK; c.lineWidth = 6; c.strokeStyle = '#fffaf1'; c.strokeText(label, x, 50); c.fillText(label, x, 50);
-    c.beginPath(); rr(c, x, 62, 420, 26, 13); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 3.5; c.strokeStyle = INK; c.stroke();
-    c.beginPath(); rr(c, x + 4, 66, 412 * clamp(v / max, 0, 1), 18, 9); c.fillStyle = col; c.fill();
-  };
-  bar(60, `🧑‍🌾 우주 Lv.${M.f.lv}  ${Math.ceil(me.hp)}/${me.max}`, me.hp, me.max, '#5cc46c');
-  bar(1440, `${M.kind === 'boar' ? '🐗' : '🦌'} ${'★'.repeat(M.tier + 1)} ${M.name}  ${Math.max(0, an.hp)}/${an.max}`, an.hp, an.max, '#ff6b57');
-  c.textAlign = 'center'; c.font = '34px Jua'; c.fillStyle = INK; c.lineWidth = 7; c.strokeStyle = '#fffaf1';
-  const mid = `🍎 먹힌 사과 ${M.eaten}/3 · ⏱ ${Math.max(0, Math.ceil(60 - M.run))}초`;
-  c.strokeText(mid, 960, 70); c.fillText(mid, 960, 70);
-  c.font = '24px Jua';
-  const hint = isTouch ? '조이스틱으로 움직이고 화면을 톡 눌러 휘둘러요 · 🛡️ 버튼을 누르고 있으면 막기 · 꽹과리로 깜짝!' : 'WASD 이동 · 스페이스(클릭) 공격 · F 누르고 있으면 막기 · Q 꽹과리 · "!"가 뜨면 F로 막아요';
-  c.strokeText(hint, 960, 112); c.fillText(hint, 960, 112);
-  const g = GONG_BTN, ready = me.gong <= 0;
-  c.beginPath(); c.arc(g.x, g.y, g.r, 0, 7); c.fillStyle = ready ? '#ffd25e' : '#e8dcc4'; c.fill(); c.lineWidth = 5; c.strokeStyle = INK; c.stroke();
-  if (!ready) { c.beginPath(); c.moveTo(g.x, g.y); c.arc(g.x, g.y, g.r - 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (me.gong / 9)); c.closePath(); c.fillStyle = 'rgba(42,28,23,.25)'; c.fill(); }
-  c.font = '46px sans-serif'; c.fillStyle = INK; c.fillText('🥁', g.x, g.y + 8); c.font = '22px Jua'; c.fillText(isTouch ? '꽹과리' : '꽹과리 Q', g.x, g.y + 44);
-  if (M.phase === 'count') bigText(c, M.t < 1.1 ? `${M.name} 등장!` : '쫓아내자!');
-  if (M.phase === 'end') {
-    c.fillStyle = `rgba(30,20,15,${Math.min(.45, M.endT)})`; c.fillRect(0, 0, W, H);
-    if (M.endT > .6) {
-      cel(c, cc => rr(cc, 480, 330, 960, 360, 34), '#fffaf1', '#eadfcc', 0, -10, 5);
-      c.textAlign = 'center'; c.font = '90px Jua'; c.fillStyle = M.over === 'lose' ? '#9b8e86' : '#ff6b57';
-      c.fillText(M.over === 'win' ? '쫓아냈다!' : M.over === 'time' ? '돌아갔어요' : '아쉬워요…', 960, 470);
-      c.fillStyle = INK; c.font = '28px Jua'; c.fillText(M.msg, 960, 560); c.font = '26px Jua'; c.fillText(`경험치 +${M.xp}${M.drop ? ' · 🎁 ' + M.drop.split('!')[0] + '!' : ''}`, 960, 620);
-    }
-  }
-  c.restore();
-}
-
-// 막기: 무기 등급·강화만큼 피해를 줄여요. 돌진 직전에 막으면 "딱 막기"로 산짐승이 어지러워요.
-function blockHit(base){
-  const M = MINI, me = M.me, an = M.an, f = M.f;
-  if (!me.blk) return false;
-  const perfect = me.blkT < 1.1; // "!"를 보고 막으면 딱 막기
-  const raw = Math.round(base * M.V.dmg), dmg = perfect ? 0 : Math.max(1, Math.round(raw * (1 - M.block / 100)) - f.def);
-  me.hp -= dmg; me.inv = .7; M.shake = .2;
-  const d = Math.hypot(me.x - an.x, me.y - an.y) || 1; me.kb = {x:(me.x - an.x) / d * 220, y:(me.y - an.y) / d * 220, t:.15};
-  M.fx.push({x:me.x, y:me.y - 140, s:perfect ? '🛡️ 딱 막았다!' : `🛡️ 막기 -${dmg}`, t:1, c:'#2f6fb8'});
-  if (an.st === 'charge' || an.st === 'kick') { an.st = 'seek'; an.cc = 2.4; }
-  if (perfect) { an.stun = 1.2; an.kb = {x:(an.x - me.x) / d * 420, y:(an.y - me.y) / d * 420, t:.2}; }
-  if (me.hp <= 0) { me.hp = 0; endBattle('lose'); }
-  return true;
-}
 // 이기면 단계에 따라 장비나 강화석을 얻어요
 function raidDrop(tier){
   ensureGear();
   if (Math.random() > [.2, .4, .65, 1][tier]) return null;
   const slot = pick(SLOTS), it = GEAR[slot].items[Math.min(3, tier + 1)];
-  if (!(it.id in G.gear.own)) { G.gear.own[it.id] = 0; return `${it.name}을(를) 주웠어요! 🎒 장비에서 낄 수 있어요.`; }
+  if (!(it.id in G.gear.own)) { G.gear.own[it.id] = 0; return `${jo(it.name, '을', '를')} 주웠어요! 🎒 장비에서 낄 수 있어요.`; }
   const n = 1 + (tier >= 2 ? 1 : 0); G.gear.stones = (G.gear.stones || 0) + n;
   return `💎 강화석 ${n}개를 얻었어요! 장비를 공짜로 강화할 수 있어요.`;
 }
@@ -3060,7 +3393,7 @@ const cv = $('#cv'), ctx = cv.getContext('2d');
 const joy = {on:false, x:0, y:0, id:null};
 
 hooks.emit = (type, d) => {
-  if (type === 'raid') UI.push(() => startRaid(d.kind));
+  if (type === 'raid') spawnRaid(d.kind);
   else if (type === 'pop') popup(d.ic, d.t, d.m);
   else if (type === 'contest') contestUI();
   else if (type === 'newYear') { popup('🎆', `${G.year}년차가 밝았어요!`, `나무들이 한 살씩 더 먹었어요. 겨울엔 가지치기(49~10주)를 해 두면 올해 사과가 좋아져요.`); }
@@ -3088,7 +3421,7 @@ function skipWeek(){
 
 // ----- F: 일하기 -----
 function pressF(){
-  if (MINI.on && MINI.mode === 'battle') { MINI.touchBlock = true; return; }
+  if (inCombat()) { P.touchBlock = true; return; }
   if (!UI.free() || P.act > 0 || ssAnim) return;
   const t = findTarget(); if (!t) return;
   act(t);
@@ -3107,6 +3440,8 @@ function act(t){
   else if (t.kind === 'grandma') talkGrandma();
   else if (t.kind === 'chief') talkChief();
   else if (t.kind === 'npc') talkNpc(NPCS[t.n]);
+  else if (t.kind === 'nongmak') uiNongmak();
+  else if (t.kind === 'forage') pickForage(t.f);
   else if (t.kind === 'shed') uiStore();
   else if (t.kind === 'hanok') uiSave();
 }
@@ -3128,7 +3463,7 @@ function treeInfo(i){
 
 // ----- 매 프레임 -----
 function update(dt){
-  if (UI.free() && speed > 0 && !ssAnim) advance(dt / DAY_SEC * 14 * speed);
+  if (UI.free() && speed > 0 && !ssAnim) advance(dt / DAY_SEC * 14 * speed * (inHunt(P.x, P.y) ? .1 : 1)); // 사냥터에선 시간이 천천히
   updateSS(dt);
   // 하루 이동
   let mx = 0, my = 0;
@@ -3143,13 +3478,15 @@ function update(dt){
       else { mx = dx / d; my = dy / d; }
     }
   }
-  const sp = P.spd * (1 + farmer().spd / 100), m = Math.hypot(mx, my);
-  if (m > .1 && P.act <= 0) {
+  const sp = P.spd * (1 + farmer().spd / 100) * (P.blk ? .45 : 1), m = Math.hypot(mx, my);
+  if (P.kb) { moveBy(P, P.kb.x * dt, P.kb.y * dt); P.kb.t -= dt; if (P.kb.t <= 0) P.kb = null; }
+  else if (m > .1 && P.act <= 0) {
     const nx = mx / Math.max(1, m), ny = my / Math.max(1, m);
     const ox = P.x, oy = P.y;
     moveBy(P, nx * sp * dt, ny * sp * dt);
     P.walk += dt * 11;
     P.dir = Math.abs(nx) > Math.abs(ny) ? (nx < 0 ? 2 : 3) : (ny < 0 ? 1 : 0);
+    if (Math.abs(nx) > .2) P.face = nx < 0 ? -1 : 1;
     const moved = Math.hypot(P.x - ox, P.y - oy);
     if (P.tgt && moved < .5) { P.stuck = (P.stuck || 0) + dt; if (P.stuck > .4) { P.stuck = 0; detour(); } } else P.stuck = 0;
     cam.ox *= .9; cam.oy *= .9;
@@ -3163,7 +3500,7 @@ function update(dt){
     if (workerS.act > 0) workerS.act -= dt;
     if (G.worker <= 0) { workerS.tx = SPOT.shed.x; workerS.ty = SPOT.shed.y + 30; if (d < 8) workerS.on = false; }
   }
-  updateCritters(dt); updateVillagers(dt);
+  updateCritters(dt); updateVillagers(dt); updateHunt(dt);
   for (const f of flies) { f.t += dt; f.x += Math.cos(f.t * .7) * 40 * dt + 10 * dt; f.y += Math.sin(f.t * 1.3) * 30 * dt; if (f.x > WORLD_W) f.x = 0; }
   for (const f of floats) { f.t -= dt; f.y -= dt * 40; }
   for (let i = floats.length - 1; i >= 0; i--) if (floats[i].t <= 0) floats.splice(i, 1);
@@ -3237,10 +3574,10 @@ function toWorld(p){ return {x:cam.x + (p.x - W / 2) / cam.z, y:cam.y + (p.y - H
 addEventListener('keydown', e => {
   if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
   keys[e.code] = true;
-  if (MINI.on && MINI.mode === 'battle') { if (e.code === 'Space' || e.code === 'KeyJ') { e.preventDefault(); battleAttack(); } if (e.code === 'KeyQ' || e.code === 'KeyE') battleGong(); if (e.code.startsWith('Arrow')) e.preventDefault(); return; }
-  if (e.code === 'KeyF') pressF();
-  if (e.code === 'KeyN') skipWeek();
-  if (e.code === 'Space') { e.preventDefault(); if (UI.free()) { speed = speed ? 0 : 1; updateHUD(true); } }
+  if (e.code === 'KeyF' && !e.repeat && !inCombat()) pressF();
+  if (e.code === 'Space' || e.code === 'KeyJ') { e.preventDefault(); if (UI.free()) heroAttack(); }
+  if (e.code === 'KeyQ' && UI.free()) heroGong();
+  if (e.code === 'KeyP') { if (UI.free()) { speed = speed ? 0 : 1; updateHUD(true); } }
   if (e.code === 'Escape' && UI.modal && !UI.modal.noX) UI.close();
   if (e.code.startsWith('Arrow')) e.preventDefault();
 });
@@ -3281,6 +3618,8 @@ function clickWorld(w){
   for (const k of ['grandma', 'chief']) { const s = SPOT[k]; if ((s.x - w.x) ** 2 + (s.y - 40 - w.y) ** 2 < 70 * 70) best = {kind:k, x:s.x + 60, y:s.y + 30}; }
   for (const n of NPCS) if ((n.x - w.x) ** 2 + (n.y - 45 - w.y) ** 2 < 55 * 55) best = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20};
   if (Math.abs(w.x - SPOT.shed.x) < 80 && w.y < SPOT.shed.y + 5 && w.y > SPOT.shed.y - 160) best = {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 40};
+  for (const m of MONS) if (m.hp > 0 && (m.x - w.x) ** 2 + (m.y - 40 - w.y) ** 2 < 90 * 90) { if (Math.hypot(m.x - P.x, m.y - P.y) < 170) { P.face = m.x < P.x ? -1 : 1; heroAttack(); P.tgt = null; } else { P.tgt = {x:m.x, y:m.y}; P.pendMon = m; } P.pend = null; return; }
+  P.pendMon = null;
   if (best) { P.tgt = {x:best.x, y:best.y}; P.pend = best.kind === 'tree' && !taskFor(best.i) && !G.trees[best.i] ? null : best; }
   else { P.tgt = {x:w.x, y:w.y}; P.pend = null; }
   floats.push({x:w.x, y:w.y, s:'·', t:.4});
@@ -3301,7 +3640,9 @@ function joyMove(e){
   joyEl.firstElementChild.style.transform = `translate(${dx * 95}px,${dy * 95}px)`;
 }
 $('#fBtn').addEventListener('pointerdown', e => { e.preventDefault(); pressF(); });
-const fUp = () => { MINI.touchBlock = false; };
+const fUp = () => { P.touchBlock = false; };
+$('#atkBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroAttack(); });
+$('#gongBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroGong(); });
 $('#fBtn').addEventListener('pointerup', fUp); $('#fBtn').addEventListener('pointercancel', fUp); $('#fBtn').addEventListener('pointerleave', fUp);
 $('#fsBtn').onclick = () => {
   const d = document;
@@ -3312,11 +3653,11 @@ $('#fsBtn').onclick = () => {
 };
 const miniEl = $('#mini');
 miniEl.addEventListener('pointerdown', e => { const p = stagePt(e);
-  if (MINI.mode === 'battle') { if (Math.hypot(p.x - GONG_BTN.x, p.y - GONG_BTN.y) < GONG_BTN.r + 10) battleGong(); else battleAttack(); return; }
+
   if (p.x < W / 2) MINI.touchL = true; else MINI.touchR = true; });
 const miniUp = () => { MINI.touchL = MINI.touchR = false; };
 miniEl.addEventListener('pointerup', miniUp); miniEl.addEventListener('pointercancel', miniUp); miniEl.addEventListener('pointerleave', miniUp);
-setInterval(() => { const f = $('#fLab'); if (f) f.textContent = MINI.on && MINI.mode === 'battle' ? '🛡️ 막기' : targetLabel(curTarget) || '일하기'; }, 300);
+setInterval(() => { const f = $('#fLab'); if (f) f.textContent = inCombat() ? '🛡️ 막기' : targetLabel(curTarget) || '일하기'; }, 300);
 
 // 무대 크기 맞추기
 function fit(){
@@ -3343,7 +3684,7 @@ function boot(){
   const frame = now => {
     const dt = Math.min(.05, (now - last) / 1000); last = now; T += dt;
     try {
-      if (MINI.on) (MINI.mode === 'battle' ? updateBattle : updateDrive)(dt);
+      if (MINI.on) updateDrive(dt);
       else { update(dt); render(ctx, dt, T); updateHUD(); }
     } catch (err) { console.error(err); }
     requestAnimationFrame(frame);
