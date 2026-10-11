@@ -218,6 +218,20 @@ table.t th{border-bottom:2px solid var(--line)}table.t td{border-bottom:1px soli
 @keyframes autopulse{50%{box-shadow:0 6px 0 #b24a1d,0 0 0 4px #fff,0 0 0 18px rgba(255,140,80,0)}}
 #stage.driving #autobtn{display:none}
 #stage.mob #autobtn{top:auto;bottom:250px;left:110px;transform:scale(.8);transform-origin:0 100%}
+.arena{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center;font-family:var(--display);font-size:18px}
+.arena .big{font-size:84px;line-height:1.1;transition:transform .2s}
+.arena .beast{transform:scaleX(-1)}
+.arena .side.hurt .big{animation:hurt .45s}
+.arena .side.gone .big{opacity:.25;transform:translateX(60px) scaleX(-1)}
+@keyframes hurt{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px) rotate(-6deg)}75%{transform:translateX(10px) rotate(6deg)}}
+.arena .beast{display:inline-block}
+.arena .vs{font-size:22px;color:var(--coral-dk)}.arena .vs span{font-size:16px;color:var(--muted)}
+.bbar{height:14px;border-radius:8px;background:#f2e6df;overflow:hidden;margin:4px 12px 0}.bbar i{display:block;height:100%;border-radius:8px;transition:width .3s}
+.blog{background:#fff;border-radius:14px;padding:10px 14px;min-height:92px;font-size:19px;box-shadow:0 0 0 2px var(--line)}
+.bacts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.bact{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 14px;border-radius:16px;border:none;background:#fff;box-shadow:0 0 0 2px var(--line),0 4px 0 #efd5c7;font-family:var(--display);font-size:20px;color:var(--ink);cursor:pointer;text-align:left}
+.bact small{font-family:var(--body);font-size:14px;color:var(--muted)}
+.bact:hover:not(:disabled){background:#fff4c2}.bact:disabled{opacity:.45;cursor:default}
 /* 운전 모드 */
 #stage.driving #wx,#stage.driving #top,#stage.driving #tasks,#stage.driving #bottom,#stage.driving #keys,#stage.driving #labels,#stage.driving #labels2,#stage.driving #toast{display:none}
 #drive{position:absolute;inset:0;pointer-events:none;font-family:var(--display);color:var(--ink)}
@@ -291,7 +305,7 @@ body.touch #mc,body.touch #mc *{touch-action:pan-y;-webkit-user-select:text}
   <div id="drive" hidden>
     <div class="dhud plank"><div id="dsc"></div><div class="dprog"><i id="dpg"></i></div><div id="dob"></div></div>
     <div id="dcb"></div><div id="dpop"></div>
-    <div class="dkeys">A·D 또는 ←·→ (폰은 조이스틱) 로 돌·나뭇가지·토끼를 피해요</div>
+    <div class="dkeys">A·D 또는 ←·→ (폰은 조이스틱) 로 🐛 벌레 떼는 잡고, 돌·나뭇가지·토끼는 피해요</div>
   </div>
   <div id="mobui">
     <div id="joy" aria-label="이동 조이스틱"><i></i></div>
@@ -313,6 +327,7 @@ const BLD = {
   proc:   {name:'사과 가공실', ico:'🧃', price:8000000,  max:1, pos:[-33, 0, 6, .1],   desc:'하·보통 등급 사과로 사과즙(상자당 5만원)과 잼(6만원)을 만들어 팔아요.'},
   fan:    {cat:'res', name:'방상팬', ico:'🌀', price:9000000, max:1, desc:'높은 곳의 따뜻한 공기를 아래로 보내 늦서리 피해를 막아요.'},
   net:    {cat:'res', name:'우박 방지망', ico:'🕸️', price:12000000, max:1, desc:'과수원 위에 그물을 쳐서 우박 피해를 막고 태풍 낙과를 줄여요.'},
+  efence: {cat:'res', name:'전기 울타리', ico:'⚡', price:6000000, max:1, desc:'과수원 둘레에 전기 울타리를 쳐서 멧돼지·고라니가 내려오는 일이 확 줄어요.'},
   drone:  {cat:'res', name:'방제 드론', ico:'🚁', price:10000000, max:1, desc:'바람이 센 날에도 약이 고르게 뿌려져 방제 효과가 줄지 않아요.'},
   jang:   {cat:'deco', name:'장독대', ico:'🏺', price:300000, max:1, pos:[20.5, 0, 22.5, .1]},
   pyeong: {cat:'deco', name:'평상', ico:'🪵', price:400000, max:1, pos:[31.5, 0, 22.5, -.2]},
@@ -720,6 +735,7 @@ function buildBuildings(){
   if(own('proc')) put(makeProc(), BLD.proc.pos);
   if(own('drone')) put(makeDrone(), [-27, 0, 11, 0]);
   if(own('net')) bldGroup.add(makeNet());
+  if(own('efence')) bldGroup.add(makeEfence());
   bldAnim = [];
   if(own('fan')){ const zEnd = rowZ(S.rows - 1) - 1; [[-RULE.rowLen / 2 - 2, 2.5], [RULE.rowLen / 2 + 2, 2.5], [-RULE.rowLen / 2 - 2, zEnd], [RULE.rowLen / 2 + 2, zEnd]].forEach(([x, z]) => { const f = makeFan(); put(f, [x, 0, z, x < 0 ? -Math.PI / 2 : Math.PI / 2]); bldAnim.push(f); }); }
   DECO_KEYS.forEach(k => { if(own(k)){ const d = makeDeco(k); put(d, BLD[k].pos); if(d.userData.tail) bldAnim.push(d); } });
@@ -975,6 +991,17 @@ function makeDrone(){
   [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([x, z]) => { const a = M(new THREE.BoxGeometry(.9, .06, .06), std(0x333333), x * .35, .5, z * .35); a.rotation.y = Math.atan2(z, x) * -1; g.add(a); g.add(M(new THREE.CylinderGeometry(.3, .3, .03, 12), std(0x222222, {transparent:true, opacity:.6}), x * .65, .56, z * .65, false)); });
   return g;
 }
+function makeEfence(){
+  const g = new THREE.Group(), x0 = -RULE.rowLen / 2 - 3.2, x1 = RULE.rowLen / 2 + 3.2, z0 = PITCH / 2 + 1.6, z1 = rowZ(S.rows - 1) - PITCH / 2 - 1.6;
+  const wire = std(0xffd23f, {emissive:0x6b5300}), post = std(0x8a8d92), ins = std(0xff8a3d);
+  [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0 - 1]].forEach(([a, b, c, e]) => {
+    const L = Math.hypot(c - a, e - b), ang = Math.atan2(e - b, c - a);
+    [.35, .7].forEach(y => { const w = M(new THREE.CylinderGeometry(.018, .018, L, 4), wire, (a + c) / 2, y, (b + e) / 2, false); w.rotation.z = Math.PI / 2; w.rotation.y = -ang; g.add(w); });
+    for(let t = 0; t <= L; t += 4){ const px = a + (c - a) * t / L, pz = b + (e - b) * t / L; g.add(M(new THREE.CylinderGeometry(.04, .04, .9, 6), post, px, .45, pz)); g.add(M(new THREE.SphereGeometry(.06, 6, 5), ins, px, .7, pz, false)); }
+  });
+  const sign = M(new THREE.BoxGeometry(.6, .4, .04), std(0xffd23f), x0 + 1.5, .7, z0, false); g.add(sign);
+  return g;
+}
 function makeNet(){
   const zTop = rowZ(S.rows - 1) - PITCH / 2, zBot = PITCH / 2, depth = zBot - zTop;
   const tex = canvasTex(64, 64, (g, w, h) => { g.clearRect(0, 0, w, h); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2; for(let i = 0; i <= w; i += 16){ g.beginPath(); g.moveTo(i, 0); g.lineTo(i, h); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(w, i); g.stroke(); } });
@@ -1115,7 +1142,7 @@ function tickTime(dt){
   S.tod += dt * 84 * tspeed;           // 1배속이면 하루 10초, 한 주 70초
   if(S.tod >= DAY_MIN){
     S.tod = 0; S.day++; save();
-    if(S.day >= 7){ S.day = 0; nextWeek(); }
+    if(S.day >= 7){ S.day = 0; nextWeek(); } else maybeRaid();
   }
 }
 function sunByTime(tx, tz){
@@ -1126,7 +1153,7 @@ function sunByTime(tx, tz){
   sun.color.setHSL(.1, .9, .72 + .14 * low);
 }
 
-/* ================== 1인칭 SS기 운전 방제 (3초 장애물 피하기) ================== */
+/* ================== 1인칭 SS기 운전 방제 (벌레 잡기 + 장애물 피하기) ================== */
 let drive = null, hood = null, actx = null;
 function beep(f, d = .08, type = 'sine', v = .08){
   try{
@@ -1168,11 +1195,15 @@ function startDrive(f, i, n){
     segs.push({a, b, len, s0:s, s1:s + len, dx:(b[0] - a[0]) / len, dz:(b[1] - a[1]) / len, field:Math.abs(a[1] - b[1]) < .01 && a[1] <= PITCH / 2 + .01 && Math.abs(a[0]) > 10});
     s += len;
   }
-  // 줄 사이 길 하나만 약 3초에 달려요
-  const fs = segs.filter(g => g.field), one = fs[Math.floor(fs.length / 2)] || segs[0];
-  segs.length = 0; segs.push(Object.assign({}, one, {s0:0, s1:one.len})); s = one.len;
-  const DUR = 3, total = s, SPD = total / DUR, dur = DUR;
-  const d = drive = {f, i, n, segs, total, s:0, t:0, wait:.9, lat:0, SPD, dur, obs:[], hits:0, dodged:0, shake:0, auto:auto};
+  // 줄 사이 길 4개를 이어 달려요 (약 17초)
+  const fIdx = segs.map((g, k) => g.field ? k : -1).filter(k => k >= 0);
+  const st = fIdx[Math.max(0, Math.min(fIdx.length - 4, Math.floor((fIdx.length - 4) / 2)))] ?? 0;
+  const pick4 = []; let nf = 0;
+  for(let k = st; k < segs.length && nf < 4; k++){ pick4.push(segs[k]); if(segs[k].field) nf++; }
+  segs.length = 0; s = 0;
+  pick4.forEach(g => { segs.push(Object.assign({}, g, {s0:s, s1:s + g.len})); s += g.len; });
+  const DUR = 17, total = s, SPD = total / DUR, dur = DUR;
+  const d = drive = {f, i, n, segs, total, s:0, t:0, wait:.9, lat:0, SPD, dur, obs:[], hits:0, dodged:0, bugs:0, caught:0, shake:0, auto:auto};
   // 장애물: 과수원 안 줄 사이 길에만
   const obsG = new THREE.Group(); scene.add(obsG); d.obsG = obsG;
   const kinds = ['rock', 'branch', 'box', 'rabbit'];
@@ -1193,6 +1224,15 @@ function startDrive(f, i, n){
         o.moving = true;
       }
       o.mesh = m; obsG.add(m); d.obs.push(o);
+      // 장애물 사이에 벌레 떼: 지나가면 약으로 잡아요
+      if(along + 4.5 < g.len - 1 && Math.random() < .9){
+        const bl = pick([-1, 0, 1].filter(l => l !== lat));
+        const bm = new THREE.Group(), bc = [std(0x6fbf3a), std(0x3c2f2a), std(0xc9e04a)];
+        for(let q = 0; q < 9; q++) bm.add(M(new THREE.SphereGeometry(rnd(.08, .13), 6, 5), pick(bc), rnd(-.35, .35), rnd(.5, 1.3), rnd(-.35, .35), false));
+        const ring = M(new THREE.TorusGeometry(.55, .04, 6, 20), new THREE.MeshBasicMaterial({color:0xffe066, transparent:true, opacity:.8}), 0, .9, 0, false); ring.rotation.x = Math.PI / 2; bm.add(ring);
+        const b = {kind:'bug', bug:true, s:g.s0 + along + 4.5, lat:bl, base:bl, done:false, ph:Math.random() * 6, mesh:bm};
+        obsG.add(bm); d.obs.push(b); d.bugs++;
+      }
       along += rnd(8.5, 10);
     }
   });
@@ -1206,7 +1246,7 @@ function startDrive(f, i, n){
 function pop(t, cls){ const el = $('dpop'); el.textContent = t; el.className = cls; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; }
 function updateDriveHud(){
   const d = drive; if(!d) return;
-  $('dsc').textContent = `🪨 부딪힘 ${d.hits} · 피함 ${d.dodged} / ${d.obs.length}`;
+  $('dsc').textContent = `🐛 벌레 잡기 ${d.caught} / ${d.bugs} · 🪨 부딪힘 ${d.hits}`;
   $('dob').textContent = '';
   $('dpg').style.width = (d.s / d.total * 100).toFixed(1) + '%';
 }
@@ -1217,9 +1257,10 @@ function updateDrive(dt){
   // 조향
   let steer = 0;
   if(d.auto || auto){
-    const ahead = d.obs.filter(o => !o.done && o.s > d.s && o.s - d.s < 9);
-    let want = 0;
-    if(ahead.length){ const o = ahead[0], c = [-1.2, 0, 1.2].filter(l => Math.abs(l - o.lat) > 1); want = c.sort((a, b) => Math.abs(a - d.lat) - Math.abs(b - d.lat))[0]; }
+    const ahead = d.obs.filter(o => !o.done && !o.bug && o.s > d.s && o.s - d.s < 9);
+    const bugA = d.obs.find(o => !o.done && o.bug && o.s > d.s && o.s - d.s < 9);
+    let want = bugA ? bugA.lat * 1.0 : 0;
+    if(ahead.length && !(bugA && bugA.s < ahead[0].s)){ const o = ahead[0], c = [-1.2, 0, 1.2].filter(l => Math.abs(l - o.lat) > 1); want = c.sort((a, b) => Math.abs(a - d.lat) - Math.abs(b - d.lat))[0]; }
     steer = clamp((want - d.lat) * 4, -1, 1);
   } else { steer = ((keys.d || keys.arrowright) ? 1 : 0) - ((keys.a || keys.arrowleft) ? 1 : 0); if(joy.on) steer = clamp(joy.x * 1.4, -1, 1); }
   d.lat = clamp(d.lat + steer * 4.5 * dt, -1.45, 1.45);
@@ -1230,6 +1271,13 @@ function updateDrive(dt){
     const p = pathAt(d, o.s); o.mesh.position.set(p.x - p.dz * o.lat, o.moving ? Math.abs(Math.sin(d.t * 6 + o.ph)) * .2 : 0, p.z + p.dx * o.lat);
     o.mesh.rotation.y = Math.atan2(p.dx, p.dz) + (o.kind === 'rabbit' ? Math.PI / 2 : 0);
     if(o.done) return;
+    if(o.bug){
+      o.mesh.children.forEach((c, q) => { if(c.geometry && c.geometry.type === 'SphereGeometry'){ c.position.x += Math.sin(d.t * 9 + q) * .01; c.position.y += Math.cos(d.t * 7 + q) * .01; } });
+      if(o.done) return;
+      if(Math.abs(o.s - d.s) < .8 && Math.abs(o.lat - d.lat) < .85){ o.done = true; d.caught++; pop('벌레 퇴치!', 'g'); beep(880, .07, 'triangle'); const pp = pathAt(d, o.s); for(let q = 0; q < 6; q++) emitMist(pp.x - pp.dz * o.lat, pp.z + pp.dx * o.lat, Math.atan2(-pp.dz, pp.dx)); o.mesh.visible = false; updateDriveHud(); }
+      else if(d.s > o.s + .8){ o.done = true; }
+      return;
+    }
     if(Math.abs(o.s - d.s) < .6 && Math.abs(o.lat - d.lat) < .8){ o.done = true; d.hits++; d.shake = .35; pop(o.kind === 'rabbit' ? '앗, 토끼!' : '쿵!', 'b'); beep(140, .18, 'square', .06); o.mesh.visible = false; updateDriveHud(); }
     else if(d.s > o.s + .6){ o.done = true; d.dodged++; updateDriveHud(); }
   });
@@ -1248,22 +1296,111 @@ function endDrive(){
   scene.remove(d.obsG); cam.remove(hood); cam.fov = 40; cam.updateProjectionMatrix();
   sprayer.visible = true; farmer.visible = true; sprayer.position.set(-20, 0, 12);
   $('stage').classList.remove('driving'); $('drive').hidden = true;
-  const grade = d.hits === 0 ? 'S' : d.hits === 1 ? 'A' : d.hits === 2 ? 'B' : 'C';
+  const score = d.caught / Math.max(1, d.bugs) - d.hits * .12;
+  const grade = score >= .85 ? 'S' : score >= .65 ? 'A' : score >= .4 ? 'B' : 'C';
   const G = {S:{mult:1, extra:1, qb:1.5, txt:'약이 아주 고르게 묻었어요! 한 주 더 오래 지켜 주고 품질도 +1.5'}, A:{mult:1, extra:0, qb:.5, txt:'잘 뿌렸어요. 품질 +0.5'}, B:{mult:.85, extra:0, qb:0, txt:'조금 빠진 곳이 있어요. 효과 85%'}, C:{mult:.7, extra:0, qb:0, txt:'약이 많이 빠졌어요. 효과 70%'}}[grade];
   const wxTxt = applySpray(d.f, d.i, d.n, G.mult, G.extra, G.qb);
   save(); renderUI();
   modal(`🚜 방제 결과 · ${grade}등급`, `
     <div class="lot"><div class="p num">${grade}</div><div>${G.txt}</div></div>
-    <table class="t"><tr><td>🪨 부딪힘 / 피함</td><td class="r num">${d.hits} / ${d.dodged}</td></tr></table>
+    <table class="t"><tr><td>🐛 잡은 벌레 떼</td><td class="r num">${d.caught} / ${d.bugs}</td></tr><tr><td>🪨 부딪힘 / 피함</td><td class="r num">${d.hits} / ${d.dodged}</td></tr></table>
     ${wxTxt ? `<div class="advice bad">${wxTxt}</div>` : ''}
     <div class="row"><button class="btn" data-close>확인</button></div>`);
+}
+
+/* ================== 멧돼지·고라니 습격 (턴제로 쫓아내기) ================== */
+const BEASTS = {
+  boar:{name:'멧돼지', ico:'🐗', hp:16, atk:[3, 5], munch:[2, 3], flee:0, reward:150000},
+  deer:{name:'고라니', ico:'🦌', hp:10, atk:[2, 3], munch:[1, 2], flee:.3, reward:80000},
+};
+const BACT = [
+  {id:'stick', ico:'🪵', name:'막대기 휘두르기', tip:'3~5 겁주기 (가끔 빗나가요)'},
+  {id:'gong', ico:'🥁', name:'꽹과리 치기', tip:'1~2 겁주기 + 절반 확률로 얼어붙음'},
+  {id:'guard', ico:'🛡️', name:'나무 앞 막아서기', tip:'이번 턴 피해·먹히는 사과 절반'},
+  {id:'water', ico:'🥤', name:'물 마시기', tip:'기운 +7'},
+  {id:'dog', ico:'🐕', name:'바둑이 부르기', tip:'5~7 겁주기 (한 번)'},
+];
+let battle = null, botBattleT = 0;
+function maybeRaid(){
+  if(battle || drive || !$('modal').hidden) return;
+  const w = S.week; if(w < 14 || w > 46 || !allTrees().length) return;
+  if(Math.random() < (own('efence') ? .012 : .04)) startBattle(Math.random() < .45 ? 'boar' : 'deer');
+}
+function startBattle(k){
+  const B = BEASTS[k];
+  battle = {k, B, hp:B.hp, me:20, meMax:20, water:2, dog:own('dog') ? 1 : 0, stun:0, guard:0, eaten:0, turn:'me', over:false, fx:'', log:[]};
+  S.stat.raids = (S.stat.raids || 0) + 1;
+  beep(220, .2, 'square', .06); setTimeout(() => beep(180, .25, 'square', .06), 220);
+  renderBattle(`${B.ico} <b>${B.name}</b>가 산에서 과수원으로 내려왔어요! 사과를 먹기 전에 쫓아내요.`);
+}
+function bar(v, max, col){ return `<div class="bbar"><i style="width:${Math.max(0, v / max * 100)}%;background:${col}"></i></div><small class="num">${Math.max(0, v)} / ${max}</small>`; }
+function renderBattle(msg, endHtml){
+  const b = battle; if(msg) b.log.unshift(msg); b.log = b.log.slice(0, 3);
+  const acts = BACT.filter(a => a.id !== 'dog' || own('dog')).map(a => {
+    const off = b.turn !== 'me' || b.over || (a.id === 'water' && !b.water) || (a.id === 'dog' && !b.dog);
+    return `<button class="bact" data-ba="${a.id}" ${off ? 'disabled' : ''}><b>${a.ico} ${a.name}${a.id === 'water' ? ` (${b.water})` : ''}</b><small>${a.tip}</small></button>`;
+  }).join('');
+  modal(`⚔️ ${b.B.name} 습격!`, `
+    <div class="arena">
+      <div class="side ${b.fx === 'm' ? 'hurt' : ''}"><div class="big">🧑‍🌾</div><div>나 · 기운</div>${bar(b.me, b.meMax, 'var(--mint)')}</div>
+      <div class="vs">${b.turn === 'me' && !b.over ? '내 차례' : b.over ? '' : `${b.B.name} 차례…`}<br><span>🍎 먹힌 사과 ${b.eaten}</span></div>
+      <div class="side ${b.fx === 'e' ? 'hurt' : ''} ${b.over && b.won ? 'gone' : ''}"><div class="big beast">${b.B.ico}</div><div>${b.B.name} · 버티는 힘</div>${bar(b.hp, b.B.hp, 'var(--coral)')}</div>
+    </div>
+    <div class="blog">${b.log.map((l, k) => `<div style="opacity:${1 - k * .3}">${l}</div>`).join('')}</div>
+    ${endHtml || `<div class="bacts">${acts}</div>`}`,
+  c => { c.querySelectorAll('[data-ba]').forEach(el => el.onclick = () => battleAct(el.dataset.ba)); });
+  b.fx = '';
+}
+function battleAct(id){
+  const b = battle; if(!b || b.turn !== 'me' || b.over) return;
+  let msg = '';
+  if(id === 'stick'){ if(Math.random() < .85){ const d = Math.round(rnd(3, 5)); b.hp -= d; b.fx = 'e'; msg = `🪵 막대기를 휘둘렀어요! ${b.B.name} −${d}`; } else msg = '🪵 휘익~ 빗나갔어요.'; }
+  if(id === 'gong'){ const d = Math.round(rnd(1, 2)); b.hp -= d; b.fx = 'e'; msg = `🥁 꽹과리를 쾅쾅! −${d}`; if(Math.random() < .5){ b.stun = 1; msg += ' 깜짝 놀라 얼어붙었어요!'; } }
+  if(id === 'guard'){ b.guard = 1; msg = '🛡️ 나무 앞을 막아섰어요.'; }
+  if(id === 'water'){ if(b.water <= 0) return; b.water--; b.me = Math.min(b.meMax, b.me + 7); msg = '🥤 물을 마셨어요. 기운 +7'; }
+  if(id === 'dog'){ if(!b.dog) return; b.dog = 0; const d = Math.round(rnd(5, 7)); b.hp -= d; b.fx = 'e'; msg = `🐕 바둑이가 멍멍 짖으며 달려가요! −${d}`; }
+  beep(620, .06, 'triangle');
+  b.hp = Math.max(0, b.hp);
+  if(b.hp <= 0) return endBattle(true, msg);
+  b.turn = 'beast'; renderBattle(msg);
+  setTimeout(beastTurn, auto ? 600 : 1000);
+}
+function beastTurn(){
+  const b = battle; if(!b || b.over) return;
+  let msg;
+  if(b.stun){ b.stun = 0; msg = `${b.B.ico} ${b.B.name}가 얼어붙어 꼼짝 못 해요.`; }
+  else if(b.B.flee && b.hp < b.B.hp * .4 && Math.random() < b.B.flee){ return endBattle(true, `${b.B.ico} ${b.B.name}가 겁먹고 산으로 도망갔어요!`); }
+  else if(Math.random() < .55){ let d = Math.round(rnd(...b.B.atk)); if(b.guard) d = Math.ceil(d / 2); b.me = Math.max(0, b.me - d); b.fx = 'm'; msg = `${b.B.ico} ${b.B.name}가 들이받았어요! 기운 −${d}`; beep(150, .15, 'square', .05); }
+  else { let e = Math.round(rnd(...b.B.munch)); if(b.guard) e = Math.floor(e / 2); b.eaten += e; msg = e ? `${b.B.ico} 냠냠… 사과를 ${e}개 먹었어요.` : `${b.B.ico} 사과를 먹으려다 막혔어요!`; }
+  b.guard = 0;
+  if(b.me <= 0) return endBattle(false, msg);
+  if(b.eaten >= 10) return endBattle(false, msg + ' 너무 많이 먹었어요.');
+  b.turn = 'me'; renderBattle(msg);
+}
+function endBattle(win, msg){
+  const b = battle; b.over = true; b.won = win; b.turn = '';
+  const bear = allTrees().filter(({t}) => bearing(t));
+  const loss = win ? b.eaten * .15 : 3 + b.eaten * .25;
+  if(bear.length && loss > 0){ const row = pick(bear).r; bear.forEach(x => { if(x.r === row) x.t.q = clamp(x.t.q - loss * 2, 0, 100); }); bear.forEach(x => x.t.q = clamp(x.t.q - loss * .2, 0, 100)); }
+  let res;
+  if(win){ S.money += b.B.reward; S.earned += b.B.reward; addRep(2); S.stat.raidWin = (S.stat.raidWin || 0) + 1;
+    res = `<div class="advice">🎉 ${b.B.name}를 쫓아냈어요! 이장님이 포상금 <b>${won(b.B.reward)}</b>을 주셨어요. 평판 +2${b.eaten ? ` · 먹힌 사과 ${b.eaten}개 때문에 품질이 조금 떨어졌어요.` : ''}</div>`; beep(880, .1); setTimeout(() => beep(1175, .15), 120); }
+  else res = `<div class="advice bad">😢 기운이 빠져 ${b.B.name}를 못 막았어요. 한 줄 사과 품질이 떨어졌어요. <b>⚡ 전기 울타리</b>(건물 → 재해 대비)를 치면 습격이 줄어요.</div>`;
+  save(); renderUI();
+  renderBattle(msg, `${res}<div class="row"><button class="btn" data-close>확인</button></div>`);
+}
+function botBattleAct(){
+  const b = battle;
+  if(b.me <= 8 && b.water) return battleAct('water');
+  if(b.dog) return battleAct('dog');
+  return battleAct(b.hp > 6 && Math.random() < .35 ? 'gong' : 'stick');
 }
 
 /* ================== 자동플레이 (테스트용) ================== */
 let auto = false, botT = 0, botTask = null, botModalT = 0, lastBotSpray = -9;
 function toggleAuto(){
   auto = !auto; botTask = null; moveTarget = null;
-  if(auto) tspeed = 4;
+  if(auto) tspeed = 2;
   renderUI();
   toast(auto ? '🤖 <b>자동플레이</b>를 켰어요. 농부가 알아서 일하고, 할 일이 없으면 다음 주로 넘어가요.' : '🤖 자동플레이를 껐어요.');
 }
@@ -1281,7 +1418,7 @@ function shouldSpray(){
   return wx.disease >= 45 || wx.pest >= 45 || w - lastBotSpray >= 2;
 }
 function botBuy(){
-  const order = ['hive', 'wondu', 'hive', 'hive', 'EXP', 'proc', 'cold', 'fan', 'net', 'drone', 'EXP', 'sarang', ...DECO_KEYS, 'EXP'];
+  const order = ['hive', 'wondu', 'hive', 'hive', 'EXP', 'proc', 'cold', 'fan', 'net', 'efence', 'drone', 'EXP', 'sarang', ...DECO_KEYS, 'EXP'];
   for(const k of order){
     if(k === 'EXP'){
       if(S.rows >= 12) continue;
@@ -1322,7 +1459,8 @@ function botPlan(){
 }
 function botTick(dt){
   if(!auto || drive) return;
-  if(!$('modal').hidden){ botModalT += dt; if(botModalT > 1.4){ botModalT = 0; closeModal(); } return; }
+  if(battle && !battle.over){ botBattleT += dt; if(battle.turn === 'me' && botBattleT > 1){ botBattleT = 0; botBattleAct(); } return; }
+  if(!$('modal').hidden){ botModalT += dt; if(botModalT > 2.2){ botModalT = 0; closeModal(); } return; }
   botModalT = 0;
   if(sprayer.userData.path) return;
   botT -= dt; if(botT > 0) return; botT = .2;
@@ -1687,7 +1825,7 @@ function openSpray(){
     <label class="check"><input type="checkbox" id="sp3"> 🌿 영양제 <small>잎과 열매에 양분을 줘서 품질을 조금 올려요.</small></label>
     <p style="font-size:18px;color:var(--muted)">세 가지를 한 통에 섞어 한 번에 뿌려요. 섞어도 1회로 세요.</p>
     ${warn.length ? `<div class="advice bad">⚠️ ${warn.join('<br>⚠️ ')}</div>` : '<div class="advice">👍 바람이 약하고 비 소식이 적어 방제하기 좋은 날이에요.</div>'}
-    <div class="advice">🎮 <b>직접 운전</b>하면 SS기에 올라타 3초 동안 줄 사이 길을 달려요. 좌우로 움직여 돌·나뭇가지·토끼를 피해요. 하나도 안 부딪히면 S등급: 효과가 한 주 더 가고 품질도 올라요. 자동은 보통 효과예요.</div>
+    <div class="advice">🎮 <b>직접 운전</b>하면 SS기에 올라타 15~20초 동안 줄 사이 길을 달려요. 좌우로 움직여 🐛 벌레 떼는 지나가며 잡고, 돌·나뭇가지·토끼는 피해요. 많이 잡고 안 부딪히면 S등급: 효과가 한 주 더 가고 품질도 올라요. 자동은 보통 효과예요.</div>
     <div class="row"><button class="btn sub" data-close>취소</button><button class="btn sub" id="spauto" ${S.money < cost || busy ? 'disabled' : ''}>자동으로 뿌리기</button><button class="btn" id="spgo" ${S.money < cost || busy ? 'disabled' : ''}>${busy ? '뿌리는 중' : '🚜 직접 운전하기'}</button></div>`,
   c => {
     const pickK = () => [c.querySelector('#sp1').checked, c.querySelector('#sp2').checked, c.querySelector('#sp3').checked];
@@ -1866,7 +2004,7 @@ function modal(title, body, bind){
   $('mc').querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal);
   bind && bind($('mc'));
 }
-function closeModal(){ $('modal').hidden = true; $('c').focus(); }
+function closeModal(){ if(battle && !battle.over) return; if(battle) battle = null; $('modal').hidden = true; $('c').focus(); }
 const riskWord = v => v >= 65 ? ['높음', 'var(--bad)'] : v >= 45 ? ['보통', 'var(--warn)'] : ['낮음', 'var(--ok)'];
 function renderUI(){
   const d = weekDate(S.week), wx = wxNow();
@@ -1999,7 +2137,7 @@ function loop(now){
   if(keys.w || keys.arrowup) mz -= 1; if(keys.s || keys.arrowdown) mz += 1; if(keys.a || keys.arrowleft) mx -= 1; if(keys.d || keys.arrowright) mx += 1;
   if(joy.on && (Math.abs(joy.x) > .15 || Math.abs(joy.y) > .15)){ mx = joy.x; mz = joy.y; moveTarget = null; }
   if(drive){ mx = mz = 0; moveTarget = null; }
-  const P = S.farmer; let moving = false, speed = auto ? 15 : keys.shift ? 9 : 5;
+  const P = S.farmer; let moving = false, speed = auto ? 7 : keys.shift ? 9 : 5;
   if(mx || mz){
     const l = joy.on ? Math.max(1, Math.hypot(mx, mz)) : Math.hypot(mx, mz); mx /= l; mz /= l;
     const sx = Math.cos(camYaw), sz = -Math.sin(camYaw); // camera right vector
