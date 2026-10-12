@@ -119,6 +119,12 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .ivc i{font-style:normal;font-size:44px;line-height:1.1}.ivc b{font-family:var(--display);font-size:17px;font-weight:400}.ivc small{font-size:14px;color:var(--muted)}
 .ivn{position:absolute;right:8px;top:6px;font-family:var(--display);font-size:20px;color:#d6372c}
 .ivt{font-size:13px;background:#ffd25e;border:1.5px solid var(--ink);border-radius:8px;padding:1px 6px}.ivt.off{background:#eee}
+.hpg{display:grid;grid-template-columns:1fr 1fr;gap:18px}.hpc h3{font-family:var(--display);font-weight:400;font-size:24px;margin:0 0 8px}
+.hpr{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.hpk{border:2.5px solid var(--ink);border-radius:16px;background:#f3fbe8;padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--display);font-size:16px;cursor:pointer}
+.hpk canvas{width:110px;height:183px}.hpk.on{background:#fff3c4;box-shadow:0 0 0 4px #ffd25e;transform:translateY(-3px)}
+.hpn{display:flex;align-items:center;gap:14px;margin-top:16px;font-family:var(--display);font-size:22px}
+.hpn input{font:inherit;font-size:24px;padding:8px 14px;border:2.5px solid var(--ink);border-radius:12px;width:260px}.hpn small{font-family:var(--body);font-size:15px;color:var(--muted)}
 .gnote{font-size:16px;color:var(--muted);margin:10px 2px}
 .ggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .gslot{border:2.5px solid var(--ink);border-radius:16px;background:#fff;padding:10px 12px}
@@ -949,7 +955,8 @@ const LOOKS = {
 const shd = (col, t = .28) => mix(col, '#3a1a10', t);
 // dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
 function drawPerson(c, x, y, who, dir, walk, act){
-  if (who === 'haru') return drawWooju(c, x, y, dir, walk, act);
+  if (who === 'haru') return drawHuman(c, x, y, heroSpec(), dir, walk, act, true);
+  return drawHuman(c, x, y, toSpec(typeof who === 'string' ? LOOKS[who] : who), dir, walk, act, false);
   const L = who === 'haru' ? haruLook() : typeof who === 'string' ? LOOKS[who] : who;
   const kid = L.kid, sc = kid ? .72 : 1;
   c.save(); c.translate(x, y);
@@ -1255,156 +1262,297 @@ function drawPortrait(cv, who){
   c.restore();
 }
 
-// ----- 주인공 우주 (2026-10-12: 실제 사람 비율 약 7등신, 흰 티 + 검정 코트 + 멋진 머리) -----
-// 발끝이 (0,0). 키 약 120px. dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
-const WJ = {skin:'#ffe1c8', hair:'#221c28', hairS:'#100d14', coat:'#24232b', coatS:'#121117', tee:'#fbfaf6', teeS:'#d9dbe2', pants:'#2e3648', pantsS:'#1c2230', eye:'#4a3426'};
-function wjTrim(){ return {cloth:'#3d3c48', denim:'#2c5596', leather:'#8a5a3a', guard:'#f08a2a'}[ensureGear().armor] || '#3d3c48'; }
-function drawWooju(c, x, y, dir, walk, act){
-  const L = haruLook(), side = dir >= 2, back = dir === 1, K = WJ;
+// ----- 사람 그리기 (2026-10-12: 실제 사람 비율 약 7등신, 주인공·주민 공통) -----
+// 발끝이 (0,0). 어른 키 약 120px. dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
+// 모습(spec): skin, hair, hs(머리), eye, fem, top(안에 입은 옷 색), topT(tee/shirt), outer(coat/jacket/vest/overall/apron/none/dress),
+//   oc(겉옷 색), bottom(pants/skirt), bc(아래 색), legs(치마일 때 다리 색), shoe, hat(cap/band/straw), capCol, glasses, beard, old, kid, scarf
+
+// 고를 수 있는 주인공 10명 (왼쪽 남자 5, 오른쪽 여자 5)
+const HEROES = [
+  {id:'m1', label:'검정 코트', skin:'#ffe1c8', hair:'#221c28', hs:'swept', eye:'#4a3426', top:'#fbfaf6', outer:'coat', oc:'#24232b', bottom:'pants', bc:'#2e3648', shoe:'#f4f4f4'},
+  {id:'m2', label:'카멜 코트', skin:'#f6d2b2', hair:'#6a432a', hs:'parted', eye:'#5a3a22', top:'#fbfaf6', outer:'coat', oc:'#b98a5a', bottom:'pants', bc:'#343a46', shoe:'#3a2a22'},
+  {id:'m3', label:'청재킷', skin:'#ffe1c8', hair:'#3a2a24', hs:'spiky', eye:'#3a2a20', top:'#2a2a30', outer:'jacket', oc:'#4f7fb8', bottom:'pants', bc:'#1f2430', shoe:'#f4f4f4'},
+  {id:'m4', label:'회색 코트', skin:'#f4d8c0', hair:'#c9ccd6', hs:'wavy', eye:'#4a5a7a', top:'#fbfaf6', outer:'coat', oc:'#6c6f78', bottom:'pants', bc:'#24262c', shoe:'#24262c'},
+  {id:'m5', label:'야상 재킷', skin:'#e9c09a', hair:'#1a1a1e', hs:'short', eye:'#3a2a20', top:'#d8dadf', outer:'jacket', oc:'#5f6a3e', bottom:'pants', bc:'#3a3226', shoe:'#5a3a26'},
+  {id:'f1', label:'검정 코트', fem:1, skin:'#ffe4cf', hair:'#1e1a24', hs:'long', eye:'#4a3426', top:'#fbfaf6', outer:'coat', oc:'#24232b', bottom:'pants', bc:'#2e3648', shoe:'#f4f4f4'},
+  {id:'f2', label:'트렌치코트', fem:1, skin:'#fde0c8', hair:'#7a4a2a', hs:'wave', eye:'#6a4022', top:'#fff6e8', outer:'coat', oc:'#cdb08a', bottom:'skirt', bc:'#3a3a44', legs:'#3a3036', shoe:'#3a2a22'},
+  {id:'f3', label:'청재킷', fem:1, skin:'#ffe4cf', hair:'#5a3a26', hs:'pony', eye:'#5a3a22', top:'#fbfaf6', outer:'jacket', oc:'#5a8ac4', bottom:'skirt', bc:'#2a2a32', legs:'#ffe4cf', shoe:'#f4f4f4'},
+  {id:'f4', label:'빨강 코트', fem:1, skin:'#ffe1c8', hair:'#18161c', hs:'bob', eye:'#3a2a20', top:'#2a2a30', outer:'coat', oc:'#c0392b', bottom:'pants', bc:'#1f2026', shoe:'#1f2026'},
+  {id:'f5', label:'남색 재킷', fem:1, skin:'#f4d0b0', hair:'#a8744a', hs:'bun', eye:'#4a3426', top:'#fbfaf6', outer:'jacket', oc:'#2c3e66', bottom:'pants', bc:'#d8d0c0', shoe:'#5a3a26'}
+];
+const heroSpec = () => HEROES.find(h => h.id === (G && G.hero && G.hero.look)) || HEROES[0];
+const HN = () => (G && G.hero && G.hero.name) || '우주';
+function wjTrim(){ return {cloth:null, denim:'#2c5596', leather:'#8a5a3a', guard:'#f08a2a'}[ensureGear().armor] || null; }
+
+// 예전 주민 모습(look) → 새 모습(spec)
+function toSpec(L){
+  if (L.hs && L.outer) return L;
+  if (L._spec) return L._spec;
+  const o = L.outfit || 'tee', girl = !!L.girl;
+  const S = {skin:L.skin, hair:L.hair, hs:{spiky:'spiky', short:girl ? 'bob' : 'short', long:'long', pony:'pony', bun:'bun', bob:'bob', bald:'bald'}[L.hs] || 'short', eye:L.eye,
+    fem:girl ? 1 : 0, top:L.top, outer:{tee:'none', vest:'vest', overall:'overall', apron:'apron', jacket:'jacket', dress:'dress'}[o] || 'none', oc:L.o2,
+    bottom:o === 'dress' ? 'skirt' : 'pants', bc:o === 'overall' ? L.o2 : (L.pants || '#555a66'), legs:L.pants || L.skin, shoe:L.shoe,
+    hat:L.hat, capCol:L.capCol, wide:L.wide, glasses:L.glasses, beard:L.beard, old:L.old, kid:L.kid, scarf:L.scarf};
+  if (o === 'dress') S.bc = L.o2;
+  Object.defineProperty(L, '_spec', {value:S, enumerable:false});
+  return S;
+}
+
+function drawHuman(c, x, y, S, dir, walk, act, hero){
+  const side = dir >= 2, back = dir === 1, fem = !!S.fem;
   const ph = walk ? Math.sin(walk) : 0, bob = walk ? Math.abs(Math.cos(walk)) * 1.6 : 0;
-  const shoe = L.shoe || '#ffffff', trim = wjTrim();
+  const shoe = S.shoe || '#4a3428', skin = S.skin, trim = hero ? wjTrim() : null;
+  const sc = S.kid ? .72 : fem ? .95 : 1;
   c.save(); c.translate(x, y);
-  shadow(c, 0, 0, 16, 5);
+  shadow(c, 0, 0, 16 * sc, 5 * sc);
+  c.scale(sc, sc);
   if (dir === 2) c.scale(-1, 1);
-  // ── 다리 (허벅지·무릎·종아리, 걸을 때 무릎이 굽어요)
+  const skirt = S.bottom === 'skirt', legC = skirt ? (S.legs || skin) : S.bc, legS = shd(legC, .3);
+  // ── 다리
   const hipY = -60 - bob;
   const leg = (lx, ang, knee, dark) => {
     c.save(); c.translate(lx, hipY); c.rotate(ang);
-    const P = dark ? K.pantsS : K.pants;
-    cel(c, cc => { cc.moveTo(-4.4, 0); cc.lineTo(4.4, 0); cc.lineTo(3.6, 29); cc.lineTo(-3.4, 29); cc.closePath(); }, P, K.pantsS, 1.5, 0, 1.6);
+    const P = dark ? legS : legC, w0 = fem ? 4 : 4.4;
+    cel(c, cc => { cc.moveTo(-w0, 0); cc.lineTo(w0, 0); cc.lineTo(3.4, 29); cc.lineTo(-3.2, 29); cc.closePath(); }, P, legS, 1.5, 0, 1.6);
     c.translate(0, 28); c.rotate(knee);
-    cel(c, cc => { cc.moveTo(-3.5, 0); cc.lineTo(3.6, 0); cc.lineTo(3, 26); cc.lineTo(-3, 26); cc.closePath(); }, P, K.pantsS, 1.5, 0, 1.6);
-    // 운동화
+    cel(c, cc => { cc.moveTo(-3.3, 0); cc.lineTo(3.4, 0); cc.lineTo(fem ? 2.5 : 3, 26); cc.lineTo(fem ? -2.5 : -3, 26); cc.closePath(); }, P, legS, 1.5, 0, 1.6);
     const sx = side ? 1 : 0;
-    cel(c, cc => { cc.moveTo(-3.6, 24.5); cc.lineTo(3.4 + sx * 3, 24.5); cc.quadraticCurveTo(6 + sx * 5, 26, 5.5 + sx * 4.5, 30.5); cc.lineTo(-3.8, 30.5); cc.closePath(); }, dark ? shd(shoe, .3) : shoe, shd(shoe, .35), 1, 1, 1.5);
-    line(c, [-3.6, 29.6, 5 + sx * 4.5, 29.6], 1.1, shd(shoe, .45));
+    cel(c, cc => { cc.moveTo(-3.4, 24.5); cc.lineTo(3.2 + sx * 3, 24.5); cc.quadraticCurveTo(5.6 + sx * 5, 26, 5.2 + sx * 4.5, 30.5); cc.lineTo(-3.6, 30.5); cc.closePath(); }, dark ? shd(shoe, .3) : shoe, shd(shoe, .35), 1, 1, 1.5);
+    line(c, [-3.4, 29.6, 4.8 + sx * 4.5, 29.6], 1.1, shd(shoe, .45));
     c.restore();
   };
   if (side) { leg(-1, -ph * .5, Math.max(0, ph) * .55, true); leg(1, ph * .5, Math.max(0, -ph) * .55, false); }
-  else { leg(-4.6, ph * .07, Math.max(0, ph) * .12, false); leg(4.6, -ph * .07, Math.max(0, -ph) * .12, false); }
+  else { leg(-4.4, ph * .07, Math.max(0, ph) * .12, false); leg(4.4, -ph * .07, Math.max(0, -ph) * .12, false); }
   c.translate(0, -bob);
-  // ── 팔 (코트 소매)
+  if (S.old) c.translate(0, 3);
+  if (!back) backHair(c, S, side, -106);
+  // ── 옷 색
+  const outer = S.outer || 'none', oc = S.oc || S.top, top = S.top || '#ffffff';
+  const longSleeve = outer === 'coat' || outer === 'jacket' || S.old;
+  const sleeve = outer === 'coat' || outer === 'jacket' ? oc : outer === 'dress' ? oc : top;
+  const SW = fem ? 12 : 13.5; // 어깨 반폭
+  // ── 팔
   const swing = act ? -1.15 + Math.sin(act * 12) * .5 : -ph * (side ? .6 : .18);
   const arm = (ax, ang, dark) => {
     c.save(); c.translate(ax, -89); c.rotate(ang);
-    const C = dark ? K.coatS : K.coat;
-    cel(c, cc => { cc.moveTo(-3.6, -1); cc.quadraticCurveTo(0, -3.5, 3.6, -1); cc.lineTo(3.2, 22); cc.lineTo(-3.2, 22); cc.closePath(); }, C, K.coatS, 1.5, 0, 1.6);
+    const C = dark ? shd(sleeve, .3) : sleeve, CS = shd(sleeve, .35), sk = dark ? shd(skin, .25) : skin;
+    if (longSleeve) cel(c, cc => { cc.moveTo(-3.4, -1); cc.quadraticCurveTo(0, -3.4, 3.4, -1); cc.lineTo(3, 22); cc.lineTo(-3, 22); cc.closePath(); }, C, CS, 1.5, 0, 1.6);
+    else { cel(c, cc => { cc.moveTo(-2.8, 6); cc.lineTo(2.8, 6); cc.lineTo(2.6, 22); cc.lineTo(-2.6, 22); cc.closePath(); }, sk, shd(skin), 1, 0, 1.4); cel(c, cc => { cc.moveTo(-3.6, -1); cc.quadraticCurveTo(0, -3.4, 3.6, -1); cc.lineTo(3.6, 10); cc.lineTo(-3.6, 10); cc.closePath(); }, C, CS, 1.5, 0, 1.6); }
     c.translate(0, 21); c.rotate(act ? -.5 : -Math.abs(ang) * .35);
-    cel(c, cc => { cc.moveTo(-3.2, 0); cc.lineTo(3.2, 0); cc.lineTo(2.9, 20); cc.lineTo(-2.9, 20); cc.closePath(); }, C, K.coatS, 1.5, 0, 1.6);
-    line(c, [-2.9, 18.5, 2.9, 18.5], 1.3, trim);
-    cel(c, cc => { cc.moveTo(-2.6, 19.5); cc.lineTo(2.6, 19.5); cc.quadraticCurveTo(3.4, 25, 0, 26.5); cc.quadraticCurveTo(-3.4, 25, -2.6, 19.5); cc.closePath(); }, dark ? shd(K.skin, .25) : K.skin, shd(K.skin), 1, 1, 1.4);
+    if (longSleeve) { cel(c, cc => { cc.moveTo(-3, 0); cc.lineTo(3, 0); cc.lineTo(2.7, 20); cc.lineTo(-2.7, 20); cc.closePath(); }, C, CS, 1.5, 0, 1.6); if (trim) line(c, [-2.7, 18.5, 2.7, 18.5], 1.3, trim); }
+    else cel(c, cc => { cc.moveTo(-2.6, 0); cc.lineTo(2.6, 0); cc.lineTo(2.3, 20); cc.lineTo(-2.3, 20); cc.closePath(); }, sk, shd(skin), 1, 0, 1.4);
+    cel(c, cc => { cc.moveTo(-2.5, 19.5); cc.lineTo(2.5, 19.5); cc.quadraticCurveTo(3.2, 25, 0, 26.2); cc.quadraticCurveTo(-3.2, 25, -2.5, 19.5); cc.closePath(); }, sk, shd(skin), 1, 1, 1.4);
     c.restore();
   };
   if (side) arm(-1.5, -swing, true);
-  else if (back) { arm(-13, .1 - swing, false); arm(13, -.1 + swing, false); }
-  // ── 몸통: 긴 검정 코트 (무릎 위까지)
-  const hemY = -34 + (side ? Math.sin(walk * 2) * .8 : 0);
+  else if (back) { arm(-SW + .5, .1 - swing, false); arm(SW - .5, -.1 + swing, false); }
+  // ── 몸통
+  const hemCoat = -34 + (side ? Math.sin(walk * 2) * .8 : 0), hemJk = -57, waistW = fem ? 9 : 10.5;
+  const torsoF = (hw, hem, flare) => cc => { cc.moveTo(-4.5, -93); cc.quadraticCurveTo(-hw + 2, -94, -hw - .5, -89.5); cc.quadraticCurveTo(-hw - 1, -80, -waistW - (fem ? 0 : 1.5), -66); cc.lineTo(-waistW - flare, hem); cc.lineTo(waistW + flare, hem); cc.lineTo(waistW + (fem ? 0 : 1.5), -66); cc.quadraticCurveTo(hw + 1, -80, hw + .5, -89.5); cc.quadraticCurveTo(hw - 2, -94, 4.5, -93); cc.closePath(); };
+  const torsoS = (hem, back2) => cc => { cc.moveTo(-7.5, -91); cc.quadraticCurveTo(0, -94, 7, -91); cc.lineTo(fem ? 8.5 : 8, -78); cc.lineTo(7, -62); cc.lineTo(back2 ? 10.5 : 8, hem); cc.lineTo(back2 ? -10.5 : -8, hem + (back2 ? 1.5 : 0)); cc.lineTo(-8.5, -62); cc.closePath(); };
+  const skirtDraw = () => {
+    const col = S.bc;
+    if (side) cel(c, cc => { cc.moveTo(-8.5, -62); cc.lineTo(8, -62); cc.lineTo(11, -38); cc.quadraticCurveTo(0, -36, -11.5, -38); cc.closePath(); }, col, shd(col), 2, 1.5, 1.6);
+    else cel(c, cc => { cc.moveTo(-waistW, -62); cc.lineTo(waistW, -62); cc.lineTo(waistW + 5, -38); cc.quadraticCurveTo(0, -35.5, -waistW - 5, -38); cc.closePath(); }, col, shd(col), 2, 1.5, 1.6);
+  };
+  if (skirt && outer !== 'dress') skirtDraw();
+  const tc = outer === 'dress' ? oc : top;
   if (side) {
-    cel(c, cc => { cc.moveTo(-7.5, -91); cc.quadraticCurveTo(0, -94, 7, -91); cc.lineTo(8, -62); cc.lineTo(10.5, hemY); cc.lineTo(-10.5, hemY + 1.5); cc.lineTo(-8.5, -62); cc.closePath(); }, K.coat, K.coatS, 2.5, 2, 1.8);
-    // 앞섶 사이로 흰 티
-    cel(c, cc => { cc.moveTo(5, -91); cc.lineTo(7.4, -91); cc.lineTo(8, -63); cc.lineTo(6, -63); cc.closePath(); }, K.tee, K.teeS, 1, 0, 1.2);
-    line(c, [4.6, -91, 6.2, -78, 7.6, hemY], 1.3, trim);
-    line(c, [-3, -66, -3, -50], 1, '#3a3944');
+    if (outer === 'coat') {
+      cel(c, torsoS(hemCoat, true), oc, shd(oc, .4), 2.5, 2, 1.8);
+      cel(c, cc => { cc.moveTo(5, -91); cc.lineTo(7.4, -91); cc.lineTo(8, -63); cc.lineTo(6, -63); cc.closePath(); }, top, shd(top, .15), 1, 0, 1.2);
+      line(c, [4.6, -91, 6.2, -78, 7.6, hemCoat], 1.3, trim || shd(oc, .3));
+    } else if (outer === 'dress') {
+      cel(c, torsoS(-58), oc, shd(oc), 2, 2, 1.8); skirtDraw();
+    } else {
+      cel(c, torsoS(-58), tc, shd(tc, .2), 2, 2, 1.8);
+      if (outer === 'jacket') { cel(c, torsoS(hemJk), oc, shd(oc, .4), 2, 2, 1.8); cel(c, cc => { cc.moveTo(5, -91); cc.lineTo(7.4, -91); cc.lineTo(8, -60); cc.lineTo(6, -60); cc.closePath(); }, top, shd(top, .15), 1, 0, 1.2); }
+      if (outer === 'vest') cel(c, cc => rr(cc, -8.5, -90, 13, 30, 3), oc, shd(oc), 2, 2, 1.6);
+      if (outer === 'overall') { cel(c, cc => rr(cc, -6, -80, 12, 20, 2.5), oc, shd(oc), 2, 2, 1.6); line(c, [-2, -80, -5, -91], 2.4, shd(oc, .1)); }
+      if (outer === 'apron') cel(c, cc => { cc.moveTo(0, -84); cc.lineTo(8.5, -84); cc.lineTo(11, -38); cc.lineTo(2, -38); cc.closePath(); }, oc, shd(oc, .18), 2, 2, 1.6);
+    }
+    if (!skirt && outer !== 'coat' && outer !== 'dress') cel(c, cc => rr(cc, -8.5, -63, 16.5, 5, 2), shd(S.bc, .15), shd(S.bc, .35), 0, 1, 1.4);
   } else if (back) {
-    cel(c, cc => { cc.moveTo(-13.5, -90); cc.quadraticCurveTo(0, -95, 13.5, -90); cc.lineTo(13, -64); cc.lineTo(15, hemY); cc.lineTo(-15, hemY); cc.lineTo(-13, -64); cc.closePath(); }, K.coat, K.coatS, 2.5, 2, 1.8);
-    line(c, [0, -60, 0, hemY], 1.2, '#0c0b10'); line(c, [-11, -64, 11, -64], 1, '#3a3944');
-    cel(c, cc => { cc.moveTo(-6, -93); cc.quadraticCurveTo(0, -96, 6, -93); cc.lineTo(5, -88); cc.quadraticCurveTo(0, -89.5, -5, -88); cc.closePath(); }, trim, shd(trim), 1, 1, 1.3);
+    if (outer === 'coat') { cel(c, torsoF(SW, hemCoat, 4.5), oc, shd(oc, .4), 2.5, 2, 1.8); line(c, [0, -60, 0, hemCoat], 1.2, shd(oc, .55)); line(c, [-11, -64, 11, -64], 1, shd(oc, .2)); }
+    else if (outer === 'jacket') cel(c, torsoF(SW, hemJk, 1), oc, shd(oc, .4), 2.5, 2, 1.8);
+    else if (outer === 'dress') { cel(c, torsoF(SW, -58, 0), oc, shd(oc), 2.5, 2, 1.8); skirtDraw(); }
+    else { cel(c, torsoF(SW, -58, 0), outer === 'vest' ? oc : tc, shd(outer === 'vest' ? oc : tc, .2), 2.5, 2, 1.8); if (outer === 'overall' || outer === 'apron') { line(c, [-6, -61, 6, -91], 2.4, shd(oc, .1)); line(c, [6, -61, -6, -91], 2.4, shd(oc, .1)); } }
+    if (trim && outer === 'coat') cel(c, cc => { cc.moveTo(-6, -93); cc.quadraticCurveTo(0, -96, 6, -93); cc.lineTo(5, -88); cc.quadraticCurveTo(0, -89.5, -5, -88); cc.closePath(); }, trim, shd(trim), 1, 1, 1.3);
   } else {
-    // 흰 티 (가운데)
-    cel(c, cc => { cc.moveTo(-6.5, -92); cc.lineTo(6.5, -92); cc.lineTo(7, -61); cc.lineTo(-7, -61); cc.closePath(); }, K.tee, K.teeS, 1.5, 1.5, 1.4);
-    // 코트 왼쪽·오른쪽 자락 (앞이 열려 있어요)
-    const half = s => cc => { cc.moveTo(s * 4.5, -93); cc.quadraticCurveTo(s * 11.5, -94, s * 14, -89.5); cc.quadraticCurveTo(s * 14.5, -80, s * 13.5, -64); cc.lineTo(s * 15.5, hemY); cc.lineTo(s * 6.5, hemY); cc.lineTo(s * 6, -62); cc.lineTo(s * 5.5, -78); cc.closePath(); };
-    cel(c, half(-1), K.coat, K.coatS, 2, 1.5, 1.8); cel(c, half(1), K.coat, K.coatS, 2, 1.5, 1.8);
-    // 깃 (라펠)
-    [-1, 1].forEach(s => cel(c, cc => { cc.moveTo(s * 4.5, -93); cc.lineTo(s * 9, -86); cc.lineTo(s * 7.5, -82); cc.lineTo(s * 5.6, -70); cc.lineTo(s * 5.5, -78); cc.closePath(); }, trim, shd(trim, .35), .8, .8, 1.2));
-    // 주머니
-    [-1, 1].forEach(s => line(c, [s * 8, -52, s * 13, -53], 1.1, '#43424e'));
-    // 단추
-    c.beginPath(); c.arc(-7.6, -60, 1, 0, 7); c.arc(-7.4, -50, 1, 0, 7); c.fillStyle = '#5a5866'; c.fill();
+    // 앞모습: 안에 입은 옷
+    cel(c, outer === 'none' || outer === 'vest' || outer === 'overall' || outer === 'apron' || outer === 'dress' ? torsoF(SW, -58, 0) : cc => { cc.moveTo(-6.5, -92); cc.lineTo(6.5, -92); cc.lineTo(7, -60); cc.lineTo(-7, -60); cc.closePath(); }, tc, shd(tc, .15), 1.5, 1.5, 1.6);
+    if (S.topT === 'shirt' || (outer === 'none' && S.old)) { line(c, [0, -90, 0, -60], 1, shd(tc, .3)); }
+    if (outer === 'coat' || outer === 'jacket') {
+      const hem = outer === 'coat' ? hemCoat : hemJk, fl = outer === 'coat' ? 4.5 : 1;
+      const half = s => cc => { cc.moveTo(s * 4.5, -93); cc.quadraticCurveTo(s * (SW - 2), -94, s * (SW + .5), -89.5); cc.quadraticCurveTo(s * (SW + 1), -80, s * (waistW + (fem ? 0 : 1.5)), -66); cc.lineTo(s * (waistW + fl), hem); cc.lineTo(s * 6.5, hem); cc.lineTo(s * 6, -62); cc.lineTo(s * 5.5, -78); cc.closePath(); };
+      cel(c, half(-1), oc, shd(oc, .4), 2, 1.5, 1.8); cel(c, half(1), oc, shd(oc, .4), 2, 1.5, 1.8);
+      const lap = trim || mix(oc, '#ffffff', .12);
+      [-1, 1].forEach(s => cel(c, cc => { cc.moveTo(s * 4.5, -93); cc.lineTo(s * 9, -86); cc.lineTo(s * 7.5, -82); cc.lineTo(s * 5.6, -70); cc.lineTo(s * 5.5, -78); cc.closePath(); }, lap, shd(lap, .35), .8, .8, 1.2));
+      if (outer === 'coat') { [-1, 1].forEach(s => line(c, [s * 8, -52, s * 12.5, -53], 1.1, mix(oc, '#ffffff', .15))); c.beginPath(); c.arc(-7.6, -60, 1, 0, 7); c.arc(-7.4, -50, 1, 0, 7); c.fillStyle = mix(oc, '#ffffff', .3); c.fill(); }
+      else [-1, 1].forEach(s => line(c, [s * 7.5, -80, s * 11.5, -80], 1.1, shd(oc, .35)));
+    }
+    if (outer === 'vest') [-1, 1].forEach(s => cel(c, cc => { cc.moveTo(s * (SW + .5), -89.5); cc.lineTo(s * 6, -93); cc.lineTo(s * 3, -78); cc.lineTo(s * 3, -59); cc.lineTo(s * (waistW + 1), -59); cc.closePath(); }, oc, shd(oc), 1.5, 1.5, 1.5));
+    if (outer === 'overall') { cel(c, cc => rr(cc, -6.5, -80, 13, 22, 2.5), oc, shd(oc), 2, 2, 1.6); line(c, [-5, -80, -8, -92], 2.4, shd(oc, .1)); line(c, [5, -80, 8, -92], 2.4, shd(oc, .1)); c.beginPath(); c.arc(-4, -78, 1, 0, 7); c.arc(4, -78, 1, 0, 7); c.fillStyle = '#ffd25e'; c.fill(); }
+    if (outer === 'apron') cel(c, cc => { cc.moveTo(-6.5, -84); cc.lineTo(6.5, -84); cc.lineTo(waistW + 2, -38); cc.lineTo(-waistW - 2, -38); cc.closePath(); }, oc, shd(oc, .18), 2, 2, 1.6);
+    if (outer === 'dress') skirtDraw();
+    if (!skirt && outer !== 'coat' && outer !== 'dress' && outer !== 'apron' && outer !== 'overall') { cel(c, cc => rr(cc, -waistW - .5, -62, waistW * 2 + 1, 4.5, 2), shd(S.bc, .15), shd(S.bc, .35), 0, 1, 1.4); }
   }
   if (side) arm(1.5, swing, false);
-  else if (!back) { arm(-13, .1 + swing, false); arm(13, -.1 - swing, false); }
-  // ── 목
-  cel(c, cc => rr(cc, -2.8, -98, 5.6, 7, 2), shd(K.skin, .12), shd(K.skin, .3), 0, 0, 1.4);
-  if (!back && !side) { c.beginPath(); c.moveTo(-4.2, -92.5); c.quadraticCurveTo(0, -88, 4.2, -92.5); c.lineWidth = 1.2; c.strokeStyle = '#b8bcc6'; c.stroke(); }
+  else if (!back) { arm(-SW + .5, .1 + swing, false); arm(SW - .5, -.1 - swing, false); }
+  // ── 목·목도리
+  cel(c, cc => rr(cc, -2.6, -98, 5.2, 7, 2), shd(skin, .12), shd(skin, .3), 0, 0, 1.4);
+  if (!back && !side && outer !== 'none') { c.beginPath(); c.moveTo(-4.2, -92.5); c.quadraticCurveTo(0, -88, 4.2, -92.5); c.lineWidth = 1.1; c.strokeStyle = shd(top, .25); c.stroke(); }
+  if (S.scarf) cel(c, cc => rr(cc, side ? -6 : -7.5, -95, side ? 12 : 15, 5, 2.4), S.scarf, shd(S.scarf, .35), 1, 1, 1.5);
   // ── 머리
-  wjHead(c, L, side, back, -106, act);
+  humanHead(c, S, side, back, -106, act, hero);
   c.restore();
 }
-function wjHead(c, L, side, back, hy, act){
-  const K = WJ, H = K.hair, HS = K.hairS;
-  // 얼굴 (턱선이 갸름한 사람 얼굴)
-  const face = cc => {
-    if (side) { cc.moveTo(-6.5, hy - 6); cc.quadraticCurveTo(-6, hy - 10, 0, hy - 10); cc.quadraticCurveTo(7, hy - 10, 7.5, hy - 3); cc.lineTo(8.8, hy + .5); cc.lineTo(7.4, hy + 1.8); cc.lineTo(7.6, hy + 4.2); cc.quadraticCurveTo(7, hy + 8.6, 3, hy + 9.6); cc.quadraticCurveTo(-3, hy + 8, -5.5, hy + 3); cc.closePath(); }
-    else { cc.moveTo(-7.4, hy - 4); cc.quadraticCurveTo(-7.4, hy - 10.5, 0, hy - 10.5); cc.quadraticCurveTo(7.4, hy - 10.5, 7.4, hy - 4); cc.quadraticCurveTo(7.2, hy + 3, 4.4, hy + 7.4); cc.quadraticCurveTo(0, hy + 11, -4.4, hy + 7.4); cc.quadraticCurveTo(-7.2, hy + 3, -7.4, hy - 4); cc.closePath(); }
-  };
-  if (back) {
-    [-7.6, 7.6].forEach(ex => cel(c, cc => ell(cc, ex, hy - .2, 1.6, 2.6), K.skin, shd(K.skin), .8, .8, 1.2));
-    cel(c, cc => { const q = (a, b, x, y) => cc.quadraticCurveTo(a, b, x, y);
-      cc.moveTo(-7.4, hy + 1); q(-10, hy - 8, -7.6, hy - 15.6); q(-3, hy - 21.4, 3.6, hy - 20.8); q(9.8, hy - 19.2, 9.5, hy - 10); q(9.6, hy - 3, 7.2, hy + 1);
-      q(5, hy + 3, 4, hy + 6.6); q(0, hy + 4.6, -4, hy + 6.6); q(-5, hy + 3, -7.4, hy + 1); cc.closePath(); }, H, HS, 2, 2.5, 1.6);
-    c.save(); c.lineWidth = .9; c.strokeStyle = '#3c3448'; c.beginPath(); c.moveTo(-4, hy - 17); c.quadraticCurveTo(-1, hy - 8, -2, hy + 2); c.moveTo(3, hy - 18); c.quadraticCurveTo(5, hy - 8, 3, hy + 2); c.stroke(); c.restore();
-    wjShine(c, side, hy); wjHat(c, L, side, back, hy); return;
+
+function backHair(c, S, side, hy){
+  const H = S.hair, HS = shd(H, .4), hs = S.hs;
+  const q = (cc, a, b, x, y) => cc.quadraticCurveTo(a, b, x, y);
+  const longHair = hs === 'long' || hs === 'wave';
+  // 뒷머리 (얼굴 뒤로 늘어지는 머리)
+  if ((longHair || hs === 'bob')) {
+    const bot = hs === 'bob' ? hy + 6 : hy + 24;
+    cel(c, cc => { if (side) { cc.moveTo(-1, hy - 12); q(cc, -12, hy - 14, -10.5, hy + 4); q(cc, -10, bot - 4, hs === 'wave' ? -6 : -4, bot); q(cc, -2, bot - 6, 0, hy); cc.closePath(); }
+      else { cc.moveTo(-9, hy - 10); q(cc, -11.5, hy + 6, hs === 'wave' ? -12.5 : -10.5, bot); q(cc, 0, bot + 2, hs === 'wave' ? 12.5 : 10.5, bot); q(cc, 11.5, hy + 6, 9, hy - 10); cc.closePath(); } }, H, HS, 2, 2.5, 1.6);
   }
-  // 귀
-  if (!side) [-7.6, 7.6].forEach(ex => cel(c, cc => ell(cc, ex, hy - .2, 1.6, 2.6), K.skin, shd(K.skin), .8, .8, 1.2));
-  cel(c, face, K.skin, shd(K.skin, .2), 1.6, 1.8, 1.7);
-  if (side) cel(c, cc => ell(cc, -1.4, hy + .4, 1.9, 2.8), K.skin, shd(K.skin), .8, .8, 1.2);
-  // 눈 (작고 날렵한 애니 눈)
+  if (hs === 'pony') {
+    if (side) cel(c, cc => { cc.moveTo(-8, hy - 8); q(cc, -16, hy - 2, -12, hy + 16); q(cc, -9, hy + 4, -5, hy - 4); cc.closePath(); }, H, HS, 1.5, 2, 1.5);
+    else cel(c, cc => { cc.moveTo(5, hy - 13); q(cc, 14, hy - 10, 11, hy + 10); q(cc, 9, hy - 2, 4, hy - 9); cc.closePath(); }, H, HS, 1.5, 2, 1.5);
+  }
+}
+function humanHead(c, S, side, back, hy, act, hero){
+  const H = S.hair, HS = shd(H, .4), hs = S.hs, fem = !!S.fem, skin = S.skin;
+  const q = (cc, a, b, x, y) => cc.quadraticCurveTo(a, b, x, y);
+  const longHair = hs === 'long' || hs === 'wave';
+  if (hs === 'bun') cel(c, cc => ell(cc, side ? -5 : 0, hy - 17.5, 4.6, 4), H, HS, 1, 1.5, 1.5);
+  const face = cc => {
+    const w = fem ? 7 : 7.4;
+    if (side) { cc.moveTo(-6.5, hy - 6); q(cc, -6, hy - 10, 0, hy - 10); q(cc, 7, hy - 10, 7.5, hy - 3); cc.lineTo(fem ? 8.4 : 8.8, hy + .5); cc.lineTo(7.4, hy + 1.8); cc.lineTo(7.6, hy + 4.2); q(cc, 7, hy + 8.6, 3, hy + 9.6); q(cc, -3, hy + 8, -5.5, hy + 3); cc.closePath(); }
+    else { cc.moveTo(-w, hy - 4); q(cc, -w, hy - 10.5, 0, hy - 10.5); q(cc, w, hy - 10.5, w, hy - 4); q(cc, w - .2, hy + 3, fem ? 3.8 : 4.4, hy + 7.4); q(cc, 0, hy + (fem ? 10.2 : 11), fem ? -3.8 : -4.4, hy + 7.4); q(cc, -w + .2, hy + 3, -w, hy - 4); cc.closePath(); }
+  };
+  // 뒷모습
+  if (back) {
+    [-7.6, 7.6].forEach(ex => cel(c, cc => ell(cc, ex, hy - .2, 1.6, 2.6), skin, shd(skin), .8, .8, 1.2));
+    if (hs === 'bald') { cel(c, cc => ell(cc, 0, hy - 2, 8, 9.5), skin, shd(skin, .2), 1.5, 1.5, 1.6); cel(c, cc => rr(cc, -8, hy - 1, 16, 7, 3), H, HS, 1, 1, 1.4); }
+    else {
+      const bot = longHair ? hy + 24 : hs === 'bob' ? hy + 6 : hy + 6.6;
+      cel(c, cc => { cc.moveTo(-7.4, hy + 1); q(cc, -10, hy - 8, -7.6, hy - 15.6); q(cc, -3, hy - 21, 3.6, hy - 20.4); q(cc, 9.8, hy - 19, 9.5, hy - 10); q(cc, 9.6, hy - 3, 7.2, hy + 1);
+        if (longHair || hs === 'bob') { q(cc, hs === 'wave' ? 13 : 10.5, bot - 8, hs === 'wave' ? 11 : 9, bot); q(cc, 0, bot + 2, hs === 'wave' ? -11 : -9, bot); q(cc, hs === 'wave' ? -13 : -10.5, bot - 8, -7.4, hy + 1); }
+        else { q(cc, 5, hy + 3, 4, bot); q(cc, 0, hy + 4.6, -4, bot); q(cc, -5, hy + 3, -7.4, hy + 1); }
+        cc.closePath(); }, H, HS, 2, 2.5, 1.6);
+      if (hs === 'pony') cel(c, cc => { cc.moveTo(-3, hy - 6); q(cc, -5, hy + 8, 0, hy + 18); q(cc, 5, hy + 8, 3, hy - 6); cc.closePath(); }, H, HS, 1, 1.5, 1.5);
+      if (hs === 'bun') cel(c, cc => ell(cc, 0, hy - 14, 4.8, 4.2), H, HS, 1, 1.5, 1.5);
+      c.save(); c.lineWidth = .9; c.strokeStyle = mix(H, '#ffffff', .15); c.beginPath(); c.moveTo(-4, hy - 16); q(c, -1, hy - 8, -2, hy + 2); c.moveTo(3, hy - 17); q(c, 5, hy - 8, 3, hy + 2); c.stroke(); c.restore();
+      hairShine(c, side, hy, H);
+    }
+    headwear(c, S, side, back, hy, hero); return;
+  }
+  // 귀·얼굴
+  const earsOut = !(longHair || hs === 'bob');
+  if (!side && earsOut) [-7.6, 7.6].forEach(ex => cel(c, cc => ell(cc, ex, hy - .2, 1.6, 2.6), skin, shd(skin), .8, .8, 1.2));
+  cel(c, face, skin, shd(skin, .2), 1.6, 1.8, 1.7);
+  if (side && earsOut) cel(c, cc => ell(cc, -1.4, hy + .4, 1.9, 2.8), skin, shd(skin), .8, .8, 1.2);
+  // 눈
   const eyes = side ? [4.6] : [-3.3, 3.3], ey = hy - .4;
   eyes.forEach(e => {
-    const ew = side ? 1.4 : 1.9;
-    c.beginPath(); ell(c, e, ey, ew, 1.9); c.fillStyle = '#fff'; c.fill();
-    c.beginPath(); ell(c, e + (side ? .5 : 0), ey + .2, ew * .7, 1.7); c.fillStyle = K.eye; c.fill();
-    c.beginPath(); ell(c, e + (side ? .5 : 0), ey + .4, .55, .9); c.fillStyle = INK; c.fill();
-    c.beginPath(); c.arc(e - .5 + (side ? .5 : 0), ey - .6, .5, 0, 7); c.fillStyle = '#fff'; c.fill();
-    c.beginPath(); c.moveTo(e - ew - .4, ey - 1); c.quadraticCurveTo(e, ey - 2.8, e + ew + .6, ey - 1.6); c.lineWidth = 1.3; c.strokeStyle = INK; c.stroke();
-    // 짙고 곧은 눈썹
-    c.beginPath(); c.moveTo(e - 2.3, ey - 3.6); c.lineTo(e + 2.4, ey - (e > 0 || side ? 4.3 : 3.9)); c.lineWidth = 1.2; c.strokeStyle = H; c.stroke();
+    if (S.old) { c.beginPath(); c.arc(e, ey + .6, 1.6, Math.PI * 1.15, Math.PI * 1.85); c.lineWidth = 1.1; c.strokeStyle = INK; c.stroke(); }
+    else {
+      const ew = side ? 1.4 : fem ? 2 : 1.9, eh = fem ? 2.2 : 1.9;
+      c.beginPath(); ell(c, e, ey, ew, eh); c.fillStyle = '#fff'; c.fill();
+      c.beginPath(); ell(c, e + (side ? .5 : 0), ey + .2, ew * .72, eh - .2); c.fillStyle = S.eye || '#4a3426'; c.fill();
+      c.beginPath(); ell(c, e + (side ? .5 : 0), ey + .4, .55, .9); c.fillStyle = INK; c.fill();
+      c.beginPath(); c.arc(e - .5 + (side ? .5 : 0), ey - .6, .5, 0, 7); c.fillStyle = '#fff'; c.fill();
+      c.beginPath(); c.moveTo(e - ew - .4, ey - 1); q(c, e, ey - (fem ? 3.2 : 2.8), e + ew + .6, ey - 1.6); c.lineWidth = fem ? 1.5 : 1.3; c.strokeStyle = INK; c.stroke();
+      if (fem) { const o = side || e > 0 ? 1 : -1; line(c, [e + o * (ew + .2), ey - 1.4, e + o * (ew + 1.4), ey - 2.4], .9, INK); }
+    }
+    c.beginPath(); c.moveTo(e - 2.3, ey - 3.6); c.lineTo(e + 2.4, ey - (fem ? 3.9 : e > 0 || side ? 4.3 : 3.9)); c.lineWidth = fem ? .9 : 1.2; c.strokeStyle = S.old ? '#c4c4c4' : shd(H, .1); c.stroke();
+    if (S.glasses) { c.beginPath(); c.arc(e, ey, 2.6, 0, 7); c.lineWidth = .9; c.strokeStyle = '#6a4a2a'; c.stroke(); }
+    if (fem && !side) { c.beginPath(); ell(c, e + (e < 0 ? -1 : 1), hy + 3.2, 1.4, .8); c.fillStyle = 'rgba(255,120,120,.35)'; c.fill(); }
   });
-  // 코·입
-  if (side) line(c, [7.6, hy + 1.6, 6.6, hy + 2.2], .9, shd(K.skin, .45));
-  else line(c, [.7, hy + 2, .1, hy + 3.6], .9, shd(K.skin, .4));
+  if (S.glasses && !side) line(c, [-.7, ey, .7, ey], .9, '#6a4a2a');
+  if (side) line(c, [7.6, hy + 1.6, 6.6, hy + 2.2], .9, shd(skin, .45));
+  else line(c, [.7, hy + 2, .1, hy + 3.6], .9, shd(skin, .4));
   const mx = side ? 5.6 : 0;
   if (act) { c.beginPath(); ell(c, mx, hy + 5.8, 1.2, .9); c.fillStyle = '#a8443a'; c.fill(); }
-  else { c.beginPath(); c.moveTo(mx - 1.6, hy + 5.5); c.quadraticCurveTo(mx, hy + 6.5, mx + 1.8, hy + 5.2); c.lineWidth = 1; c.strokeStyle = INK; c.stroke(); }
-  // 머리카락: 위로 살짝 세워 넘긴 볼륨 + 이마를 비스듬히 가르는 앞머리 (옆은 짧게, 귀가 보여요)
-  const q = (cc, a, b, x, y) => cc.quadraticCurveTo(a, b, x, y);
-  cel(c, cc => {
-    if (side) {
-      cc.moveTo(-1.6, hy - 4); q(cc, -4.2, hy - 1, -4.8, hy + 5); q(cc, -9.4, hy + 1.5, -9.2, hy - 7); q(cc, -8.8, hy - 15, -3, hy - 18.6); q(cc, 3, hy - 21, 7.6, hy - 18);
-      q(cc, 10.8, hy - 15, 9.9, hy - 9.6); q(cc, 9.6, hy - 6.4, 10.6, hy - 4.2); q(cc, 7.6, hy - 6, 6.4, hy - 7.8); q(cc, 4.6, hy - 9, 3, hy - 8.4); q(cc, 1, hy - 5, -.2, hy - 3); cc.closePath();
-    } else {
-      cc.moveTo(-7.6, hy - 2.5); q(cc, -9.9, hy - 10, -7.6, hy - 15.6); q(cc, -3, hy - 21.4, 3.6, hy - 20.8); q(cc, 9.8, hy - 19.2, 9.7, hy - 12); q(cc, 9.5, hy - 6, 7.8, hy - 3);
-      q(cc, 6.8, hy - 7.6, 4.2, hy - 9.4); q(cc, 2.8, hy - 5.8, -.4, hy - 3.6); q(cc, .8, hy - 7.6, -1.8, hy - 9.8); q(cc, -4.6, hy - 6.8, -7.6, hy - 6.2); cc.closePath();
-    }
-  }, H, HS, 1.6, 2.2, 1.6);
-  // 머릿결
-  c.save(); c.lineWidth = .9; c.strokeStyle = '#3c3448'; c.lineCap = 'round';
-  if (side) { c.beginPath(); c.moveTo(-6, hy - 12); c.quadraticCurveTo(-1, hy - 16, 5, hy - 15); c.moveTo(-6.6, hy - 4); c.quadraticCurveTo(-3, hy - 9, 3, hy - 10.5); c.stroke(); }
-  else { c.beginPath(); c.moveTo(-5.2, hy - 16.4); c.quadraticCurveTo(-1, hy - 15, 1.6, hy - 10.6); c.moveTo(2.4, hy - 19); c.quadraticCurveTo(6, hy - 16, 6, hy - 10.6); c.stroke(); }
-  c.restore();
-  wjShine(c, side, hy);
-  wjHat(c, L, side, back, hy);
-}
-function wjShine(c, side, hy){
-  c.save(); c.beginPath(); c.ellipse(side ? 0 : -1.5, hy - 15.5, 4.6, 1.1, -.25, 0, 7); c.fillStyle = 'rgba(160,180,235,.55)'; c.fill(); c.restore();
-}
-// 기본 밀짚모자는 멋진 머리가 보이게 안 그려요. 다른 모자는 그려요.
-function wjHat(c, L, side, back, hy){
-  const g = ensureGear();
-  if (g.hat === 'helmet') {
-    cel(c, cc => { cc.moveTo(-9, hy - 5); cc.quadraticCurveTo(-9.5, hy - 17.5, 0, hy - 17.5); cc.quadraticCurveTo(9.5, hy - 17.5, 9, hy - 5); cc.closePath(); }, '#ffd23a', '#c99a1a', 1.5, 1.5, 1.6);
-    if (!back) cel(c, cc => side ? ell(cc, 9, hy - 5.5, 5.5, 1.6) : ell(cc, 0, hy - 4.8, 9.5, 2), '#ffd23a', '#c99a1a', 1, 1, 1.4);
-  } else if (g.hat === 'wide' || g.hat === 'apple') {
-    cel(c, cc => ell(cc, side ? 1 : 0, hy - 8.5, side ? 14 : 15.5, 3.8), '#f6d36a', '#cfa640', 1.5, 1.5, 1.6);
-    cel(c, cc => { cc.moveTo(-8, hy - 8.5); cc.quadraticCurveTo(-8, hy - 19, 0, hy - 19); cc.quadraticCurveTo(8, hy - 19, 8, hy - 8.5); cc.closePath(); }, '#f6d36a', '#cfa640', 1.5, 1, 1.6);
-    cel(c, cc => rr(cc, -8, hy - 12, 16, 3, 1.2), '#1d1c22', '#000000', 0, 1, 1);
-    if (g.hat === 'apple') drawApple(c, 5, hy - 17, 3.6, '#ec3b30', '#a51d16');
+  else { c.beginPath(); c.moveTo(mx - 1.6, hy + 5.5); q(c, mx, hy + 6.5, mx + 1.8, hy + 5.2); c.lineWidth = 1; c.strokeStyle = fem ? '#b04a44' : INK; c.stroke(); }
+  if (S.beard) { c.beginPath(); ell(c, mx, hy + 6.6, side ? 2.2 : 3.2, 1.3); c.fillStyle = S.beard; c.fill(); c.lineWidth = .8; c.strokeStyle = INK; c.stroke(); }
+  // 앞머리
+  if (hs === 'bald') {
+    if (side) cel(c, cc => ell(cc, -4, hy - 3, 3.2, 3.6), H, HS, 1, 1, 1.3);
+    else [-7, 7].forEach(ex => cel(c, cc => ell(cc, ex, hy - 3, 2.2, 3.6), H, HS, 1, 1, 1.3));
+    headwear(c, S, side, back, hy, hero); return;
   }
+  cel(c, cc => frontHair(cc, hs, side, hy, q), H, HS, 1.6, 2.2, 1.6);
+  c.save(); c.lineWidth = .9; c.strokeStyle = mix(H, '#ffffff', .15); c.lineCap = 'round'; c.beginPath();
+  if (side) { c.moveTo(-6, hy - 12); q(c, -1, hy - 16, 5, hy - 15); }
+  else { c.moveTo(-5.2, hy - 16.4); q(c, -1, hy - 15, 1.6, hy - 10.6); c.moveTo(2.4, hy - 18.6); q(c, 6, hy - 16, 6, hy - 10.6); }
+  c.stroke(); c.restore();
+  hairShine(c, side, hy, H);
+  headwear(c, S, side, back, hy, hero);
 }
-// 대화창 얼굴
-function wjPortraitLook(){ const h = ensureGear().hat; return {...LOOKS.haru, hair:WJ.hair, hs:'swept', eye:WJ.eye, outfit:'jacket', o2:WJ.coat, top:WJ.tee, scarf:null, hat:h === 'wide' || h === 'apple' ? 'straw' : h === 'helmet' ? 'cap' : null, capCol:'#ffd23a'}; }
+function frontHair(cc, hs, side, hy, q){
+  if (side) {
+    // 옆모습: 뒤통수 + 앞으로 내려온 앞머리
+    const top = hs === 'swept' || hs === 'parted' || hs === 'spiky' ? 21 : 19;
+    cc.moveTo(-1.6, hy - 4); q(cc, -4.2, hy - 1, -4.8, hy + (hs === 'short' || hs === 'spiky' ? 3 : 5)); q(cc, -9.4, hy + 1.5, -9.2, hy - 7); q(cc, -8.8, hy - 15, -3, hy - top + 2.4); q(cc, 3, hy - top, 7.6, hy - 18);
+    if (hs === 'spiky') { cc.lineTo(11, hy - 15); cc.lineTo(8.8, hy - 12.5); cc.lineTo(10.6, hy - 8.4); cc.lineTo(7, hy - 9.6); cc.lineTo(5.6, hy - 5.6); cc.lineTo(3.6, hy - 9); }
+    else if (hs === 'short' || hs === 'bun') { q(cc, 9.4, hy - 15, 8.2, hy - 9.6); q(cc, 5, hy - 10, 3, hy - 8.4); }
+    else { q(cc, 10.8, hy - 15, 9.9, hy - 9.6); q(cc, 9.6, hy - 6.4, 10.6, hy - (hs === 'long' || hs === 'wave' || hs === 'bob' ? 1 : 4.2)); q(cc, 7.6, hy - 6, 6.4, hy - 7.8); q(cc, 4.6, hy - 9, 3, hy - 8.4); }
+    q(cc, 1, hy - 5, -.2, hy - 3); cc.closePath(); return;
+  }
+  if (hs === 'swept') {
+    cc.moveTo(-7.6, hy - 2.5); q(cc, -9.9, hy - 10, -7.6, hy - 15.6); q(cc, -3, hy - 21.4, 3.6, hy - 20.8); q(cc, 9.8, hy - 19.2, 9.7, hy - 12); q(cc, 9.5, hy - 6, 7.8, hy - 3);
+    q(cc, 6.8, hy - 7.6, 4.2, hy - 9.4); q(cc, 2.8, hy - 5.8, -.4, hy - 3.6); q(cc, .8, hy - 7.6, -1.8, hy - 9.8); q(cc, -4.6, hy - 6.8, -7.6, hy - 6.2);
+  } else if (hs === 'parted') {
+    cc.moveTo(-7.6, hy - 3); q(cc, -9.6, hy - 11, -7, hy - 16); q(cc, -2, hy - 20.6, 4, hy - 19.4); q(cc, 9.8, hy - 17.4, 9.2, hy - 10); q(cc, 8.8, hy - 6, 7.8, hy - 3);
+    q(cc, 6.6, hy - 10, .5, hy - 11.6); q(cc, -3.6, hy - 11.4, -4.6, hy - 8.2); q(cc, -6.4, hy - 6.4, -7.6, hy - 3);
+  } else if (hs === 'spiky') {
+    cc.moveTo(-7.6, hy - 3); cc.lineTo(-9.4, hy - 9); cc.lineTo(-10.6, hy - 13.6); cc.lineTo(-8, hy - 14.4); cc.lineTo(-8.8, hy - 18.6); cc.lineTo(-4.2, hy - 17.6); cc.lineTo(-2.6, hy - 21.4); cc.lineTo(1.4, hy - 18.4);
+    cc.lineTo(5, hy - 21); cc.lineTo(6.4, hy - 16.8); cc.lineTo(10.4, hy - 16.6); cc.lineTo(8.8, hy - 12.6); cc.lineTo(10.2, hy - 8.6); cc.lineTo(7.8, hy - 4.4);
+    cc.lineTo(6, hy - 8.8); cc.lineTo(4, hy - 4.4); cc.lineTo(2.4, hy - 9); cc.lineTo(0, hy - 4.6); cc.lineTo(-1.6, hy - 9.2); cc.lineTo(-4, hy - 5); cc.lineTo(-5.4, hy - 8.6);
+  } else if (hs === 'wavy') {
+    cc.moveTo(-8.2, hy + 2); q(cc, -11.6, hy - 2, -9.6, hy - 8); q(cc, -11.4, hy - 15, -6, hy - 17.4); q(cc, -2, hy - 21.6, 3, hy - 19.6); q(cc, 9, hy - 20, 9.8, hy - 13); q(cc, 12, hy - 7, 9.6, hy - 2); q(cc, 10.6, hy + 2, 8.2, hy + 3);
+    q(cc, 8.2, hy - 4, 5.4, hy - 6); q(cc, 4.6, hy - 10.6, .6, hy - 8.6); q(cc, -2.6, hy - 11.4, -5, hy - 7); q(cc, -7.8, hy - 6, -8.2, hy + 2);
+  } else if (hs === 'short') {
+    cc.moveTo(-7.6, hy - 3); q(cc, -9, hy - 12, -6.4, hy - 16); q(cc, 0, hy - 19.4, 6.4, hy - 16); q(cc, 9, hy - 12, 7.6, hy - 3); q(cc, 6.4, hy - 8.6, 2, hy - 8.2); q(cc, -3, hy - 9.4, -7.6, hy - 3);
+  } else if (hs === 'long' || hs === 'wave') {
+    // 가운데 가르마, 얼굴 옆으로 흘러내리는 머리
+    cc.moveTo(-8.6, hy + 9); q(cc, -10.6, hy - 6, -7, hy - 15); q(cc, -1, hy - 20.4, 6, hy - 16.6); q(cc, 10.6, hy - 11, 8.6, hy + 9); cc.lineTo(6.8, hy + 9);
+    q(cc, 7.6, hy - 3, 3.6, hy - 8.4); q(cc, 1.6, hy - 5, -1, hy - 9.6); q(cc, -6.4, hy - 6, -6.8, hy + 9);
+  } else if (hs === 'bob') {
+    cc.moveTo(-9, hy + 6); q(cc, -11, hy - 10, 0, hy - 17.4); q(cc, 11, hy - 10, 9, hy + 6); cc.lineTo(7.2, hy + 6); q(cc, 7.6, hy - 3, 5.6, hy - 6.2); cc.lineTo(-5.6, hy - 6.2); q(cc, -7.6, hy - 3, -7.2, hy + 6);
+  } else if (hs === 'pony' || hs === 'bun') {
+    cc.moveTo(-7.6, hy - 2); q(cc, -9.4, hy - 12, -6.4, hy - 16); q(cc, 0, hy - 19.6, 6.4, hy - 16); q(cc, 9.4, hy - 12, 7.6, hy - 2); q(cc, 7, hy - 8, 3, hy - 9.4); q(cc, 1.4, hy - 7, -2.4, hy - 6.4); q(cc, -6, hy - 7, -7.6, hy - 2);
+  }
+  cc.closePath();
+}
+function hairShine(c, side, hy, H){
+  c.save(); c.beginPath(); c.ellipse(side ? 0 : -1.5, hy - 15.5, 4.6, 1.1, -.25, 0, 7); c.fillStyle = mix(H, '#c8d4ff', .45); c.globalAlpha = .6; c.fill(); c.restore();
+}
+// 모자: 주인공은 장비에 따라(기본 밀짚모자는 머리가 보이게 안 그려요), 주민은 모습대로
+function headwear(c, S, side, back, hy, hero){
+  let hat = S.hat, capCol = S.capCol || '#e8423a', wide = S.wide, apple = false;
+  if (hero) { const h = ensureGear().hat; hat = h === 'helmet' ? 'cap' : h === 'wide' || h === 'apple' ? 'straw' : null; capCol = '#ffd23a'; wide = 1; apple = h === 'apple'; }
+  if (hat === 'cap') {
+    cel(c, cc => { cc.moveTo(-9, hy - 5); cc.quadraticCurveTo(-9.5, hy - 17.5, 0, hy - 17.5); cc.quadraticCurveTo(9.5, hy - 17.5, 9, hy - 5); cc.closePath(); }, capCol, shd(capCol, .35), 1.5, 1.5, 1.6);
+    if (!back) cel(c, cc => side ? ell(cc, 9, hy - 5.5, 5.5, 1.6) : ell(cc, 0, hy - 4.8, 9.5, 2), capCol, shd(capCol, .35), 1, 1, 1.4);
+  } else if (hat === 'straw') {
+    const k = wide ? 1.15 : 1;
+    cel(c, cc => ell(cc, side ? 1 : 0, hy - 8.5, (side ? 13 : 14.5) * k, 3.6 * k), '#f6d36a', '#cfa640', 1.5, 1.5, 1.6);
+    cel(c, cc => { cc.moveTo(-8, hy - 8.5); cc.quadraticCurveTo(-8, hy - 19, 0, hy - 19); cc.quadraticCurveTo(8, hy - 19, 8, hy - 8.5); cc.closePath(); }, '#f6d36a', '#cfa640', 1.5, 1, 1.6);
+    cel(c, cc => rr(cc, -8, hy - 12, 16, 3, 1.2), hero ? '#1d1c22' : '#e8423a', hero ? '#000000' : '#a82a22', 0, 1, 1);
+    if (apple) drawApple(c, 5, hy - 17, 3.6, '#ec3b30', '#a51d16');
+  } else if (hat === 'band') cel(c, cc => rr(cc, -8.6, hy - 12, 17.2, 3.4, 1.4), '#ffffff', '#cfd8e0', 1, 1, 1.3);
+}
+// 대화창 얼굴 (주인공)
+function wjPortraitLook(){
+  const S = heroSpec(), h = ensureGear().hat;
+  const hsP = {swept:'swept', parted:'swept', spiky:'spiky', wavy:'short', short:'short', long:'long', wave:'long', pony:'pony', bob:'bob', bun:'bun'}[S.hs];
+  return {skin:S.skin, hair:S.hair, hs:hsP, eye:S.eye, girl:S.fem, outfit:'jacket', o2:S.oc, top:S.top, hat:h === 'wide' || h === 'apple' ? 'straw' : h === 'helmet' ? 'cap' : null, capCol:'#ffd23a'};
+}
 
 // ===== 과수원 세상 =====
 const SPOT = {
@@ -1924,7 +2072,7 @@ function render(ctx, dt, T){
     ctx.beginPath(); ell(ctx, 0, 0, 36 + Math.sin(T * 6) * 3, 13); ctx.lineWidth = 4; ctx.strokeStyle = '#ffd25e'; ctx.stroke();
     ctx.restore();
     if (lab) {
-      const bx = P.x, by = P.y - 108;
+      const bx = P.x, by = P.y - 148;
       ctx.font = '22px Jua'; const tw = ctx.measureText(lab).width + 56;
       ctx.beginPath(); rr(ctx, bx - tw / 2, by - 22, tw, 40, 14); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
       ctx.beginPath(); rr(ctx, bx - tw / 2 + 6, by - 16, 28, 28, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
@@ -2053,7 +2201,7 @@ const NPC_DATA = [
    lines:['할미가 사과 무늬 목도리 떠 줄까?', '서리 내리는 밤엔 과수원 걱정에 잠이 안 와.', '꽃 필 때 꿀벌이 많아야 사과가 잘 열린단다.']},
   {name:'한도윤', role:'초등학생', home:[430, 2200], r:[140, 50], sp:95,
    look:{skin:'#ffe0c4', hair:'#2a2020', hs:'spiky', eye:'#4a2a1a', top:'#4aa8e8', outfit:'tee', pants:'#3a3a5a', shoe:'#e8423a', hat:'cap', capCol:'#ffcf3d', kid:1},
-   lines:['우주 농부님! 사과 하나만 줘! ...농담이야 히히.', '나 커서 사과 박사 될 거야. 세상엔 사과 품종이 7천 가지가 넘는대!', '어제 고라니 봤어! 엄청 빨랐어.']},
+   lines:['{N} 농부님! 사과 하나만 줘! ...농담이야 히히.', '나 커서 사과 박사 될 거야. 세상엔 사과 품종이 7천 가지가 넘는대!', '어제 고라니 봤어! 엄청 빨랐어.']},
   {name:'한소이', role:'도윤이 동생', home:[470, 2210], r:[110, 40], sp:75,
    look:{skin:'#ffe4cc', hair:'#3a2420', hs:'pony', eye:'#6a3a2a', top:'#ffd23a', outfit:'dress', o2:'#ff9ec4', pants:'#ffe4cc', shoe:'#ff6b8a', kid:1, girl:1},
    lines:['오빠가 또 뛰어갔어... 같이 잡아 줄래?', '사과꽃은 하얗고 살짝 분홍색이야. 예쁘지?', '나는 빨간 사과가 제일 좋아!']},
@@ -2089,7 +2237,7 @@ const NPC_DATA = [
    lines:['노을 질 때 과수원이 제일 예뻐요. 그림으로 남기는 중이에요.', '빨강, 노랑, 초록... 사과 하나에도 색이 여러 개예요.', '다 그리면 과수원에 걸어 드릴게요.']},
   {name:'남궁빛나', role:'마을 유튜버', home:[470, 2300], r:[150, 40], sp:50,
    look:{skin:'#ffe4d0', hair:'#d9a03a', hs:'long', eye:'#6a4a2a', top:'#b98cff', outfit:'jacket', o2:'#ff6b8a', pants:'#3a3a5a', shoe:'#ffffff', girl:1},
-   lines:['안녕하세요, 빛나TV! 오늘은 사과골 농부님을 만나러 왔어요!', '구독자들이 우주 과수원 사과 맛을 궁금해해요!', '사과 따는 날 영상 찍어도 돼요?']}
+   lines:['안녕하세요, 빛나TV! 오늘은 사과골 농부님을 만나러 왔어요!', '구독자들이 {N}네 과수원 사과 맛을 궁금해해요!', '사과 따는 날 영상 찍어도 돼요?']}
 ];
 const NPCS = NPC_DATA.map((d, i) => ({...d, i, hx:d.home[0], hy:d.home[1], x:d.home[0], y:d.home[1], tx:d.home[0], ty:d.home[1], dir:0, walk:0, wait:rnd(0, 3), li:0}));
 function updateVillagers(dt){
@@ -2111,7 +2259,7 @@ function updateVillagers(dt){
   }
 }
 function talkNpc(n){
-  const line = n.lines[n.li++ % n.lines.length];
+  const line = n.lines[n.li++ % n.lines.length].replace(/\{N\}/g, HN());
   if (n.shop) {
     talk(n, esc(line) + '<br>장비 사고 강화하는 건 우리 가게에서!', `<button class="btn" id="tOk">다음에요</button><button class="btn pri" id="gearGo">🎒 장비 보기</button>`);
     $('#gearGo').onclick = () => { UI.close(); setTimeout(uiGear, 160); };
@@ -2203,7 +2351,7 @@ function drawVillageTags(ctx){
   for (const n of NPCS) {
     const d = Math.hypot(n.x - P.x, n.y - P.y); if (d > 300) continue;
     ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
-    const tw = ctx.measureText(n.name).width + 18, ty = n.y - (n.look.kid ? 82 : 112);
+    const tw = ctx.measureText(n.name).width + 18, ty = n.y - (n.look.kid ? 104 : n.look.girl ? 132 : 138);
     ctx.beginPath(); rr(ctx, n.x - tw / 2, ty - 18, tw, 25, 10); ctx.fillStyle = 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.fillText(n.name, n.x, ty);
   }
@@ -2582,9 +2730,9 @@ function drawNongmak(c, x, y){
   cel(c, cc => rr(cc, 34, -56, 34, 26, 3), '#cfeeff', '#9ccbe8', 2, 2, 2.2); line(c, [51, -56, 51, -30], 1.8, INK);
   // 굴뚝 + 간판
   cel(c, cc => rr(cc, 50, -128, 16, 30, 2), '#a8a092', '#7a7266', 2, 2, 2.2);
-  c.font = '16px Jua'; const tw = c.measureText('🛖 우주네 농막').width + 18;
+  c.font = '16px Jua'; const tw = c.measureText(`🛖 ${HN()}네 농막`).width + 18;
   cel(c, cc => rr(cc, -tw / 2, -100, tw, 24, 7), '#fffaf1', '#e8dcc4', 2, 2, 2.2);
-  c.fillStyle = INK; c.textAlign = 'center'; c.fillText('🛖 우주네 농막', 0, -82);
+  c.fillStyle = INK; c.textAlign = 'center'; c.fillText(`🛖 ${HN()}네 농막`, 0, -82);
   c.restore();
 }
 function huntEntities(ctx, add, vis, T){
@@ -2710,12 +2858,12 @@ function sleepUntilWork(){
 function heroFaint(){
   P.hp = 0;
   for (const m of MONS) if (!m.raid) { m.eng = false; m.st = 'wander'; m.tx = m.hx; m.ty = m.hy; }
-  fadeScreen('😵 우주가 지쳐서 쓰러졌어요…', () => {
+  fadeScreen(`😵 ${jo(HN(), '이', '가')} 지쳐서 쓰러졌어요…`, () => {
     toMorning(); P.hp = P.max; P.x = SPOT.nongmak.x; P.y = SPOT.nongmak.y + 50; P.tgt = null; P.kb = null; cam.x = P.x; cam.y = P.y; todoSig = ''; updateHUD(true);
   }, () => toast('🛖 농막에서 푹 쉬고 일어났어요. 잃어버린 건 없어요! 막기(F)를 써 보세요.'));
 }
 function uiNongmak(){
-  UI.open({ic:'🛖', title:'우주네 농막', w:960, render(o){
+  UI.open({ic:'🛖', title:HN() + '네 농막', w:960, render(o){
     o.body.innerHTML = `<canvas id="roomCv" width="880" height="330" style="width:100%;border:3px solid var(--ink);border-radius:18px;display:block"></canvas>
       <p>푹 자고 일어나면 <b>다음 할 일이 생기는 날 아침</b>까지 시간이 가요. 체력도 가득 차요. ${hasWork() ? '지금은 할 일이 남아 있어서 내일 아침에 깨요.' : ''}</p>`;
     drawRoom($('#roomCv'));
@@ -2751,7 +2899,7 @@ function drawRoom(cv){
   c.font = '18px Jua'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(`${G.year}년차`, 395, 59);
   c.fillStyle = INK; c.font = '30px Jua'; c.fillText(`${G.week}주`, 395, 108);
   // 우주
-  c.save(); c.translate(520, 300); c.scale(2.4, 2.4); drawPerson(c, 0, 0, 'haru', 0, 0, 0); c.restore();
+  c.save(); c.translate(520, 305); c.scale(2.1, 2.1); drawPerson(c, 0, 0, 'haru', 0, 0, 0); c.restore();
 }
 
 // ===== 화면 위 카드·창 =====
@@ -2927,7 +3075,7 @@ function chooseSprayMode(k){
   if (G.money < sprayCost()) { toast('돈이 모자라요.', 'bad'); return; }
   UI.open({ic:'🚜', title:'어떻게 뿌릴까요?', w:820, render(o){
     o.body.innerHTML = `<div class="grid g2">
-      <button class="opt" id="drv"><span class="t">🚜 직접 운전하기</span><span>우주가 방제기를 몰고 과수원 길을 위로 달려요(30초). 바위·나뭇가지는 피하고 벌레 떼는 지나가며 잡아요. 점수가 높을수록 약 효과가 길고(최대 10일) 사과 품질과 우주 경험치가 올라요.</span></button>
+      <button class="opt" id="drv"><span class="t">🚜 직접 운전하기</span><span>${jo(HN(), '이', '가')} 방제기를 몰고 과수원 길을 위로 달려요(30초). 바위·나뭇가지는 피하고 벌레 떼는 지나가며 잡아요. 점수가 높을수록 약 효과가 길고(최대 10일) 사과 품질과 우주 경험치가 올라요.</span></button>
       <button class="opt" id="aut"><span class="t">⚡ 자동으로 뿌리기</span><span>3초면 끝나요. 7일 동안 지켜 줘요. 품질 보너스는 없어요.</span></button></div>`;
     $('#drv').onclick = () => { UI.close(); startDrive(k); };
     $('#aut').onclick = () => { UI.close(); autoSpray(k); };
@@ -3137,7 +3285,7 @@ function uiSave(){
     $('#newG').onclick = () => {
       o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">정말 처음부터 할까요? 지금 진행은 사라져요.</span><button class="btn" id="ngNo">아니요</button><button class="btn pri" id="ngYes">처음부터</button>`;
       $('#ngNo').onclick = () => o.render(o);
-      $('#ngYes').onclick = () => { newGame(); afterLoad(); UI.close(); intro(); };
+      $('#ngYes').onclick = () => { newGame(); afterLoad(); UI.close(); setTimeout(() => uiHeroPick(intro), 160); };
     };
   }});
 }
@@ -3145,7 +3293,7 @@ function uiSave(){
 // ----- 마을 사람 -----
 function talk(who, html, foot){
   const npc = typeof who !== 'string';
-  const name = npc ? who.name : {grandma:'김순자 할머니', chief:'고만수 이장님', haru:'우주', worker:'인부 아저씨'}[who];
+  const name = npc ? who.name : {grandma:'김순자 할머니', chief:'고만수 이장님', haru:HN(), worker:'인부 아저씨'}[who];
   return UI.open({ic:'💬', title:name, w:900, render(o){
     o.body.innerHTML = `<div class="talk"><canvas width="200" height="200" id="ptr"></canvas><div class="bubble"><div class="who">${name}${npc ? ` <small style="opacity:.6">· ${who.role}</small>` : ''}</div>${html}</div></div><div id="talkX"></div>`;
     drawPortrait($('#ptr'), npc ? who.look : who);
@@ -3155,15 +3303,15 @@ function talk(who, html, foot){
 }
 function weekId(){ return absDay() - G.day; }
 function talkGrandma(){
-  if (G.quizDay === weekId()) { talk('grandma', `아이고 우리 우주 왔니? 이번 주 퀴즈는 벌써 풀었지.<br>💡 ${esc(pick(FACTS))}`); return; }
+  if (G.quizDay === weekId()) { talk('grandma', `아이고 우리 ${HN()} 왔니? 이번 주 퀴즈는 벌써 풀었지.<br>💡 ${esc(pick(FACTS))}`); return; }
   const q = pick(QUIZ);
-  const o = talk('grandma', `우주야, 할미가 사과 문제 하나 낼게. 맞히면 용돈 줄게!<br><b style="font-family:var(--display);font-weight:400;font-size:24px">Q. ${esc(q.q)}</b>`, '');
+  const o = talk('grandma', `${jo(HN(), '아', '야')}, 할미가 사과 문제 하나 낼게. 맞히면 용돈 줄게!<br><b style="font-family:var(--display);font-weight:400;font-size:24px">Q. ${esc(q.q)}</b>`, '');
   $('#talkX').innerHTML = `<div class="quiz">${q.a.map((a, i) => `<button class="btn" data-a="${i}">${'①②③'[i]} ${esc(a)}</button>`).join('')}</div>`;
   const answer = i => {
     G.quizDay = weekId();
     const right = i === q.c;
     if (right) { G.money += 50000; G.rep += 1; G.stats.quiz++; if (G.stats.quiz >= 5) unlock('quiz5'); }
-    o.body.querySelector('.bubble').innerHTML = `<div class="who">김순자 할머니</div>${right ? '딩동댕! 역시 우리 우주야. 용돈 5만원 받으렴. (평판 +1)' : `아깝다! 정답은 <b>${esc(q.a[q.c])}</b>이란다.`}`;
+    o.body.querySelector('.bubble').innerHTML = `<div class="who">김순자 할머니</div>${right ? `딩동댕! 역시 우리 ${jo(HN(), '이야', '야')}. 용돈 5만원 받으렴. (평판 +1)` : `아깝다! 정답은 <b>${esc(q.a[q.c])}</b>이란다.`}`;
     $('#talkX').innerHTML = '';
     o.footEl.innerHTML = `<button class="btn pri" id="tOk">고마워요</button>`; $('#tOk').onclick = () => UI.close();
     if (AUTO) o.timer = setTimeout(() => UI.modal === o && UI.close(), POPMS / 2);
@@ -3184,7 +3332,7 @@ function talkChief(){
   }
   if (totalStock() > 0 || G.year >= 2) {
     G.errand = {...pick(ERRANDS)};
-    const o = talk('chief', `마침 잘 왔네, 우주. ${esc(G.errand.txt)} 사례는 ${won(G.errand.pay)} 하겠네.`);
+    const o = talk('chief', `마침 잘 왔네, ${HN()}. ${esc(G.errand.txt)} 사례는 ${won(G.errand.pay)} 하겠네.`);
     if (AUTO) o.timer = setTimeout(() => UI.modal === o && UI.close(), POPMS / 2);
     return;
   }
@@ -3194,7 +3342,7 @@ function talkChief(){
     '사과는 심은 이듬해부터 열린다네. 첫해는 나무를 잘 키우는 게 일이지.',
     '꽃솎기, 열매솎기를 다 해야 특 등급 사과가 나온다네.'
   ];
-  const o = talk('chief', `어서 오게, 우주. ${esc(pick(tips))}`);
+  const o = talk('chief', `어서 오게, ${HN()}. ${esc(pick(tips))}`);
   if (AUTO) o.timer = setTimeout(() => UI.modal === o && UI.close(), POPMS / 2);
 }
 
@@ -3214,7 +3362,7 @@ function contestUI(){
 }
 
 function intro(){
-  UI.push(() => talk('haru', `안녕! 나는 <b>우주</b>야. 할아버지가 물려주신 300평 땅에 사과 과수원을 만들 거야.<br>
+  UI.push(() => talk('haru', `안녕! 나는 <b>${HN()}</b>${jo(HN(), '이야', '야').slice(HN().length)}. 할아버지가 물려주신 300평 땅에 사과 과수원을 만들 거야.<br>
     가진 돈은 ${won(START_MONEY)}. 지금은 봄이라 묘목을 심을 때야! 아래 <b>🌱 묘목</b>에서 품종을 고르고, 빈 자리에서 <b>F</b>를 눌러 심어 보자.<br>
     오른쪽 <b>할 일</b>을 누르면 그곳으로 걸어가. 시간은 저절로 흘러가니까 바쁘면 ⏸로 멈춰도 돼.`));
 }
@@ -3279,7 +3427,7 @@ function gainXp(n){
   ensureGear(); G.fm.xp += Math.round(n);
   let up = 0;
   while (G.fm.xp >= xpNeed(G.fm.lv)) { G.fm.xp -= xpNeed(G.fm.lv); G.fm.lv++; up++; }
-  if (up) { toast(`⭐ 우주 레벨 ${G.fm.lv}! 힘·체력·솜씨가 늘었어요.`, 'good'); floats.push({x:P.x, y:P.y - 130, s:`LEVEL UP!`, t:1.6, c:'#ff6b57'}); }
+  if (up) { toast(`⭐ ${HN()} 레벨 ${G.fm.lv}! 힘·체력·솜씨가 늘었어요.`, 'good'); floats.push({x:P.x, y:P.y - 130, s:`LEVEL UP!`, t:1.6, c:'#ff6b57'}); }
 }
 // 장비에 따라 우주 모습이 바뀜
 function haruLook(){
@@ -3305,7 +3453,7 @@ function drawWeapon(c, id, ang){
 
 function uiGear(){
   ensureGear();
-  UI.open({ic:'🎒', title:'우주의 장비', w:1180, render(o){
+  UI.open({ic:'🎒', title:HN() + '의 장비', w:1180, render(o){
     const f = farmer(), g = G.gear;
     const card = slot => {
       const S = GEAR[slot];
@@ -3320,9 +3468,9 @@ function uiGear(){
           return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}"><div><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span>` : ''}<br><span class="gd">${esc(it.desc)}</span></div>${btn}</div>`;
         }).join('')}</div>`;
     };
-    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 우주 Lv.${f.lv}</b><span class="xpb"><i style="width:${f.xp / f.need * 100}%"></i></span><span>${f.xp}/${f.need}</span>
+    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${f.lv}</b><span class="xpb"><i style="width:${f.xp / f.need * 100}%"></i></span><span>${f.xp}/${f.need}</span>
       <span>💪 힘 ${f.atk}</span><span>🛡️ 방어 ${f.def}</span><span>❤️ 체력 ${f.hp}</span><span>👟 빠르기 +${f.spd}%</span><span>✋ 솜씨 +${f.skill}</span><span>🛡️ 막기 ${blockPct()}%</span><span>💎 강화석 ${g.stones || 0}</span></div>
-      <p class="gnote">평판(⭐ ${G.rep})이 오르면 더 좋은 장비를 살 수 있고, 강화도 할 수 있어요. 우주가 강해지면 더 센 산짐승이 오지만 이기면 장비·강화석을 떨어뜨려요. 솜씨는 사과 품질을 올리고, 힘·방어·체력은 산짐승을 쫓을 때 써요. 경험치는 일하기·방제 운전·산짐승 쫓기·사냥터에서 얻어요.</p>
+      <p class="gnote">평판(⭐ ${G.rep})이 오르면 더 좋은 장비를 살 수 있고, 강화도 할 수 있어요. ${jo(HN(), '이', '가')} 강해지면 더 센 산짐승이 오지만 이기면 장비·강화석을 떨어뜨려요. 솜씨는 사과 품질을 올리고, 힘·방어·체력은 산짐승을 쫓을 때 써요. 경험치는 일하기·방제 운전·산짐승 쫓기·사냥터에서 얻어요.</p>
       <div class="ggrid">${SLOTS.map(card).join('')}</div>
       <div class="gnote" style="margin-top:12px"><b>🧺 가방</b> ${LOOT_KEYS.filter(k => G.bag[k] > 0).map(k => `${LOOT[k].ic} ${LOOT[k].name} ×${G.bag[k]}`).join(' · ') || '비어 있어요. 사냥터에서 버섯·산삼을 찾아봐요!'}${bagCount() ? ' → 금비상회 황금비 사장님한테 팔아요.' : ''}</div>`;
     o.body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.buy.split('|'), it = gearItem(s, id); if (G.money < it.price || G.rep < it.rep) return; G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id; toast(`🎒 ${jo(it.name, '을', '를')} 샀어요!`, 'good'); updateHUD(true); o.render(o); });
@@ -3341,7 +3489,7 @@ function uiGear(){
 // ----- 인벤토리 (I 키) : 전리품·장비 한눈에 -----
 function uiInv(){
   ensureGear();
-  UI.open({ic:'🎒', title:'우주의 가방', w:1180, inv:1, render(o){
+  UI.open({ic:'🎒', title:HN() + '의 가방', w:1180, inv:1, render(o){
     const g = G.gear, have = LOOT_KEYS.filter(k => G.bag[k] > 0);
     const total = have.reduce((a, k) => a + lootPrice(k) * G.bag[k], 0);
     const loot = have.length ? have.map(k => { const L = LOOT[k]; return `<div class="ivc" title="${esc(L.desc)}"><i>${L.ic}</i><b>${L.name}</b><span class="ivn">×${G.bag[k]}</span><small>오늘 ${won(lootPrice(k))}</small></div>`; }).join('')
@@ -3350,13 +3498,37 @@ function uiInv(){
       const lv = g.own[it.id] || 0, on = g[s] === it.id;
       return `<div class="ivc ${on ? 'on' : ''}" data-eq="${s}|${it.id}"><i>${GEAR[s].ic}</i><b>${it.name}${lv ? ` +${lv}` : ''}</b><small>${GEAR[s].unit} ${itemStat(s, it.id, lv)}</small>${on ? '<span class="ivt">끼는 중</span>' : '<span class="ivt off">눌러서 끼기</span>'}</div>`;
     })).join('');
-    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 우주 Lv.${farmer().lv}</b><span>💰 ${won(G.money)}</span><span>💎 강화석 ${g.stones || 0}개</span><span>🧺 전리품 ${bagCount()}개 · 팔면 약 ${won(total)}</span></div>
+    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${farmer().lv}</b><span>💰 ${won(G.money)}</span><span>💎 강화석 ${g.stones || 0}개</span><span>🧺 전리품 ${bagCount()}개 · 팔면 약 ${won(total)}</span></div>
       <h3 class="ivh">🧺 전리품</h3><div class="ivg">${loot}</div>
       <h3 class="ivh">🛠️ 장비 <small>눌러서 바꿔 끼기</small></h3><div class="ivg">${gear}</div>`;
     o.body.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.eq.split('|'); if (G.gear[s] !== id) { G.gear[s] = id; toast(`🎒 ${jo(gearItem(s, id).name, '을', '를')} 꼈어요!`, 'good'); } o.render(o); });
     o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">I 키로 열고 닫아요 · 전리품은 금비상회에서 팔아요</span><button class="btn" id="ivGear">🔨 장비 사기·강화</button><button class="btn pri" id="ivOk">닫기</button>`;
     $('#ivGear').onclick = () => { UI.close(); setTimeout(uiGear, 160); };
     $('#ivOk').onclick = () => UI.close();
+  }});
+}
+
+// ===== 시작할 때 주인공 고르기 + 이름 정하기 =====
+function uiHeroPick(done){
+  let sel = (G.hero && G.hero.look) || 'm1', name = (G.hero && G.hero.name) || '';
+  UI.open({ic:'🧑‍🌾', title:'누구랑 과수원을 가꿀까요?', w:1500, noX:true, render(o){
+    const card = h => `<button class="hpk ${h.id === sel ? 'on' : ''}" data-h="${h.id}"><canvas width="120" height="200"></canvas><span>${h.label}</span></button>`;
+    o.body.innerHTML = `<div class="hpg"><div class="hpc"><h3>🙋‍♂️ 남자</h3><div class="hpr">${HEROES.filter(h => !h.fem).map(card).join('')}</div></div>
+      <div class="hpc"><h3>🙋‍♀️ 여자</h3><div class="hpr">${HEROES.filter(h => h.fem).map(card).join('')}</div></div></div>
+      <div class="hpn"><label for="hpName">주인공 이름</label><input id="hpName" maxlength="8" placeholder="우주" value="${esc(name)}" autocomplete="off"><small>비워 두면 '우주'예요. 8글자까지.</small></div>`;
+    o.body.querySelectorAll('.hpk').forEach(b => {
+      const h = HEROES.find(x => x.id === b.dataset.h), cv = b.querySelector('canvas'), c = cv.getContext('2d');
+      c.save(); c.translate(60, 190); c.scale(1.45, 1.45); drawHuman(c, 0, 0, h, 0, 0, 0, false); c.restore();
+      b.onclick = () => { sel = h.id; name = $('#hpName').value; o.render(o); };
+    });
+    const inp = $('#hpName');
+    inp.oninput = () => { name = inp.value; };
+    inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') $('#hpGo').click(); };
+    o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">고른 모습과 이름은 게임 내내 써요.</span><button class="btn pri" id="hpGo">이 친구로 시작!</button>`;
+    $('#hpGo').onclick = () => {
+      const n = ($('#hpName').value || '').replace(/[<>&"'`]/g, '').trim().slice(0, 8) || '우주';
+      G.hero = {look:sel, name:n}; saveLocal(); UI.close(); if (done) done();
+    };
   }});
 }
 
@@ -3507,7 +3679,7 @@ function drawDrive(){
     c.fillStyle = {S:'#ff6b57', A:'#ffb13b', B:'#5cc46c', C:'#9b8e86'}[r.g]; c.font = '190px Jua'; c.fillText(r.g, 960, 510);
     c.fillStyle = INK; c.font = '36px Jua'; c.fillText(`${r.sc}점 · 벌레 ${M.bugs}떼 · 부딪힘 ${M.hits}번`, 960, 585);
     c.font = '28px Jua'; c.fillText(`약 효과 ${({S:10, A:8, B:7, C:5})[r.g]}일 · 사과 품질 +${M.qb} · 경험치 +${M.xp}`, 960, 640);
-    c.font = '22px Jua'; c.fillStyle = '#8a7a70'; c.fillText('점수가 높을수록 사과 품질이 오르고 우주가 강해져요', 960, 690);
+    c.font = '22px Jua'; c.fillStyle = '#8a7a70'; c.fillText(`점수가 높을수록 사과 품질이 오르고 ${jo(HN(), '이', '가')} 강해져요`, 960, 690);
   }
   c.restore();
 }
@@ -3874,7 +4046,7 @@ function boot(){
   if (s) { try { deserialize(s); loaded = true; } catch (e) {} }
   if (!loaded) newGame();
   afterLoad();
-  if (!loaded) intro(); else toast(`🍎 ${G.year}년차 ${G.week}주차에서 이어 해요.`);
+  if (!loaded) uiHeroPick(intro); else toast(`🍎 ${G.year}년차 ${G.week}주차에서 이어 해요.`);
   setInterval(saveLocal, 30000);
   let last = performance.now();
   const frame = now => {
