@@ -267,7 +267,10 @@ const SPRAY_UNIT = 60000;           // 300평당 1회
 const RISK_HIGH = 65;
 const WORKER_PAY = 130000;
 const DAY_SEC = 10;                 // 1배속 하루 10초
-const WORLD_W = 8600, WORLD_H = 9800;   // 2026-10-11 맵 넓이 약 10배 (동쪽·남쪽은 사냥터)
+// 2026-10-12 과수원이 맵 한가운데. 집·마을 둘레(HOME) 바깥은 사방이 사냥터
+const WX0 = -2700, WY0 = -3600, WX1 = 5900, WY1 = 6200;
+const WORLD_W = WX1 - WX0, WORLD_H = WY1 - WY0;
+const HOME = {x0:0, y0:440, x1:2880, y1:4420};
 const worldH = rows => OY + rows * ROW_H + 520;
 
 const VARS = {
@@ -946,6 +949,7 @@ const LOOKS = {
 const shd = (col, t = .28) => mix(col, '#3a1a10', t);
 // dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
 function drawPerson(c, x, y, who, dir, walk, act){
+  if (who === 'haru') return drawWooju(c, x, y, dir, walk, act);
   const L = who === 'haru' ? haruLook() : typeof who === 'string' ? LOOKS[who] : who;
   const kid = L.kid, sc = kid ? .72 : 1;
   c.save(); c.translate(x, y);
@@ -1184,7 +1188,7 @@ function drawSS(c, x, y, ang){
 // ----- 얼굴 초상화 (대화창용, 오리지널 캐릭터) -----
 function drawPortrait(cv, who){
   const c = cv.getContext('2d'), w = cv.width;
-  const L = typeof who === 'string' ? LOOKS[who] : who;
+  const L = who === 'haru' ? wjPortraitLook() : typeof who === 'string' ? LOOKS[who] : who;
   c.clearRect(0, 0, w, w); c.save(); c.scale(w / 240, w / 240);
   const P = {skin:L.skin, hair:L.hair, eye:L.eye || '#5a3a2a', shirt:(L.outfit === 'jacket' || L.outfit === 'vest' || L.outfit === 'dress' || L.outfit === 'overall') ? L.o2 : L.top,
     inner:L.top, old:L.old, glasses:L.glasses, hs:L.hs, cap:L.hat === 'cap', capCol:L.capCol, band:L.hat === 'band', straw:L.hat === 'straw', girl:L.girl, kid:L.kid, beard:L.beard, scarf:L.scarf};
@@ -1203,7 +1207,7 @@ function drawPortrait(cv, who){
   if (P.scarf) cel(c, cc => rr(cc, 84, 170, 72, 22, 10), P.scarf, mix(P.scarf, '#000', .3), 3, 4, 3.5);
   // 뒷머리
   if (P.hs === 'bun') cel(c, cc => ell(cc, 120, 40, 34, 26), P.hair, mix(P.hair, '#7a7a8a', .4), 6, 6, 4);
-  if (P.hs !== 'bald') cel(c, cc => ell(cc, 120, 104, 66, 68), P.hair, mix(P.hair, '#000', .35), 8, 8, 4);
+  if (P.hs !== 'bald') cel(c, cc => P.hs === 'swept' ? ell(cc, 120, 82, 66, 50) : ell(cc, 120, 104, 66, 68), P.hair, mix(P.hair, '#000', .35), 8, 8, 4);
   // 얼굴 (턱이 살짝 뾰족한 애니 얼굴)
   cel(c, cc => { cc.moveTo(64, 96); cc.quadraticCurveTo(62, 150, 120, 168); cc.quadraticCurveTo(178, 150, 176, 96); cc.quadraticCurveTo(170, 50, 120, 50); cc.quadraticCurveTo(70, 50, 64, 96); cc.closePath(); }, P.skin, mix(P.skin, '#c07050', .3), 9, 7, 4);
   [[62, 112], [178, 112]].forEach(([ex, ey]) => cel(c, cc => ell(cc, ex, ey, 9, 14), P.skin, mix(P.skin, '#c07050', .3), 2, 2, 3.5));
@@ -1211,9 +1215,10 @@ function drawPortrait(cv, who){
   if (P.hs === 'bald') {
     [[66, 92], [174, 92]].forEach(([ex, ey]) => cel(c, cc => ell(cc, ex, ey, 14, 22), P.hair, mix(P.hair, '#7a7a7a', .4), 3, 3, 3.5));
   } else cel(c, cc => {
-    cc.moveTo(54, 106); cc.quadraticCurveTo(50, 36, 120, 32); cc.quadraticCurveTo(190, 36, 186, 106);
+    cc.moveTo(54, 106); cc.quadraticCurveTo(50, P.hs === 'swept' ? 22 : 36, 120, P.hs === 'swept' ? 18 : 32); cc.quadraticCurveTo(190, P.hs === 'swept' ? 22 : 36, 186, 106);
     if (P.old) { cc.quadraticCurveTo(170, 70, 120, 66); cc.quadraticCurveTo(70, 70, 54, 106); }
     else if (P.hs === 'spiky') { cc.lineTo(170, 74); cc.lineTo(156, 92); cc.lineTo(146, 66); cc.lineTo(128, 88); cc.lineTo(118, 62); cc.lineTo(100, 90); cc.lineTo(92, 66); cc.lineTo(76, 92); cc.lineTo(72, 72); }
+    else if (P.hs === 'swept') { cc.lineTo(184, 90); cc.quadraticCurveTo(178, 66, 152, 64); cc.lineTo(142, 96); cc.quadraticCurveTo(134, 70, 112, 70); cc.lineTo(96, 102); cc.quadraticCurveTo(90, 78, 72, 82); cc.lineTo(58, 106); }
     else if (P.hs === 'short') { cc.lineTo(172, 80); cc.quadraticCurveTo(140, 58, 104, 80); cc.quadraticCurveTo(84, 70, 64, 92); }
     else { cc.lineTo(176, 96); cc.quadraticCurveTo(160, 64, 132, 74); cc.lineTo(124, 62); cc.quadraticCurveTo(90, 66, 64, 100); }
     cc.closePath();
@@ -1250,6 +1255,157 @@ function drawPortrait(cv, who){
   c.restore();
 }
 
+// ----- 주인공 우주 (2026-10-12: 실제 사람 비율 약 7등신, 흰 티 + 검정 코트 + 멋진 머리) -----
+// 발끝이 (0,0). 키 약 120px. dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
+const WJ = {skin:'#ffe1c8', hair:'#221c28', hairS:'#100d14', coat:'#24232b', coatS:'#121117', tee:'#fbfaf6', teeS:'#d9dbe2', pants:'#2e3648', pantsS:'#1c2230', eye:'#4a3426'};
+function wjTrim(){ return {cloth:'#3d3c48', denim:'#2c5596', leather:'#8a5a3a', guard:'#f08a2a'}[ensureGear().armor] || '#3d3c48'; }
+function drawWooju(c, x, y, dir, walk, act){
+  const L = haruLook(), side = dir >= 2, back = dir === 1, K = WJ;
+  const ph = walk ? Math.sin(walk) : 0, bob = walk ? Math.abs(Math.cos(walk)) * 1.6 : 0;
+  const shoe = L.shoe || '#ffffff', trim = wjTrim();
+  c.save(); c.translate(x, y);
+  shadow(c, 0, 0, 16, 5);
+  if (dir === 2) c.scale(-1, 1);
+  // ── 다리 (허벅지·무릎·종아리, 걸을 때 무릎이 굽어요)
+  const hipY = -60 - bob;
+  const leg = (lx, ang, knee, dark) => {
+    c.save(); c.translate(lx, hipY); c.rotate(ang);
+    const P = dark ? K.pantsS : K.pants;
+    cel(c, cc => { cc.moveTo(-4.4, 0); cc.lineTo(4.4, 0); cc.lineTo(3.6, 29); cc.lineTo(-3.4, 29); cc.closePath(); }, P, K.pantsS, 1.5, 0, 1.6);
+    c.translate(0, 28); c.rotate(knee);
+    cel(c, cc => { cc.moveTo(-3.5, 0); cc.lineTo(3.6, 0); cc.lineTo(3, 26); cc.lineTo(-3, 26); cc.closePath(); }, P, K.pantsS, 1.5, 0, 1.6);
+    // 운동화
+    const sx = side ? 1 : 0;
+    cel(c, cc => { cc.moveTo(-3.6, 24.5); cc.lineTo(3.4 + sx * 3, 24.5); cc.quadraticCurveTo(6 + sx * 5, 26, 5.5 + sx * 4.5, 30.5); cc.lineTo(-3.8, 30.5); cc.closePath(); }, dark ? shd(shoe, .3) : shoe, shd(shoe, .35), 1, 1, 1.5);
+    line(c, [-3.6, 29.6, 5 + sx * 4.5, 29.6], 1.1, shd(shoe, .45));
+    c.restore();
+  };
+  if (side) { leg(-1, -ph * .5, Math.max(0, ph) * .55, true); leg(1, ph * .5, Math.max(0, -ph) * .55, false); }
+  else { leg(-4.6, ph * .07, Math.max(0, ph) * .12, false); leg(4.6, -ph * .07, Math.max(0, -ph) * .12, false); }
+  c.translate(0, -bob);
+  // ── 팔 (코트 소매)
+  const swing = act ? -1.15 + Math.sin(act * 12) * .5 : -ph * (side ? .6 : .18);
+  const arm = (ax, ang, dark) => {
+    c.save(); c.translate(ax, -89); c.rotate(ang);
+    const C = dark ? K.coatS : K.coat;
+    cel(c, cc => { cc.moveTo(-3.6, -1); cc.quadraticCurveTo(0, -3.5, 3.6, -1); cc.lineTo(3.2, 22); cc.lineTo(-3.2, 22); cc.closePath(); }, C, K.coatS, 1.5, 0, 1.6);
+    c.translate(0, 21); c.rotate(act ? -.5 : -Math.abs(ang) * .35);
+    cel(c, cc => { cc.moveTo(-3.2, 0); cc.lineTo(3.2, 0); cc.lineTo(2.9, 20); cc.lineTo(-2.9, 20); cc.closePath(); }, C, K.coatS, 1.5, 0, 1.6);
+    line(c, [-2.9, 18.5, 2.9, 18.5], 1.3, trim);
+    cel(c, cc => { cc.moveTo(-2.6, 19.5); cc.lineTo(2.6, 19.5); cc.quadraticCurveTo(3.4, 25, 0, 26.5); cc.quadraticCurveTo(-3.4, 25, -2.6, 19.5); cc.closePath(); }, dark ? shd(K.skin, .25) : K.skin, shd(K.skin), 1, 1, 1.4);
+    c.restore();
+  };
+  if (side) arm(-1.5, -swing, true);
+  else if (back) { arm(-13, .1 - swing, false); arm(13, -.1 + swing, false); }
+  // ── 몸통: 긴 검정 코트 (무릎 위까지)
+  const hemY = -34 + (side ? Math.sin(walk * 2) * .8 : 0);
+  if (side) {
+    cel(c, cc => { cc.moveTo(-7.5, -91); cc.quadraticCurveTo(0, -94, 7, -91); cc.lineTo(8, -62); cc.lineTo(10.5, hemY); cc.lineTo(-10.5, hemY + 1.5); cc.lineTo(-8.5, -62); cc.closePath(); }, K.coat, K.coatS, 2.5, 2, 1.8);
+    // 앞섶 사이로 흰 티
+    cel(c, cc => { cc.moveTo(5, -91); cc.lineTo(7.4, -91); cc.lineTo(8, -63); cc.lineTo(6, -63); cc.closePath(); }, K.tee, K.teeS, 1, 0, 1.2);
+    line(c, [4.6, -91, 6.2, -78, 7.6, hemY], 1.3, trim);
+    line(c, [-3, -66, -3, -50], 1, '#3a3944');
+  } else if (back) {
+    cel(c, cc => { cc.moveTo(-13.5, -90); cc.quadraticCurveTo(0, -95, 13.5, -90); cc.lineTo(13, -64); cc.lineTo(15, hemY); cc.lineTo(-15, hemY); cc.lineTo(-13, -64); cc.closePath(); }, K.coat, K.coatS, 2.5, 2, 1.8);
+    line(c, [0, -60, 0, hemY], 1.2, '#0c0b10'); line(c, [-11, -64, 11, -64], 1, '#3a3944');
+    cel(c, cc => { cc.moveTo(-6, -93); cc.quadraticCurveTo(0, -96, 6, -93); cc.lineTo(5, -88); cc.quadraticCurveTo(0, -89.5, -5, -88); cc.closePath(); }, trim, shd(trim), 1, 1, 1.3);
+  } else {
+    // 흰 티 (가운데)
+    cel(c, cc => { cc.moveTo(-6.5, -92); cc.lineTo(6.5, -92); cc.lineTo(7, -61); cc.lineTo(-7, -61); cc.closePath(); }, K.tee, K.teeS, 1.5, 1.5, 1.4);
+    // 코트 왼쪽·오른쪽 자락 (앞이 열려 있어요)
+    const half = s => cc => { cc.moveTo(s * 4.5, -93); cc.quadraticCurveTo(s * 11.5, -94, s * 14, -89.5); cc.quadraticCurveTo(s * 14.5, -80, s * 13.5, -64); cc.lineTo(s * 15.5, hemY); cc.lineTo(s * 6.5, hemY); cc.lineTo(s * 6, -62); cc.lineTo(s * 5.5, -78); cc.closePath(); };
+    cel(c, half(-1), K.coat, K.coatS, 2, 1.5, 1.8); cel(c, half(1), K.coat, K.coatS, 2, 1.5, 1.8);
+    // 깃 (라펠)
+    [-1, 1].forEach(s => cel(c, cc => { cc.moveTo(s * 4.5, -93); cc.lineTo(s * 9, -86); cc.lineTo(s * 7.5, -82); cc.lineTo(s * 5.6, -70); cc.lineTo(s * 5.5, -78); cc.closePath(); }, trim, shd(trim, .35), .8, .8, 1.2));
+    // 주머니
+    [-1, 1].forEach(s => line(c, [s * 8, -52, s * 13, -53], 1.1, '#43424e'));
+    // 단추
+    c.beginPath(); c.arc(-7.6, -60, 1, 0, 7); c.arc(-7.4, -50, 1, 0, 7); c.fillStyle = '#5a5866'; c.fill();
+  }
+  if (side) arm(1.5, swing, false);
+  else if (!back) { arm(-13, .1 + swing, false); arm(13, -.1 - swing, false); }
+  // ── 목
+  cel(c, cc => rr(cc, -2.8, -98, 5.6, 7, 2), shd(K.skin, .12), shd(K.skin, .3), 0, 0, 1.4);
+  if (!back && !side) { c.beginPath(); c.moveTo(-4.2, -92.5); c.quadraticCurveTo(0, -88, 4.2, -92.5); c.lineWidth = 1.2; c.strokeStyle = '#b8bcc6'; c.stroke(); }
+  // ── 머리
+  wjHead(c, L, side, back, -106, act);
+  c.restore();
+}
+function wjHead(c, L, side, back, hy, act){
+  const K = WJ, H = K.hair, HS = K.hairS;
+  // 얼굴 (턱선이 갸름한 사람 얼굴)
+  const face = cc => {
+    if (side) { cc.moveTo(-6.5, hy - 6); cc.quadraticCurveTo(-6, hy - 10, 0, hy - 10); cc.quadraticCurveTo(7, hy - 10, 7.5, hy - 3); cc.lineTo(8.8, hy + .5); cc.lineTo(7.4, hy + 1.8); cc.lineTo(7.6, hy + 4.2); cc.quadraticCurveTo(7, hy + 8.6, 3, hy + 9.6); cc.quadraticCurveTo(-3, hy + 8, -5.5, hy + 3); cc.closePath(); }
+    else { cc.moveTo(-7.4, hy - 4); cc.quadraticCurveTo(-7.4, hy - 10.5, 0, hy - 10.5); cc.quadraticCurveTo(7.4, hy - 10.5, 7.4, hy - 4); cc.quadraticCurveTo(7.2, hy + 3, 4.4, hy + 7.4); cc.quadraticCurveTo(0, hy + 11, -4.4, hy + 7.4); cc.quadraticCurveTo(-7.2, hy + 3, -7.4, hy - 4); cc.closePath(); }
+  };
+  if (back) {
+    [-7.6, 7.6].forEach(ex => cel(c, cc => ell(cc, ex, hy - .2, 1.6, 2.6), K.skin, shd(K.skin), .8, .8, 1.2));
+    cel(c, cc => { const q = (a, b, x, y) => cc.quadraticCurveTo(a, b, x, y);
+      cc.moveTo(-7.4, hy + 1); q(-10, hy - 8, -7.6, hy - 15.6); q(-3, hy - 21.4, 3.6, hy - 20.8); q(9.8, hy - 19.2, 9.5, hy - 10); q(9.6, hy - 3, 7.2, hy + 1);
+      q(5, hy + 3, 4, hy + 6.6); q(0, hy + 4.6, -4, hy + 6.6); q(-5, hy + 3, -7.4, hy + 1); cc.closePath(); }, H, HS, 2, 2.5, 1.6);
+    c.save(); c.lineWidth = .9; c.strokeStyle = '#3c3448'; c.beginPath(); c.moveTo(-4, hy - 17); c.quadraticCurveTo(-1, hy - 8, -2, hy + 2); c.moveTo(3, hy - 18); c.quadraticCurveTo(5, hy - 8, 3, hy + 2); c.stroke(); c.restore();
+    wjShine(c, side, hy); wjHat(c, L, side, back, hy); return;
+  }
+  // 귀
+  if (!side) [-7.6, 7.6].forEach(ex => cel(c, cc => ell(cc, ex, hy - .2, 1.6, 2.6), K.skin, shd(K.skin), .8, .8, 1.2));
+  cel(c, face, K.skin, shd(K.skin, .2), 1.6, 1.8, 1.7);
+  if (side) cel(c, cc => ell(cc, -1.4, hy + .4, 1.9, 2.8), K.skin, shd(K.skin), .8, .8, 1.2);
+  // 눈 (작고 날렵한 애니 눈)
+  const eyes = side ? [4.6] : [-3.3, 3.3], ey = hy - .4;
+  eyes.forEach(e => {
+    const ew = side ? 1.4 : 1.9;
+    c.beginPath(); ell(c, e, ey, ew, 1.9); c.fillStyle = '#fff'; c.fill();
+    c.beginPath(); ell(c, e + (side ? .5 : 0), ey + .2, ew * .7, 1.7); c.fillStyle = K.eye; c.fill();
+    c.beginPath(); ell(c, e + (side ? .5 : 0), ey + .4, .55, .9); c.fillStyle = INK; c.fill();
+    c.beginPath(); c.arc(e - .5 + (side ? .5 : 0), ey - .6, .5, 0, 7); c.fillStyle = '#fff'; c.fill();
+    c.beginPath(); c.moveTo(e - ew - .4, ey - 1); c.quadraticCurveTo(e, ey - 2.8, e + ew + .6, ey - 1.6); c.lineWidth = 1.3; c.strokeStyle = INK; c.stroke();
+    // 짙고 곧은 눈썹
+    c.beginPath(); c.moveTo(e - 2.3, ey - 3.6); c.lineTo(e + 2.4, ey - (e > 0 || side ? 4.3 : 3.9)); c.lineWidth = 1.2; c.strokeStyle = H; c.stroke();
+  });
+  // 코·입
+  if (side) line(c, [7.6, hy + 1.6, 6.6, hy + 2.2], .9, shd(K.skin, .45));
+  else line(c, [.7, hy + 2, .1, hy + 3.6], .9, shd(K.skin, .4));
+  const mx = side ? 5.6 : 0;
+  if (act) { c.beginPath(); ell(c, mx, hy + 5.8, 1.2, .9); c.fillStyle = '#a8443a'; c.fill(); }
+  else { c.beginPath(); c.moveTo(mx - 1.6, hy + 5.5); c.quadraticCurveTo(mx, hy + 6.5, mx + 1.8, hy + 5.2); c.lineWidth = 1; c.strokeStyle = INK; c.stroke(); }
+  // 머리카락: 위로 살짝 세워 넘긴 볼륨 + 이마를 비스듬히 가르는 앞머리 (옆은 짧게, 귀가 보여요)
+  const q = (cc, a, b, x, y) => cc.quadraticCurveTo(a, b, x, y);
+  cel(c, cc => {
+    if (side) {
+      cc.moveTo(-1.6, hy - 4); q(cc, -4.2, hy - 1, -4.8, hy + 5); q(cc, -9.4, hy + 1.5, -9.2, hy - 7); q(cc, -8.8, hy - 15, -3, hy - 18.6); q(cc, 3, hy - 21, 7.6, hy - 18);
+      q(cc, 10.8, hy - 15, 9.9, hy - 9.6); q(cc, 9.6, hy - 6.4, 10.6, hy - 4.2); q(cc, 7.6, hy - 6, 6.4, hy - 7.8); q(cc, 4.6, hy - 9, 3, hy - 8.4); q(cc, 1, hy - 5, -.2, hy - 3); cc.closePath();
+    } else {
+      cc.moveTo(-7.6, hy - 2.5); q(cc, -9.9, hy - 10, -7.6, hy - 15.6); q(cc, -3, hy - 21.4, 3.6, hy - 20.8); q(cc, 9.8, hy - 19.2, 9.7, hy - 12); q(cc, 9.5, hy - 6, 7.8, hy - 3);
+      q(cc, 6.8, hy - 7.6, 4.2, hy - 9.4); q(cc, 2.8, hy - 5.8, -.4, hy - 3.6); q(cc, .8, hy - 7.6, -1.8, hy - 9.8); q(cc, -4.6, hy - 6.8, -7.6, hy - 6.2); cc.closePath();
+    }
+  }, H, HS, 1.6, 2.2, 1.6);
+  // 머릿결
+  c.save(); c.lineWidth = .9; c.strokeStyle = '#3c3448'; c.lineCap = 'round';
+  if (side) { c.beginPath(); c.moveTo(-6, hy - 12); c.quadraticCurveTo(-1, hy - 16, 5, hy - 15); c.moveTo(-6.6, hy - 4); c.quadraticCurveTo(-3, hy - 9, 3, hy - 10.5); c.stroke(); }
+  else { c.beginPath(); c.moveTo(-5.2, hy - 16.4); c.quadraticCurveTo(-1, hy - 15, 1.6, hy - 10.6); c.moveTo(2.4, hy - 19); c.quadraticCurveTo(6, hy - 16, 6, hy - 10.6); c.stroke(); }
+  c.restore();
+  wjShine(c, side, hy);
+  wjHat(c, L, side, back, hy);
+}
+function wjShine(c, side, hy){
+  c.save(); c.beginPath(); c.ellipse(side ? 0 : -1.5, hy - 15.5, 4.6, 1.1, -.25, 0, 7); c.fillStyle = 'rgba(160,180,235,.55)'; c.fill(); c.restore();
+}
+// 기본 밀짚모자는 멋진 머리가 보이게 안 그려요. 다른 모자는 그려요.
+function wjHat(c, L, side, back, hy){
+  const g = ensureGear();
+  if (g.hat === 'helmet') {
+    cel(c, cc => { cc.moveTo(-9, hy - 5); cc.quadraticCurveTo(-9.5, hy - 17.5, 0, hy - 17.5); cc.quadraticCurveTo(9.5, hy - 17.5, 9, hy - 5); cc.closePath(); }, '#ffd23a', '#c99a1a', 1.5, 1.5, 1.6);
+    if (!back) cel(c, cc => side ? ell(cc, 9, hy - 5.5, 5.5, 1.6) : ell(cc, 0, hy - 4.8, 9.5, 2), '#ffd23a', '#c99a1a', 1, 1, 1.4);
+  } else if (g.hat === 'wide' || g.hat === 'apple') {
+    cel(c, cc => ell(cc, side ? 1 : 0, hy - 8.5, side ? 14 : 15.5, 3.8), '#f6d36a', '#cfa640', 1.5, 1.5, 1.6);
+    cel(c, cc => { cc.moveTo(-8, hy - 8.5); cc.quadraticCurveTo(-8, hy - 19, 0, hy - 19); cc.quadraticCurveTo(8, hy - 19, 8, hy - 8.5); cc.closePath(); }, '#f6d36a', '#cfa640', 1.5, 1, 1.6);
+    cel(c, cc => rr(cc, -8, hy - 12, 16, 3, 1.2), '#1d1c22', '#000000', 0, 1, 1);
+    if (g.hat === 'apple') drawApple(c, 5, hy - 17, 3.6, '#ec3b30', '#a51d16');
+  }
+}
+// 대화창 얼굴
+function wjPortraitLook(){ const h = ensureGear().hat; return {...LOOKS.haru, hair:WJ.hair, hs:'swept', eye:WJ.eye, outfit:'jacket', o2:WJ.coat, top:WJ.tee, scarf:null, hat:h === 'wide' || h === 'apple' ? 'straw' : h === 'helmet' ? 'cap' : null, capCol:'#ffd23a'}; }
+
 // ===== 과수원 세상 =====
 const SPOT = {
   hanok:{x:520, y:820}, shed:{x:780, y:1060}, grandma:{x:745, y:905}, chief:{x:300, y:1440},
@@ -1259,7 +1415,7 @@ const SPOT = {
   rabbit:{x:2440, y:1360}, chicken:{x:900, y:1260}, cat:{x:350, y:858}, dog:{x:690, y:980},
   jangdok:{x:110, y:960}, sotdae:{x:190, y:1560}, nongmak:{x:2620, y:1180}
 };
-const ROAD = [[-60, 1700], [300, 1440], [650, 1250], [905, 1175], [930, 1150]];
+const ROAD = [[0, 1700], [300, 1440], [650, 1250], [905, 1175], [930, 1150]];
 const YARD = {x:520, y:925, rx:270, ry:85};
 
 let P = {x:930, y:1000, dir:0, walk:0, act:0, tgt:null, spd:270};
@@ -1287,17 +1443,17 @@ function buildFeats(){
   const R = srand(4242), WH = WORLD_H;
   feats = {blobs:[], tufts:[], flw:[]};
   for (let i = 0; i < 2600; i++) {
-    const x = R() * WORLD_W, y = R() * WH, r = 40 + R() * 110, pts = [];
+    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH, r = 40 + R() * 110, pts = [];
     const n = 9; for (let k = 0; k < n; k++) { const a = k / n * 6.283, rr2 = r * (.7 + R() * .45); pts.push([x + Math.cos(a) * rr2, y + Math.sin(a) * rr2 * .55]); }
     feats.blobs.push({x, y, r, pts, dark:R() < .55});
   }
   for (let i = 0; i < 26000; i++) {
-    const x = R() * WORLD_W, y = R() * WH;
+    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH;
     if (inOrchard(x, y) || nearRoad(x, y, 70) || inYard(x, y)) continue;
     feats.tufts.push([x, y, R()]);
   }
   for (let i = 0; i < 6000; i++) {
-    const x = R() * WORLD_W, y = R() * WH;
+    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH;
     if (inOrchard(x, y, 20) || nearRoad(x, y, 80) || inYard(x, y)) continue;
     feats.flw.push([x, y, Math.floor(R() * 4)]);
   }
@@ -1310,6 +1466,7 @@ function checkGround(){
 function getTile(tx, ty){
   const k = tx + ',' + ty;
   let t = tiles.get(k); if (t) return t;
+  if (tiles.size > 90) tiles.delete(tiles.keys().next().value); // 넓은 맵: 오래된 땅 조각은 버려요
   t = mk(TILE, TILE); const c = t.getContext('2d');
   c.translate(-tx * TILE, -ty * TILE);
   drawGround(c, tx * TILE, ty * TILE, TILE, TILE);
@@ -1548,7 +1705,7 @@ function solids(){
   return s;
 }
 function blocked(x, y){
-  if (x < 30 || x > WORLD_W - 30 || y < 470 || y > worldBot() - 40) return true;
+  if (x < WX0 + 40 || x > WX1 - 40 || y < WY0 + 120 || y > worldBot() - 40) return true;
   for (const r of solids()) if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return true;
   if (G.deco.pond && ((x - SPOT.pond.x) / 160) ** 2 + ((y - SPOT.pond.y) / 78) ** 2 < 1) return true;
   // 나무 줄기
@@ -1638,7 +1795,7 @@ function render(ctx, dt, T){
   ctx.imageSmoothingEnabled = true;
   for (let ty = Math.floor(vy / TILE); ty <= Math.floor((vy + vh) / TILE); ty++)
     for (let tx = Math.floor(vx / TILE); tx <= Math.floor((vx + vw) / TILE); tx++)
-      if (tx >= 0 && ty >= 0) ctx.drawImage(getTile(tx, ty), tx * TILE, ty * TILE, TILE + 1, TILE + 1);
+      ctx.drawImage(getTile(tx, ty), tx * TILE, ty * TILE, TILE + 1, TILE + 1);
   const vis = (x, y, m = 260) => x > vx - m && x < vx + vw + m && y > vy - m && y < vy + vh + m + 200;
 
   // 땅 위 표시: 빈 자리, 살 수 있는 땅, 철선
@@ -1705,10 +1862,10 @@ function render(ctx, dt, T){
   if (G.deco.flowers) for (const [x, y] of SPOT.flowers) add(y, () => drawFlowerBed(ctx, x, y));
   // 숲 테두리 (소나무·덤불)
   const R = srand(31);
-  for (let x = 30; x < WORLD_W; x += 95) { const y = 470 + R() * 40, s = .9 + R() * .4; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
-  for (let y = 600; y < worldBot(); y += 130) { const x = WORLD_W - 40 - R() * 30, s = .9 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
-  for (let y = 1880; y < worldBot(); y += 140) { if (y > 2110 && y < 2280) continue; const x = 30 + R() * 20, s = .85 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
-  for (let x = 60; x < WORLD_W; x += 110) { const y = worldBot() - 6 - R() * 20, s = .9 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
+  for (let x = WX0 + 30; x < WX1; x += 95) { const y = WY0 + 110 + R() * 40, s = .9 + R() * .4; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
+  for (let y = WY0 + 200; y < worldBot(); y += 130) { const x = WX1 - 40 - R() * 30, s = .9 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
+  for (let y = WY0 + 200; y < worldBot(); y += 140) { const x = WX0 + 30 + R() * 20, s = .85 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
+  for (let x = WX0 + 60; x < WX1; x += 110) { const y = worldBot() - 6 - R() * 20, s = .9 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
   villageEntities(ctx, add, vis);
   huntEntities(ctx, add, vis, T);
   const R3 = srand(55);
@@ -1870,7 +2027,7 @@ const VB = [
   {x:660, y:2910, roof:'#3a5aa0', wall:'#f2f6fb', sign:'사과골 파출소'}
 ];
 const JEONGJA = {x:300, y:2320}, BIGTREE = {x:575, y:2330};
-const worldBot = () => WORLD_H;
+const worldBot = () => WY1;
 function inVillage(x, y){ return x < 960 && y > 1720; }
 function villageSolids(s){
   for (const b of VB) { const hw = b.big ? 120 : 90; s.push({x:b.x - hw, y:b.y - 80, w:hw * 2, h:80}); }
@@ -2054,20 +2211,23 @@ function drawVillageTags(ctx){
 }
 
 // ===== 뒷산 사냥터: 넓은 숲, 같은 화면에서 실시간 전투, 전리품 =====
-// 사냥터 = 동쪽 숲(x > 2900) + 남쪽 숲(y > 4420). 집에서 멀수록 센 산짐승과 귀한 전리품.
-const HUNT_X = 2900, HUNT_Y = 4420;
-const GATES = [{x:2900, y:1200}, {x:450, y:4420}];
-function inHunt(x, y){ return x > HUNT_X || y > HUNT_Y; }
+// 2026-10-12: 과수원이 맵 가운데. 집·마을 둘레(HOME) 바깥 사방이 사냥터. 집에서 멀수록 센 산짐승과 귀한 전리품.
+const GATES = [{x:HOME.x1, y:1200}, {x:450, y:HOME.y1}, {x:2400, y:HOME.y0}, {x:HOME.x0, y:1700}];
+function inHunt(x, y){ return x < HOME.x0 || x > HOME.x1 || y < HOME.y0 || y > HOME.y1; }
 function gateDist(x, y){ return Math.min(...GATES.map(g => Math.hypot(x - g.x, y - g.y))); }
-function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = gateDist(x, y); return d < 2300 ? 0 : d < 4300 ? 1 : d < 6500 ? 2 : 3; }
+function homeDist(x, y){ return Math.hypot(Math.max(HOME.x0 - x, 0, x - HOME.x1), Math.max(HOME.y0 - y, 0, y - HOME.y1)); }
+function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = homeDist(x, y); return d < 900 ? 0 : d < 1900 ? 1 : d < 3000 ? 2 : 3; }
 const ZONES = [
   {name:'얕은 숲', stars:'★'}, {name:'깊은 숲', stars:'★★'}, {name:'골짜기', stars:'★★★'}, {name:'전설의 산', stars:'★★★★'}
 ];
 const TRAILS = [
-  [[2880, 1200], [3600, 1300], [4300, 1100], [5200, 1500], [6100, 1300], [7000, 1800], [7900, 1600]],
-  [[3600, 1300], [3900, 2400], [4600, 3300], [5600, 4200], [6600, 5200], [7600, 6400], [8000, 7600]],
-  [[450, 4400], [700, 5200], [1500, 6000], [2600, 6600], [3800, 7200], [5200, 7800], [6600, 8600], [7700, 9200]],
-  [[4600, 3300], [3600, 5000], [2600, 6600]], [[1500, 6000], [1000, 7600], [1800, 9000]], [[5200, 1500], [5600, 2700], [6600, 3400]]
+  [[2880, 1200], [3500, 1300], [4200, 1000], [4900, 1500], [5600, 1200]],
+  [[3500, 1300], [3800, 2400], [4500, 3300], [5200, 4400], [5500, 5700]],
+  [[450, 4420], [700, 5000], [1600, 5500], [2800, 5300], [3800, 5800]], [[2800, 5300], [3600, 4600], [4500, 3300]],
+  [[2400, 440], [2300, -300], [1600, -1100], [600, -1800], [-400, -2600], [-1500, -3200]],
+  [[2300, -300], [3400, -900], [4400, -1800], [5200, -3000]], [[1600, -1100], [1800, -2400], [2600, -3200]], [[3400, -900], [4200, 1000]],
+  [[0, 1700], [-700, 1600], [-1400, 2300], [-1900, 3400], [-1400, 4600], [-300, 5300], [700, 5000]],
+  [[-700, 1600], [-1200, 600], [-1800, -400], [-400, -2600]]
 ];
 const CLEARINGS = TRAILS.flat().filter(([x, y]) => inHunt(x, y) && gateDist(x, y) > 500).map(([x, y]) => ({x, y, r:230}));
 function nearTrail(x, y, d){
@@ -2111,9 +2271,9 @@ let FOREST = null;
 function buildForest(){
   FOREST = [];
   const R = srand(808);
-  for (let gy = 300; gy < WORLD_H - 60; gy += 200) for (let gx = 140; gx < WORLD_W - 60; gx += 200) {
+  for (let gy = WY0 + 220; gy < WY1 - 60; gy += 200) for (let gx = WX0 + 140; gx < WX1 - 60; gx += 200) {
     const x = gx + (R() - .5) * 150, y = gy + (R() - .5) * 150, k = R(), s = .85 + R() * .5;
-    if (!inHunt(x, y) || x < HUNT_X + 60 && y < HUNT_Y || y < HUNT_Y + 60 && x < HUNT_X) continue;
+    if (!inHunt(x, y) || homeDist(x, y) < 70) continue;
     if (nearTrail(x, y, 120) || inClearing(x, y, 40)) continue;
     if (R() < .18) continue;
     FOREST.push({x, y, k:k < .45 ? 'pine' : k < .85 ? 'oak' : k < .95 ? 'bush' : 'rock', s});
@@ -2137,12 +2297,12 @@ function drawRock(c, x, y, s){
   c.restore();
 }
 function drawHuntGround(c, x0, y0, w, h, win){
-  if (x0 + w < HUNT_X && y0 + h < HUNT_Y) return;
+  if (x0 >= HOME.x0 && x0 + w <= HOME.x1 && y0 >= HOME.y0 && y0 + h <= HOME.y1) return;
   const pal = PAL[seasonOf(G.week)], base = win ? '#dfe8ee' : pal.g2, dark = win ? '#c6d4de' : '#3f7a34';
   // 숲 바닥: 깊이 들어갈수록 조금씩 짙어져요
   for (let cy = y0; cy < y0 + h; cy += 64) for (let cx = x0; cx < x0 + w; cx += 64) {
     if (!inHunt(cx + 32, cy + 32)) continue;
-    const t = clamp(gateDist(cx + 32, cy + 32) / 9000, 0, 1);
+    const t = clamp(homeDist(cx + 32, cy + 32) / 4500, 0, 1);
     c.fillStyle = mix(base, dark, .1 + t * .35); c.fillRect(cx, cy, 65, 65);
   }
   const R = srand((x0 / 512 | 0) * 977 + (y0 / 512 | 0) * 131 + 5);
@@ -2221,7 +2381,7 @@ function makeMon(kind, tier, x, y, raid){
 function spawnHuntMon(){
   for (let k = 0; k < 20; k++) {
     const a = rnd(0, 6.28), d = rnd(1150, 2600), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
-    if (x < 200 || x > WORLD_W - 200 || y < 600 || y > WORLD_H - 200 || !inHunt(x, y) || gateDist(x, y) < 700) continue;
+    if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 700 || homeDist(x, y) < 300) continue;
     const z = zoneAt(x, y), tier = Math.max(0, Math.min(3, z - (Math.random() < .3 ? 1 : 0)));
     MONS.push(makeMon(Math.random() < .5 ? 'boar' : 'deer', tier, x, y, false));
     return;
@@ -2289,7 +2449,7 @@ function updateMon(m, dt){
       if (m.bites >= 3) { m.st = 'leave'; raidRowPenalty(m); }
     }
   } else if (m.st === 'leave') {
-    moveTo(m.from.x < OX ? -400 : WORLD_W + 400, m.from.y, 260 * sp);
+    moveTo(m.from.x < OX ? HOME.x0 - 600 : HOME.x1 + 600, m.from.y, 260 * sp);
     if (Math.hypot(m.x - m.from.x, m.y - m.from.y) > 1300) { m.dead = true; m.deadT = 2; }
   } else if (m.st === 'chase') {
     const far = m.raid ? pd > 900 : (pd > 750 || Math.hypot(m.x - m.hx, m.y - m.hy) > 1500 || !inHunt(P.x, P.y));
@@ -2313,7 +2473,7 @@ function updateMon(m, dt){
   }
   // 사냥터 산짐승은 숲 밖으로 안 나와요
   if (!m.raid && !inHunt(m.x, m.y)) { m.x = ox; m.y = oy; if (m.st === 'wander') { m.tx = m.hx; m.ty = m.hy; } }
-  m.x = clamp(m.x, -500, WORLD_W + 500); m.y = clamp(m.y, 480, WORLD_H - 30);
+  m.x = clamp(m.x, WX0 + 60, WX1 - 60); m.y = clamp(m.y, WY0 + 160, WY1 - 30);
 }
 
 // ----- 캐는 자리 (반짝이는 곳) -----
@@ -2321,7 +2481,7 @@ const FORAGE = [];
 function spawnForage(){
   for (let k = 0; k < 20; k++) {
     const a = rnd(0, 6.28), d = rnd(700, 2800), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
-    if (x < 200 || x > WORLD_W - 200 || y < 600 || y > WORLD_H - 200 || !inHunt(x, y) || gateDist(x, y) < 400) continue;
+    if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 400 || homeDist(x, y) < 150) continue;
     const z = zoneAt(x, y);
     FORAGE.push({x, y, item:rollLoot(FORAGE_TABLE[z]), t:rnd(0, 9)});
     return;
@@ -2372,15 +2532,15 @@ function drawHero(c){
   drawPerson(c, P.x, P.y, 'haru', P.dir, P.walk, P.asw > 0 ? P.asw * 20 : P.sw > 0 ? P.sw * 9 : 0);
   const armed = P.asw > 0 || inCombat() || inHunt(P.x, P.y);
   if (armed) {
-    c.save(); c.translate(P.x + (P.dir === 2 ? -10 : P.dir === 3 ? 10 : P.face * 13), P.y - 38);
+    c.save(); c.translate(P.x + (P.dir === 2 ? -10 : P.dir === 3 ? 10 : P.face * 13), P.y - 46);
     const sw = P.asw > 0 ? 1 - P.asw / .25 : 0;
     drawWeapon(c, ensureGear().weapon, P.face * (P.asw > 0 ? -1.4 + sw * 3 : .5));
     c.restore();
   }
   if (P.asw > 0) { c.beginPath(); c.arc(P.x, P.y - 50, 125 * farmer().reach, P.face > 0 ? -1.2 : Math.PI - .3, P.face > 0 ? .3 : Math.PI + 1.2); c.lineWidth = 8; c.strokeStyle = `rgba(255,250,241,${P.asw * 3})`; c.stroke(); }
-  if (P.blk) { c.save(); c.translate(P.x + P.face * 22, P.y - 52); cel(c, cc => { cc.moveTo(-13, -20); cc.quadraticCurveTo(0, -27, 13, -20); cc.lineTo(12, 7); cc.quadraticCurveTo(0, 22, -12, 7); cc.closePath(); }, '#7ab0e8', '#4a7ab8', 2, 2, 2.6); c.font = '13px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(blockPct() + '%', 0, 1); c.restore(); }
+  if (P.blk) { c.save(); c.translate(P.x + P.face * 22, P.y - 68); cel(c, cc => { cc.moveTo(-13, -20); cc.quadraticCurveTo(0, -27, 13, -20); cc.lineTo(12, 7); cc.quadraticCurveTo(0, 22, -12, 7); cc.closePath(); }, '#7ab0e8', '#4a7ab8', 2, 2, 2.6); c.font = '13px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(blockPct() + '%', 0, 1); c.restore(); }
   if (P.hp < P.max || inCombat()) {
-    const w = 64, y = P.y - 112;
+    const w = 64, y = P.y - 134;
     c.beginPath(); rr(c, P.x - w / 2, y, w, 9, 4.5); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke();
     c.beginPath(); rr(c, P.x - w / 2 + 2, y + 2, (w - 4) * clamp(P.hp / P.max, 0, 1), 5, 2.5); c.fillStyle = P.hp < P.max * .3 ? '#ff6b57' : '#5cc46c'; c.fill();
   }
@@ -2432,10 +2592,13 @@ function huntEntities(ctx, add, vis, T){
   if (vis(SPOT.nongmak.x, SPOT.nongmak.y, 300)) add(SPOT.nongmak.y, () => drawNongmak(ctx, SPOT.nongmak.x, SPOT.nongmak.y));
   // 사냥터 경계: 숲 울타리와 입구 표지판
   const R = srand(4040);
-  for (let y = 560; y < HUNT_Y; y += 120) { if (y > 1020 && y < 1380) continue; const x = HUNT_X - 20 + R() * 20, s = .95 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
-  for (let x = 60; x < HUNT_X; x += 115) { if (x > 340 && x < 560) continue; const y = HUNT_Y - 10 + R() * 20, s = .95 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
-  if (vis(2800, 1330)) add(1330, () => drawSign(ctx, 2790, 1330, '🌲 뒷산 사냥터 →'));
+  const pine = (x, y) => { const s = .95 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); };
+  for (let y = HOME.y0 + 120; y < HOME.y1; y += 120) { const j = R() * 20; if (y < 1020 || y > 1380) pine(HOME.x1 - 20 + j, y); if (y < 1600 || y > 1820) pine(HOME.x0 + 10 + j, y); }
+  for (let x = HOME.x0 + 40; x < HOME.x1; x += 115) { const j = R() * 20; if (x < 340 || x > 560) pine(x, HOME.y1 - 10 + j); if (x < 2280 || x > 2520) pine(x, HOME.y0 + 20 + j); }
+  if (vis(2800, 1330)) add(1330, () => drawSign(ctx, 2790, 1330, '🌲 동쪽 사냥터 →'));
   if (vis(620, 4330)) add(4330, () => drawSign(ctx, 640, 4330, '🌲 남쪽 사냥터 ↓'));
+  if (vis(2580, 600)) add(600, () => drawSign(ctx, 2600, 600, '🌲 북쪽 사냥터 ↑'));
+  if (vis(110, 1560)) add(1560, () => drawSign(ctx, 120, 1560, '← 서쪽 사냥터 🌲'));
   for (const o of FOREST) if (vis(o.x, o.y)) add(o.y, () => o.k === 'pine' ? drawPine(ctx, o.x, o.y, o.s * 1.1) : o.k === 'oak' ? drawOak(ctx, o.x, o.y, o.s) : o.k === 'rock' ? drawRock(ctx, o.x, o.y, o.s) : drawBush(ctx, o.x, o.y, o.s * 1.2));
   for (const f of FORAGE) if (vis(f.x, f.y)) add(f.y - 1, () => drawForage(ctx, f));
   for (const m of MONS) if (vis(m.x, m.y)) add(m.y, () => drawMon(ctx, m));
@@ -2446,29 +2609,30 @@ const MM = {x:24, y:292, w:200, h:Math.round(200 * WORLD_H / WORLD_W)};
 function buildMiniBase(){
   miniBase = mk(MM.w, MM.h); const c = miniBase.getContext('2d'), s = MM.w / WORLD_W;
   for (let y = 0; y < MM.h; y += 4) for (let x = 0; x < MM.w; x += 4) {
-    const wx = x / s, wy = y / s;
-    c.fillStyle = inHunt(wx, wy) ? mix('#7fbf5a', '#2f5a2a', clamp(gateDist(wx, wy) / 9000, 0, 1) * .8) : '#a6dc78'; c.fillRect(x, y, 4, 4);
+    const wx = WX0 + x / s, wy = WY0 + y / s;
+    c.fillStyle = inHunt(wx, wy) ? mix('#7fbf5a', '#2f5a2a', clamp(homeDist(wx, wy) / 4500, 0, 1) * .8) : '#a6dc78'; c.fillRect(x, y, 4, 4);
   }
+  c.translate(-WX0 * s, -WY0 * s);
   c.strokeStyle = '#c99d62'; c.lineWidth = 2; c.lineCap = 'round';
   for (const T of [...TRAILS, ROAD, ...VROADS]) { c.beginPath(); T.forEach(([x, y], i) => i ? c.lineTo(x * s, y * s) : c.moveTo(x * s, y * s)); c.stroke(); }
   c.fillStyle = '#b9875a'; c.fillRect(OX * s, OY * s, ORCH_W * s, MAX_ROWS * ROW_H * s);
   c.fillStyle = '#e8634a'; for (const b of VB) c.fillRect(b.x * s - 2, b.y * s - 3, 5, 4);
   c.font = '11px Jua'; c.fillStyle = INK; c.textAlign = 'center';
   c.fillText('과수원', (OX + ORCH_W / 2) * s, OY * s - 2); c.fillText('마을', 430 * s, 2000 * s);
-  [['얕은 숲', 4300, 1900], ['깊은 숲', 6200, 3300], ['골짜기', 3000, 7600], ['전설의 산', 7600, 8700]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
+  [['얕은 숲', 3500, 2000], ['깊은 숲', 4700, 3600], ['골짜기', -1700, -900], ['전설의 산', 1500, -2900]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
 }
 function drawHuntOverlay(ctx, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (!miniBase) buildMiniBase();
-  const s = MM.w / WORLD_W;
+  const s = MM.w / WORLD_W, mx = x => MM.x + (x - WX0) * s, my = y => MM.y + (y - WY0) * s;
   ctx.save();
   ctx.beginPath(); rr(ctx, MM.x - 6, MM.y - 6, MM.w + 12, MM.h + 12, 14); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
   ctx.drawImage(miniBase, MM.x, MM.y);
   const vw = W / cam.z, vh = H / cam.z;
-  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(MM.x + (cam.x - vw / 2) * s, MM.y + (cam.y - vh / 2) * s, vw * s, vh * s);
-  ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🛖', MM.x + SPOT.nongmak.x * s, MM.y + SPOT.nongmak.y * s + 4);
-  for (const m of MONS) if (!m.dead) { ctx.beginPath(); ctx.arc(MM.x + m.x * s, MM.y + m.y * s, m.raid ? 4.5 : 2.2, 0, 7); ctx.fillStyle = m.raid ? '#ff3b30' : '#7a2a1a'; ctx.fill(); }
-  ctx.beginPath(); ctx.arc(MM.x + P.x * s, MM.y + P.y * s, 4.5, 0, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(mx(cam.x - vw / 2), my(cam.y - vh / 2), vw * s, vh * s);
+  ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🛖', mx(SPOT.nongmak.x), my(SPOT.nongmak.y) + 4);
+  for (const m of MONS) if (!m.dead) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), m.raid ? 4.5 : 2.2, 0, 7); ctx.fillStyle = m.raid ? '#ff3b30' : '#7a2a1a'; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(mx(P.x), my(P.y), 4.5, 0, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
   ctx.restore();
   // 습격한 산짐승이 화면 밖이면 화살표
   for (const m of MONS) {
@@ -3540,7 +3704,7 @@ function update(dt){
   // 카메라
   if (!ssAnim) { cam.x += (P.x + cam.ox - cam.x) * Math.min(1, dt * 6); cam.y += (P.y - 60 + cam.oy - cam.y) * Math.min(1, dt * 6); }
   const hw = W / 2 / cam.z, hh = H / 2 / cam.z;
-  cam.x = clamp(cam.x, hw, WORLD_W - hw); cam.y = clamp(cam.y, 380 + hh, Math.max(380 + hh, worldBot() - hh));
+  cam.x = clamp(cam.x, WX0 + hw, WX1 - hw); cam.y = clamp(cam.y, WY0 + hh, worldBot() - hh);
 }
 function detour(){
   if (!P.tgt) return;
