@@ -366,22 +366,79 @@ const FACTS = [
   '경매에서는 가장 높은 값을 부른 사람이 사과를 가져가요.'
 ];
 
+// 사과 퀴즈 (순자 할머니·이장님이 번갈아 내요). e = 정답 뒤에 들려주는 한마디
 const QUIZ = [
-  {q:'사과꽃은 무슨 색일까요?', a:['하얀색·연분홍','파란색','검은색'], c:0},
-  {q:'사과 묘목은 언제 심을까요?', a:['한여름','땅이 녹는 봄','눈 오는 겨울'], c:1},
+  // 사과나무와 꽃
+  {q:'사과꽃은 무슨 색일까요?', a:['하얀색·연분홍','파란색','검은색'], c:0, e:'봉오리 땐 분홍빛, 활짝 피면 거의 하얘져요.'},
+  {q:'사과꽃 꽃잎은 몇 장일까요?', a:['3장','5장','10장'], c:1, e:'사과꽃은 꽃잎이 5장이에요.'},
+  {q:'사과는 어떤 식물 집안(과)일까요?', a:['장미과','국화과','벼과'], c:0, e:'배·복숭아·딸기도 같은 장미과 친척이에요.'},
+  {q:'사과꽃은 언제 필까요?', a:['1월','4~5월','8월'], c:1, e:'봄, 4월 말에서 5월 초에 피어요.'},
+  {q:'한 꽃눈에서 핀 꽃 5~6송이 중 가장 좋은 사과가 되는 꽃은?', a:['가운데 꽃','맨 바깥 꽃','제일 늦게 핀 꽃'], c:0, e:'가운데 꽃(중심화)을 남기고 나머지는 솎아요.'},
   {q:'꽃가루를 옮겨 사과가 열리게 돕는 곤충은?', a:['모기','꿀벌','개미'], c:1},
-  {q:'가지치기는 언제 할까요?', a:['겨울','여름 장마철','수확하는 날'], c:0},
-  {q:'열매를 솎아 주면 남은 사과는 어떻게 될까요?', a:['작아져요','더 커져요','파래져요'], c:1},
-  {q:'병이 잘 생기는 날씨는?', a:['비 오고 습한 날','맑고 건조한 날','눈 오는 날'], c:0},
-  {q:'방제 효과가 떨어지는 날은?', a:['바람이 센 날','바람이 없는 날','구름 낀 날'], c:0},
-  {q:'사과가 빨갛게 되려면 무엇이 필요할까요?', a:['햇빛','눈','어둠'], c:0},
-  {q:'초록색 여름 사과 품종은?', a:['부사','아오리','홍로'], c:1},
-  {q:'사과 한 상자는 보통 몇 kg일까요?', a:['1kg','10kg','100kg'], c:1},
-  {q:'사과나무가 쓰러지지 않게 받쳐 주는 것은?', a:['지주와 철선','풍선','우산'], c:0},
-  {q:'우리나라에서 가장 많이 키우는 사과는?', a:['부사','감홍','아오리'], c:0},
-  {q:'경매에서 사과는 누가 가져갈까요?', a:['가장 먼저 온 사람','가장 높은 값을 부른 사람','가장 키 큰 사람'], c:1},
+  {q:'과수원에서 꿀벌 말고도 꽃가루받이를 돕게 키우는 벌은?', a:['말벌','머리뿔가위벌','장수말벌'], c:1, e:'머리뿔가위벌은 순해서 과수원 일꾼으로 키워요.'},
+  {q:'과수원에 다른 품종이나 꽃사과를 섞어 심는 까닭은?', a:['예뻐 보이려고','꽃가루받이가 잘 되라고','그늘을 만들려고'], c:1, e:'사과는 자기 꽃가루로는 열매가 잘 안 맺혀요.'},
+  {q:'꽃이 활짝 핀 때 살충제를 뿌리면 안 되는 까닭은?', a:['꽃이 미워져서','꿀벌이 다쳐서','비가 와서'], c:1},
+  {q:'겨울 사과나무는 어떤 모습일까요?', a:['잎이 다 떨어져요','꽃이 피어 있어요','사과가 주렁주렁'], c:0, e:'사과나무는 가을에 잎을 떨구고 겨울잠을 자요.'},
+  {q:'사과 씨앗을 심으면 엄마 나무와 똑같은 사과가 열릴까요?', a:['똑같아요','맛이 달라져요','씨앗은 안 자라요'], c:1, e:'그래서 좋은 품종은 접붙이기로 늘려요.'},
+  {q:'좋은 품종 사과나무를 똑같이 늘리는 방법은?', a:['접붙이기','씨앗 심기','물 많이 주기'], c:0},
+  {q:'나무 키를 작게 해서 일하기 쉽게 만드는 뿌리 쪽 나무를 뭐라고 할까요?', a:['왜성대목','거인대목','물대목'], c:0, e:'M.9 같은 왜성대목에 접붙이면 나무가 작게 자라요.'},
+  {q:'사과 묘목은 언제 심을까요?', a:['한여름','땅이 녹는 봄','눈 오는 겨울'], c:1},
   {q:'심은 해에 사과가 열릴까요?', a:['많이 열려요','열리지 않아요','두 번 열려요'], c:1},
-  {q:'늦서리로부터 꽃을 지켜 주는 기계는?', a:['방상팬','선풍기','청소기'], c:0}
+  {q:'사과나무가 쓰러지지 않게 받쳐 주는 것은?', a:['지주와 철선','풍선','우산'], c:0},
+  {q:'가지치기는 언제 할까요?', a:['겨울','여름 장마철','수확하는 날'], c:0, e:'잎이 없는 겨울에 해야 가지 모양이 잘 보여요.'},
+  // 키우기
+  {q:'열매를 솎아 주면 남은 사과는 어떻게 될까요?', a:['작아져요','더 커져요','파래져요'], c:1},
+  {q:'열매솎기는 언제 할까요?', a:['꽃이 지고 난 뒤','수확하는 날','한겨울'], c:0, e:'꽃 지고 5~6월에 작은 열매를 골라 솎아요.'},
+  {q:'사과에 봉지를 씌우는 까닭은?', a:['벌레·병을 막고 껍질을 곱게','더 무겁게','소리가 나게'], c:0},
+  {q:'사과 아래 땅에 반짝이는 은색 필름을 까는 까닭은?', a:['햇빛을 반사해 아래까지 빨갛게','풀이 자라게','물을 모으려고'], c:0},
+  {q:'수확 전에 사과 주변 잎을 따 주는 까닭은?', a:['햇빛을 받아 색이 잘 들게','나무가 가벼워지게','잎을 팔려고'], c:0},
+  {q:'사과가 빨갛게 되려면 무엇이 필요할까요?', a:['햇빛','눈','어둠'], c:0},
+  {q:'사과 색이 잘 드는 날씨는?', a:['낮엔 따뜻, 밤엔 서늘','밤낮 모두 더움','매일 비'], c:0, e:'밤낮 온도 차가 크면 색이 곱게 들어요.'},
+  {q:'사과 껍질을 빨갛게 만드는 색소 이름은?', a:['안토시아닌','엽록소','멜라닌'], c:0},
+  {q:'늦서리로부터 꽃을 지켜 주는 기계는?', a:['방상팬','선풍기','청소기'], c:0, e:'방상팬이 위쪽 따뜻한 공기를 아래로 내려 줘요.'},
+  {q:'하늘에서 얼음 알갱이가 떨어져 사과에 상처를 내는 날씨는?', a:['우박','안개','무지개'], c:0},
+  // 병해충
+  {q:'병이 잘 생기는 날씨는?', a:['비 오고 습한 날','맑고 건조한 날','눈 오는 날'], c:0},
+  {q:'방제 효과가 떨어지는 날은?', a:['바람이 센 날','바람이 없는 날','구름 낀 날'], c:0, e:'바람이 세면 약이 날아가 버려요.'},
+  {q:'사과에 갈색 동그란 무늬가 생기며 움푹 썩는 병은?', a:['탄저병','감기','눈병'], c:0},
+  {q:'사과 속을 파먹고 들어가는 애벌레 해충은?', a:['복숭아심식나방','잠자리','무당벌레'], c:0},
+  {q:'진딧물을 잡아먹어 농부를 돕는 곤충은?', a:['무당벌레','모기','파리'], c:0},
+  {q:'잎 뒤에 붙어 즙을 빨아 잎을 누렇게 만드는 아주 작은 해충은?', a:['응애','나비','달팽이'], c:0},
+  // 수확·보관
+  {q:'사과는 어떻게 따는 게 좋을까요?', a:['살짝 들어 돌려 따기','세게 잡아당기기','나무를 흔들기'], c:0, e:'꼭지가 붙어 있어야 오래가요.'},
+  {q:'초록색 여름 사과 품종은?', a:['부사','아오리','홍로'], c:1, e:'아오리는 7~8월에 따는 여름 사과예요.'},
+  {q:'추석 무렵(9월)에 많이 나오는 빨간 사과는?', a:['홍로','부사','아오리'], c:0},
+  {q:'늦가을(10월 말~11월)에 따서 겨우내 먹는 사과는?', a:['부사','아오리','쓰가루'], c:0},
+  {q:'우리나라에서 가장 많이 키우는 사과는?', a:['부사','감홍','아오리'], c:0},
+  {q:'홍로와 감홍은 어느 나라에서 만든 품종일까요?', a:['한국','미국','프랑스'], c:0},
+  {q:'부사(후지)는 어느 나라에서 만든 품종일까요?', a:['일본','영국','브라질'], c:0},
+  {q:'사과 한 상자는 보통 몇 kg일까요?', a:['1kg','10kg','100kg'], c:1},
+  {q:'경매에서 사과는 누가 가져갈까요?', a:['가장 먼저 온 사람','가장 높은 값을 부른 사람','가장 키 큰 사람'], c:1},
+  {q:'사과를 오래 두려면 어디에 둘까요?', a:['서늘한 곳','햇볕 드는 창가','난로 옆'], c:0},
+  {q:'사과를 다른 과일 옆에 두면 어떻게 될까요?', a:['다른 과일이 빨리 익어요','다른 과일이 커져요','아무 일 없어요'], c:0, e:'사과가 내뿜는 에틸렌 가스 때문이에요.'},
+  {q:'꼭지가 빠진 사과는 어떻게 될까요?', a:['더 빨리 상해요','더 달아져요','더 커져요'], c:0},
+  // 사과 속 과학
+  {q:'사과를 물에 넣으면?', a:['둥둥 떠요','가라앉아요','녹아요'], c:0, e:'사과 속에 공기가 4분의 1쯤 들어 있어요.'},
+  {q:'사과의 대부분은 무엇으로 되어 있을까요?', a:['물','기름','소금'], c:0, e:'사과의 약 85%가 물이에요.'},
+  {q:'깎아 둔 사과가 갈색으로 변하는 까닭은?', a:['공기(산소)를 만나서','추워서','소리를 들어서'], c:0},
+  {q:'깎은 사과가 갈색으로 변하지 않게 하려면?', a:['연한 소금물에 담그기','햇볕에 두기','흔들기'], c:0},
+  {q:'사과를 가로로 반 자르면 씨 자리는 무슨 모양일까요?', a:['별','하트','네모'], c:0, e:'씨방이 5칸이라 별 모양이에요.'},
+  {q:'사과 속 투명하게 비치는 \'꿀\'의 정체는?', a:['진짜 꿀','당분이 모인 것','물감'], c:1, e:'솔비톨이라는 당이 모여서 그렇게 보여요.'},
+  {q:'사과 씨는 어떻게 하는 게 좋을까요?', a:['먹지 말고 뱉기','꼭꼭 씹어 먹기','모아서 먹기'], c:0, e:'사과 씨에는 몸에 안 좋은 성분이 조금 들어 있어요.'},
+  {q:'사과 껍질이 반질반질한 까닭은?', a:['사과가 만든 천연 왁스','누가 칠한 페인트','이슬이 얼어서'], c:0},
+  {q:'영양이 특히 많은 곳은?', a:['껍질과 그 바로 아래','씨','꼭지'], c:0, e:'잘 씻어서 껍질째 먹으면 좋아요.'},
+  {q:'보통 크기 사과 한 개의 열량은 대략?', a:['10kcal','100kcal','1000kcal'], c:1},
+  // 사과 세계 이야기
+  {q:'사과가 처음 자라던 고향은 어디일까요?', a:['중앙아시아','남극','아마존'], c:0, e:'카자흐스탄 근처 산에 야생 사과 숲이 있어요.'},
+  {q:'세계에서 사과를 가장 많이 키우는 나라는?', a:['중국','이집트','캐나다'], c:0},
+  {q:'우리나라에서 사과가 가장 많이 나는 곳은?', a:['경상북도','제주도','서울'], c:0},
+  {q:'날씨가 더워지면서 사과 키우는 곳은 어디로 옮겨 가고 있을까요?', a:['북쪽(강원도 쪽)','남쪽 바다','섬'], c:0},
+  {q:'세상에 있는 사과 품종은 대략 몇 가지일까요?', a:['75가지','750가지','7500가지 넘게'], c:2},
+  {q:'떨어지는 사과를 보고 중력을 생각해 낸 과학자는?', a:['뉴턴','에디슨','세종대왕'], c:0},
+  {q:'아들 머리 위 사과를 화살로 맞힌 이야기의 주인공은?', a:['윌리엄 텔','피터 팬','홍길동'], c:0},
+  {q:'\'빅 애플\'이라는 별명을 가진 도시는?', a:['뉴욕','파리','부산'], c:0},
+  {q:'\'하루 사과 한 개면 의사가 필요 없다\'는 어느 나라 속담일까요?', a:['영국','한국','이집트'], c:0, e:'An apple a day keeps the doctor away!'},
+  {q:'사과를 영어로 하면?', a:['apple','banana','grape'], c:0}
 ];
 
 const ERRANDS = [
@@ -463,7 +520,7 @@ function newGame(){
     trees:[], stock:{}, b:{}, deco:{}, nutri:0, prot:{dis:-1, pest:-1},
     wx:{temp:6, rain:false, hum:55, wind:2, dir:6, dis:8, pest:6, sky:'sun'},
     orders:[], ach:{}, facts:{}, stats:{boxes:0, quiz:0, raids:0, sprays:0, yearBoxes:0, bestQ:0, sold:0},
-    ev:{}, worker:0, errand:null, quizDay:-99, planted:{}, selVar:'fuji', contest:[], seenTut:{}, oid:1
+    ev:{}, worker:0, errand:null, quizDay:-99, quizDayC:-99, planted:{}, selVar:'fuji', contest:[], seenTut:{}, oid:1
   };
   for (let i = 0; i < g.rows * PER_ROW; i++) g.trees.push(null);
   G = g;
@@ -1575,7 +1632,7 @@ function wjPortraitLook(){
 
 // ===== 과수원 세상 =====
 const SPOT = {
-  hanok:{x:520, y:820}, shed:{x:780, y:1060}, grandma:{x:745, y:905}, chief:{x:300, y:1440},
+  hanok:{x:520, y:820}, shed:{x:780, y:1060}, grandma:{x:395, y:1440}, chief:{x:300, y:1440},
   sarang:{x:170, y:820}, cold:{x:200, y:1190}, factory:{x:430, y:1160}, wondumak:{x:2340, y:780},
   hives:[[2300, 1040], [2350, 1075], [2300, 1110]], drone:{x:900, y:830},
   pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
@@ -3210,7 +3267,8 @@ function renderTodo(needSpray){
   if (st) items.push({ic:'📦', t:'창고 사과 경매로 팔기', n:`${st}상자`, ui:'store'});
   for (const o of G.orders) items.push({ic:o.ic, t:`${o.name} ${gByK(o.g).name}↑ ${o.n}상자`, n:`${o.due}주까지`, hot:canDeliver(o), ui:'store'});
   if (G.errand) items.push({ic:'👴', t:`이장님 부탁: 사과 ${G.errand.need}상자`, n:totalStock() >= G.errand.need ? '갖다 드리기' : '사과 필요', go:'chief'});
-  if (G.quizDay !== absDay() - G.day) items.push({ic:'👵', t:'순자 할머니 사과 퀴즈', n:'이번 주', go:'grandma'});
+  if (quizReady('grandma')) items.push({ic:'👵', t:'순자 할머니 사과 퀴즈', n:'이번 주', go:'grandma'});
+  if (quizReady('chief')) items.push({ic:'👴', t:'이장님 사과 퀴즈', n:'이번 주', go:'chief'});
   const upcoming = VAR_KEYS.filter(v => G.trees.some(t => t && t.v === v && t.fr) && G.week < VARS[v].hv[0]);
   for (const v of upcoming) items.push({ic:'⏳', t:`${VARS[v].name} 수확은 ${VARS[v].hv[0]}주부터`, n:`${VARS[v].hv[0] - G.week}주 뒤`, done:true});
   huntTodo(items);
@@ -3534,22 +3592,43 @@ function talk(who, html, foot){
   }});
 }
 function weekId(){ return absDay() - G.day; }
-function talkGrandma(){
-  if (G.quizDay === weekId()) { talk('grandma', `아이고 우리 ${HN()} 왔니? 이번 주 퀴즈는 벌써 풀었지.<br>💡 ${esc(pick(FACTS))}`); return; }
-  const q = pick(QUIZ);
-  const o = talk('grandma', `${jo(HN(), '아', '야')}, 할미가 사과 문제 하나 낼게. 맞히면 용돈 줄게!<br><b style="font-family:var(--display);font-weight:400;font-size:24px">Q. ${esc(q.q)}</b>`, '');
+// 사과 퀴즈: 순자 할머니(G.quizDay)·이장님(G.quizDayC) 각각 한 주에 한 문제
+const QZ = {grandma:{k:'quizDay', name:'김순자 할머니', ask:n => `${jo(n, '아', '야')}, 할미가 사과 문제 하나 낼게. 맞히면 용돈 줄게!`, ok:n => `딩동댕! 역시 우리 ${jo(n, '이야', '야')}. 용돈 5만원 받으렴.`, no:'아깝다! 정답은'},
+  chief:{k:'quizDayC', name:'고만수 이장님', ask:n => `${n}, 이장이 사과 문제 하나 내 보겠네. 맞히면 마을에서 상금을 주지!`, ok:n => `허허, 정답이네! 역시 ${jo(n, '이', '가')} 사과 박사구먼. 상금 5만원 받게.`, no:'아쉽구먼! 정답은'}};
+const quizReady = who => G[QZ[who].k] !== weekId();
+function pickQuiz(){
+  if (!G.quizSeen) G.quizSeen = [];
+  let pool = QUIZ.map((q, i) => i).filter(i => !G.quizSeen.includes(i));
+  if (!pool.length) { G.quizSeen = []; pool = QUIZ.map((q, i) => i); }
+  const i = pick(pool); G.quizSeen.push(i);
+  const q = QUIZ[i], ord = [0, 1, 2].sort(() => Math.random() - .5);
+  return {q:q.q, e:q.e, a:ord.map(k => q.a[k]), c:ord.indexOf(q.c)};
+}
+function askQuiz(who){
+  const Z = QZ[who], q = pickQuiz();
+  const o = talk(who, `${Z.ask(HN())}<br><b style="font-family:var(--display);font-weight:400;font-size:24px">Q. ${esc(q.q)}</b>`, '');
   $('#talkX').innerHTML = `<div class="quiz">${q.a.map((a, i) => `<button class="btn" data-a="${i}">${'①②③'[i]} ${esc(a)}</button>`).join('')}</div>`;
   const answer = i => {
-    G.quizDay = weekId();
+    G[Z.k] = weekId();
     const right = i === q.c;
-    if (right) { G.money += 50000; G.rep += 1; G.stats.quiz++; if (G.stats.quiz >= 5) unlock('quiz5'); }
-    o.body.querySelector('.bubble').innerHTML = `<div class="who">김순자 할머니</div>${right ? `딩동댕! 역시 우리 ${jo(HN(), '이야', '야')}. 용돈 5만원 받으렴. (평판 +1)` : `아깝다! 정답은 <b>${esc(q.a[q.c])}</b>이란다.`}`;
+    if (right) { G.money += 50000; G.rep += 1; G.stats.quiz++; if (G.stats.quiz >= 5) unlock('quiz5'); updateHUD(true); }
+    o.body.querySelector('.bubble').innerHTML = `<div class="who">${Z.name}</div>${right ? `${Z.ok(HN())} (평판 +1)` : `${Z.no} <b>${esc(q.a[q.c])}</b>${who === 'chief' ? '일세.' : '이란다.'}`}${q.e ? `<div class="fact" style="margin-top:10px">💡 ${esc(q.e)}</div>` : ''}`;
     $('#talkX').innerHTML = '';
     o.footEl.innerHTML = `<button class="btn pri" id="tOk">고마워요</button>`; $('#tOk').onclick = () => UI.close();
     if (AUTO) o.timer = setTimeout(() => UI.modal === o && UI.close(), POPMS / 2);
   };
   $('#talkX').querySelectorAll('[data-a]').forEach(b => b.onclick = () => answer(+b.dataset.a));
   if (AUTO) o.timer = setTimeout(() => answer(Math.random() < .75 ? q.c : (q.c + 1) % 3), 1500);
+}
+// 이장님 대화창 아래에 퀴즈 버튼 붙이기
+function chiefQuizBtn(o){
+  if (!quizReady('chief') || !o || !o.footEl) return;
+  o.footEl.insertAdjacentHTML('afterbegin', '<button class="btn y" id="tQuiz">🍎 사과 퀴즈 풀기</button>');
+  $('#tQuiz').onclick = () => { UI.close(); setTimeout(() => askQuiz('chief'), 160); };
+}
+function talkGrandma(){
+  if (!quizReady('grandma')) { talk('grandma', `아이고 우리 ${HN()} 왔니? 이번 주 퀴즈는 벌써 풀었지.${quizReady('chief') ? ' 옆에 이장님도 문제를 내신단다.' : ''}<br>💡 ${esc(pick(FACTS))}`); return; }
+  askQuiz('grandma');
 }
 function talkChief(){
   if (G.errand) {
@@ -3558,13 +3637,13 @@ function talkChief(){
       `<button class="btn" id="tNo">나중에요</button><button class="btn go" id="tGive" ${have ? '' : 'disabled'}>사과 ${e.need}상자 드리기</button>`);
     $('#tNo').onclick = () => UI.close();
     const give = () => { takeBoxes('C', e.need); G.money += e.pay; G.rep += e.rep; G.errand = null; toast(`👴 이장님 부탁 완료! +${won(e.pay)}, 평판 +${e.rep}`, 'gold'); UI.close(); };
-    $('#tGive').onclick = give;
+    $('#tGive').onclick = give; chiefQuizBtn(o);
     if (AUTO) o.timer = setTimeout(() => UI.modal === o && (have ? give() : UI.close()), POPMS / 2);
     return;
   }
   if (totalStock() > 0 || G.year >= 2) {
     G.errand = {...pick(ERRANDS)};
-    const o = talk('chief', `마침 잘 왔네, ${HN()}. ${esc(G.errand.txt)} 사례는 ${won(G.errand.pay)} 하겠네.`);
+    const o = talk('chief', `마침 잘 왔네, ${HN()}. ${esc(G.errand.txt)} 사례는 ${won(G.errand.pay)} 하겠네.`); chiefQuizBtn(o);
     if (AUTO) o.timer = setTimeout(() => UI.modal === o && UI.close(), POPMS / 2);
     return;
   }
@@ -3574,7 +3653,7 @@ function talkChief(){
     '사과는 심은 이듬해부터 열린다네. 첫해는 나무를 잘 키우는 게 일이지.',
     '꽃솎기, 열매솎기를 다 해야 특 등급 사과가 나온다네.'
   ];
-  const o = talk('chief', `어서 오게, ${HN()}. ${esc(pick(tips))}`);
+  const o = talk('chief', `어서 오게, ${HN()}. ${esc(pick(tips))}`); chiefQuizBtn(o);
   if (AUTO) o.timer = setTimeout(() => UI.modal === o && UI.close(), POPMS / 2);
 }
 
