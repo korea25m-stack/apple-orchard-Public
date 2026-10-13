@@ -219,8 +219,6 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
     <div class="pill card" title="마을 평판">⭐ <span id="rep">0</span></div>
     <div id="clock" class="card">
       <span class="t" id="clockT">06:00</span>
-      <button class="sp" data-sp="0" title="멈춤">⏸</button>
-      <button class="sp" data-sp="1" title="보통">▶</button>
       <button class="sp" id="sndBtn" data-ui="sound" title="소리">🔊</button>
     </div>
   </div>
@@ -236,7 +234,6 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
     <div><b>Space</b>휘두르기 공격 (한 마리, 도구 +5부터 여러 마리)</div>
     <div><b>I</b>가방 (전리품·장비)</div>
     <div><b>Q</b>꽹과리 (산짐승 깜짝)</div>
-    <div><b>P</b>멈춤 / 계속</div>
     <div><b>농막</b>자고 일어나면 다음 할 일까지</div>
   </div>
 
@@ -3519,7 +3516,6 @@ function updateHUD(force){
   $('#rep').textContent = G.rep;
   const hh = Math.floor(G.hour), mm = Math.floor((G.hour - hh) * 6) * 10;
   $('#clockT').textContent = `${DAYN[G.day]} ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-  document.querySelectorAll('.sp[data-sp]').forEach(b => b.classList.toggle('on', +b.dataset.sp === speed));
   const needSpray = sprayState('dis').ok || sprayState('pest').ok;
   $('#sprayBtn').classList.toggle('alert', needSpray);
   renderTodo(needSpray);
@@ -3962,7 +3958,6 @@ function intro(){
 // ----- UI 버튼 연결 -----
 function bindUI(){
   document.querySelectorAll('.tb').forEach(b => b.onclick = () => openUI(b.dataset.ui));
-  document.querySelectorAll('.sp[data-sp]').forEach(b => b.onclick = () => { speed = Math.min(1, +b.dataset.sp); updateHUD(true); });
   $('#sndBtn').onclick = () => { if (UI.free()) uiSound(); }; sndBtn();
   $('#helpBtn').onclick = () => { const h = $('#help'); h.hidden = !h.hidden; store.set('haru-help', h.hidden ? '0' : '1'); };
   $('#help').hidden = store.get('haru-help', '1') !== '1'; renderHelp();
@@ -4060,10 +4055,10 @@ function finishRetail(o){
 // ===== 키 설정 (2026-10-13): 기본은 마우스 왼쪽 = 공격, 오른쪽 = 막기. 플레이어가 직접 바꿀 수 있어요 =====
 const KEY_ACTS = [
   ['attack', '⚔️ 공격 (휘두르기)'], ['block', '🛡️ 막기 (누르고 있기)'], ['interact', '✋ 일하기·말 걸기'],
-  ['gong', '🥁 꽹과리'], ['bag', '🎒 가방'], ['pause', '⏸ 멈춤 / 계속'],
+  ['gong', '🥁 꽹과리'], ['bag', '🎒 가방'],
   ['up', '⬆️ 위로 걷기'], ['down', '⬇️ 아래로 걷기'], ['left', '⬅️ 왼쪽으로 걷기'], ['right', '➡️ 오른쪽으로 걷기']
 ];
-const KEY_DEF = {attack:['Mouse0', 'Space'], block:['Mouse2', 'KeyF'], interact:['KeyF', ''], gong:['KeyQ', ''], bag:['KeyI', ''], pause:['KeyP', ''],
+const KEY_DEF = {attack:['Mouse0', 'Space'], block:['Mouse2', 'KeyF'], interact:['KeyF', ''], gong:['KeyQ', ''], bag:['KeyI', ''],
   up:['KeyW', ''], down:['KeyS', ''], left:['KeyA', ''], right:['KeyD', '']};
 let KB = JSON.parse(JSON.stringify(KEY_DEF));
 (function loadKeys(){ try { const s = JSON.parse(store.get('haru-keys', 'null')); if (s) for (const k in KEY_DEF) if (Array.isArray(s[k])) KB[k] = [s[k][0] || '', s[k][1] || '']; } catch (e) {} })();
@@ -4090,7 +4085,6 @@ function pressAct(act, ev){
   if (act === 'interact') { if (UI.modal && $('#nmSleep')) { $('#nmSleep').click(); return true; } if (!inCombat()) pressF(); return true; }
   if (act === 'gong') { if (UI.free()) heroGong(); return true; }
   if (act === 'bag') { if (UI.modal && UI.modal.inv) UI.close(); else if (UI.free()) uiInv(); return true; }
-  if (act === 'pause') { if (UI.free()) { speed = speed ? 0 : 1; updateHUD(true); } return true; }
   return false;
 }
 // 조작법 칸 글자를 키 설정에 맞춰 다시 써요
@@ -4105,7 +4099,6 @@ function renderHelp(){
     <div><b>마우스 드래그</b>화면 둘러보기</div>
     <div><b>${esc(k('bag'))}</b>가방 (전리품·장비)</div>
     <div><b>${esc(k('gong'))}</b>꽹과리 (산짐승 깜짝)</div>
-    <div><b>${esc(k('pause'))}</b>멈춤 / 계속</div>
     <div style="margin-top:8px"><button class="btn pri" id="keyBtn" style="font-size:17px;padding:6px 14px">⌨️ 키 설정 바꾸기</button></div>`;
   $('#keyBtn').onclick = () => uiKeys();
 }
