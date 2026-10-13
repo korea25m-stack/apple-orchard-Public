@@ -540,6 +540,14 @@ const area = () => G.rows * PYEONG_PER_ROW;
 const sprayCost = () => SPRAY_UNIT * Math.max(1, Math.round(area() / 300));
 const workerPay = () => G.b.sarang ? 100000 : WORKER_PAY;
 const hives = () => G.b.beehive || 0;
+// 2026-10-13 수익 장부: 과수원(경매·주문·소매·가공·심부름) vs 사냥(전리품·포상금). 사냥은 과수원의 1/3까지(최소 150만원/년)
+function incBook(){ if (!G.inc || G.inc.y !== G.year) { if (G.inc) G.incPrev = G.inc; G.inc = {y:G.year, apple:0, hunt:0}; } return G.inc; }
+function addInc(k, n){ incBook()[k] += Math.max(0, Math.round(n || 0)); }
+function huntCap(){ const b = incBook(); return Math.max(1500000, Math.round(Math.max(b.apple, (G.incPrev && G.incPrev.apple) || 0) / 3)); }
+const huntLeft = () => Math.max(0, huntCap() - incBook().hunt);
+// 2026-10-13 꿀벌통 업그레이드(석청): 단계마다 통당 품질 +1, 3단계는 여름·가을에 꿀도 팔려요
+const HIVE_UP = [{st:3, price:300000}, {st:5, price:600000}, {st:8, price:1000000}];
+const hiveLv = () => clamp(G.hiveLv || 0, 0, 3);
 const treePos = i => ({x: OX + TREE_DX / 2 + (i % PER_ROW) * TREE_DX, y: OY + Math.floor(i / PER_ROW) * ROW_H + STRIP / 2 + 6});
 const unlocked = v => G.rep >= VARS[v].rep;
 
@@ -662,7 +670,9 @@ function sprayState(type){
   if (type === 'nutri') {
     const bearing = G.trees.some(t => t && t.age >= 1);
     if (!bearing) return {ok:false, why:'열매 맺는 나무가 아직 없어요.'};
-    if (G.week < 16 || G.week > 40) return {ok:false, why:'영양제는 5~9월(16~40주)에 줘요.'};
+    const mo = weekLabel(G.week).m; // 2026-10-13 5월·8월·10월에 한 번씩
+    if (![5, 8, 10].includes(mo)) return {ok:false, why:'영양제는 5월·8월·10월에 한 번씩 줘요.'};
+    if ((G.nutriM || []).includes(G.year * 100 + mo)) return {ok:false, why:`${mo}월 영양제는 벌써 줬어요.`};
     if (G.nutri >= 3) return {ok:false, why:'올해 영양제는 3번 다 줬어요.'};
     return {ok:true};
   }
@@ -674,7 +684,7 @@ function sprayState(type){
 function applySpray(type, grade){
   const cost = sprayCost();
   G.money -= cost; G.stats.sprays++;
-  if (type === 'nutri') { G.nutri++; return `영양제를 줬어요. 올해 ${G.nutri}/3번 (${won(cost)})`; }
+  if (type === 'nutri') { G.nutri++; (G.nutriM = G.nutriM || []).push(G.year * 100 + weekLabel(G.week).m); if (G.nutriM.length > 6) G.nutriM.shift(); return `영양제를 줬어요. 올해 ${G.nutri}/3번 (${won(cost)})`; }
   let days = {S:10, A:8, B:7, C:5}[grade] || 7, note = '';
   if (G.wx.wind >= 6 && !G.b.drone) { days -= 2; note = ' 바람이 세서 약이 좀 날아갔어요.'; }
   G.prot[type] = absDay() + days - 1;
@@ -748,7 +758,7 @@ function newWeek(){
   if (w === 18) {
     let n = 0;
     G.trees.forEach(t => {
-      if (t && t.age >= 1 && !t.fr) { t.fr = 1; t.bx = treeBoxes(t); t.bon += 2 * hives(); n++; }
+      if (t && t.age >= 1 && !t.fr) { t.fr = 1; t.bx = treeBoxes(t); t.bon += (2 + hiveLv()) * hives(); n++; }
     });
     if (n) toast(`🍏 꽃이 지고 작은 사과가 열렸어요! (${n}그루)`, 'good');
   }
@@ -784,6 +794,8 @@ function newWeek(){
   if (G.year >= 2 && w >= 30 && w <= 46 && G.orders.length < 2 && Math.random() < .4) makeOrder();
   // 품평회
   retailWeek();
+  { const L = weekLabel(w); if ([5, 8, 10].includes(L.m) && L.wk === 1 && G.trees.some(t => t && t.age >= 1)) emit('pop', {ic:'🧪', t:`${L.m}월, 영양제 줄 때예요!`, m:'이번 달에 영양제를 한 번 줄 수 있어요. 방제 창에서 🧪 영양제를 고르세요. (5월·8월·10월에 한 번씩)'}); }
+  if (hiveLv() >= 3 && hives() && w >= 18 && w <= 40) { const p = 20000 * hives(); G.money += p; addInc('apple', p); toast(`🍯 꿀벌통에서 꿀을 땄어요! +${won(p)}`, 'good'); }
   if (w === 50 && G.stats.bestQ > 0) emit('contest');
   emit('week');
 }
@@ -811,7 +823,7 @@ function takeBoxes(gk, n){ // 낮은 등급부터 꺼냄
 function deliver(o){
   if (!canDeliver(o)) return false;
   takeBoxes(o.g, o.n);
-  G.money += o.price * o.n; G.rep += o.rep;
+  G.money += o.price * o.n; addInc('apple', o.price * o.n); G.rep += o.rep;
   G.orders = G.orders.filter(x => x !== o);
   toast(`${o.ic} ${o.name} 납품 완료! +${won(o.price * o.n)}, 평판 +${o.rep}`, 'gold');
   return true;
@@ -831,7 +843,7 @@ function auctionPlan(key){
 function sellLot(key, plan, cnt){
   const have = G.stock[key] || 0, n = Math.min(have, cnt == null ? have : cnt); if (!n) return 0;
   const total = Math.round(plan.price * n);
-  G.money += total; G.stats.sold += n; G.stock[key] = have - n; if (!G.stock[key]) delete G.stock[key];
+  G.money += total; addInc('apple', total); G.stats.sold += n; G.stock[key] = have - n; if (!G.stock[key]) delete G.stock[key];
   if (plan.big) unlock('bigbuyer');
   checkRich();
   return total;
@@ -840,7 +852,7 @@ function processLot(key){
   const gk = key.split('|')[1], n = G.stock[key] || 0;
   const unit = gk === 'C' ? 50000 : gk === 'B' ? 60000 : 0;
   if (!unit || !n || !G.b.factory) return 0;
-  delete G.stock[key]; G.money += unit * n; checkRich();
+  delete G.stock[key]; G.money += unit * n; addInc('apple', unit * n); checkRich();
   return unit * n;
 }
 function checkRich(){ if (G.money >= 100000000) unlock('rich'); }
@@ -1921,9 +1933,13 @@ function drawWondumak(c, x, y){
   c.restore();
 }
 function drawHive(c, x, y, t){
-  c.save(); c.translate(x, y); shadow(c, 0, 2, 22, 6);
+  const lv = hiveLv(), s = 1 + lv * .12; // 단계마다 커지고 층이 늘어요
+  c.save(); c.translate(x, y); c.scale(s, s); shadow(c, 0, 2, 22, 6);
   cel(c, cc => rr(cc, -18, -34, 36, 34, 3), '#ffd76a', '#d9a63a', 4, 4, 2.4);
-  cel(c, cc => rr(cc, -21, -40, 42, 8, 2), '#f7f1e3', '#d6cdbb', 2, 2, 2.2);
+  for (let k = 0; k < lv; k++) cel(c, cc => rr(cc, -18, -34 - (k + 1) * 14, 36, 14, 3), k === 2 ? '#ffc23a' : '#ffe08a', '#d9a63a', 2, 2, 2.2);
+  const top = -40 - lv * 14;
+  cel(c, cc => rr(cc, -21, top, 42, 8, 2), lv >= 3 ? '#ffd23a' : '#f7f1e3', lv >= 3 ? '#d4a020' : '#d6cdbb', 2, 2, 2.2);
+  if (lv) { c.beginPath(); c.moveTo(14, -6); c.quadraticCurveTo(18, 4, 14, 8); c.lineWidth = 4; c.strokeStyle = '#f2a81c'; c.lineCap = 'round'; c.stroke(); }
   c.fillStyle = INK; c.fillRect(-6, -8, 12, 3);
   for (let k = 0; k < 3; k++) { const a = t * 3 + k * 2.1; const bx = Math.cos(a) * 26, by = -40 + Math.sin(a * 1.3) * 12; c.beginPath(); ell(c, bx, by, 4, 3); c.fillStyle = '#ffcc33'; c.fill(); c.lineWidth = 1.4; c.strokeStyle = INK; c.stroke(); }
   c.restore();
@@ -2666,9 +2682,9 @@ const FORAGE_TABLE = [{pyogo:5, deodeok:3}, {pyogo:2, deodeok:3, cheonma:3}, {ch
 function rollLoot(tab){ let s = 0; for (const k in tab) s += tab[k]; let r = Math.random() * s; for (const k in tab) { r -= tab[k]; if (r <= 0) return k; } return Object.keys(tab)[0]; }
 function lootPrice(id){ const L = LOOT[id], i = LOOT_KEYS.indexOf(id); const f = srand(absDay() * 31 + i * 7 + 3)(); return Math.round((L.lo + (L.hi - L.lo) * f) / 10000) * 10000; }
 function addLoot(id, n = 1){ ensureGear(); G.bag[id] = (G.bag[id] || 0) + n; G.stats.loot = (G.stats.loot || 0) + n; }
-const LOOT_WEEK_MAX = 3;
+const lootWeekMax = () => 3 + Math.floor((((G.fm && G.fm.lv) || 1) - 1) / 3); // 2026-10-13 레벨 3마다 한 주에 1개 더(사냥 수입이 늦게도 과수원의 1/3쯤 되게)
 const weekKey = () => G.year * 100 + G.week;
-function lootLeft(){ if (!G.lootWk || G.lootWk.w !== weekKey()) G.lootWk = {w:weekKey(), n:0}; return Math.max(0, LOOT_WEEK_MAX - G.lootWk.n); }
+function lootLeft(){ if (!G.lootWk || G.lootWk.w !== weekKey()) G.lootWk = {w:weekKey(), n:0}; return Math.max(0, lootWeekMax() - G.lootWk.n); }
 const bagCount = () => { ensureGear(); return Object.values(G.bag).reduce((a, b) => a + b, 0); };
 
 // ----- 숲 그림 -----
@@ -2891,7 +2907,7 @@ function killMon(m){
   FX.stop = Math.max(FX.stop, .13); FX.shake = Math.max(FX.shake, .6); burst(m.x, m.y - 40, 22, ['#ffd23a', '#ff6b57', '#7fcf5a', '#fffaf1'], 620, .7);
   const f0 = farmer();
   if (m.raid) {
-    G.money += m.V.pay; G.rep += m.V.rep; G.stats.raids++; unlock('raid');
+    G.money += m.V.pay; addInc('hunt', m.V.pay); G.rep += m.V.rep; G.stats.raids++; unlock('raid');
     floats.push({x:m.x, y:m.y - 150, s:`🎉 쫓아냈다! +${won(m.V.pay)}`, t:2, c:'#ff6b57'});
     toast(`🎉 ${m.V.name}를 쫓아냈어요! 이장님 포상금 ${won(m.V.pay)}, 평판 +${m.V.rep}`, 'good');
     gainXp(m.V.xp);
@@ -3253,16 +3269,16 @@ function uiSellLoot(){
   UI.open({ic:'🧺', title:'금비상회 · 산나물·버섯 삽니다', w:1000, render(o){
     const have = LOOT_KEYS.filter(k => G.bag[k] > 0);
     const total = have.reduce((a, k) => a + lootPrice(k) * G.bag[k], 0), left = lootLeft();
-    o.body.innerHTML = `<p style="margin-top:0">값은 날마다 조금씩 바뀌어요(오늘 시세). 사냥터에서 산짐승을 쫓아내거나 반짝이는 자리를 캐면 얻어요.<br>🧺 금비상회는 한 주에 <b>${LOOT_WEEK_MAX}개</b>까지만 사요. 이번 주 남은 자리: <b class="gs">${left}개</b>${left ? '' : ' (다음 주에 다시 와요)'}</p>
+    o.body.innerHTML = `<p style="margin-top:0">값은 날마다 조금씩 바뀌어요(오늘 시세). 사냥터에서 산짐승을 쫓아내거나 반짝이는 자리를 캐면 얻어요.<br>🧺 금비상회는 한 주에 <b>${lootWeekMax()}개</b>까지만 사요(레벨이 오르면 늘어요). 이번 주 남은 자리: <b class="gs">${left}개</b>${left ? '' : ' (다음 주에 다시 와요)'}<br>🍎 사냥 수입은 과수원 수입의 1/3까지 받아요. 올해 <b>${won(incBook().hunt)}</b> / 한도 <b>${won(huntCap())}</b></p>
       ${have.length ? `<div class="ggrid">${have.map(k => { const L = LOOT[k]; return `<div class="gslot"><div class="gh">${L.ic} ${L.name} <small>× ${G.bag[k]}</small></div>
         <div class="gd">💡 ${esc(L.desc)}</div><div class="gi"><span>오늘 시세 <b class="gs">${won(lootPrice(k))}</b> <span class="gd">(${won(L.lo)}~${won(L.hi)})</span></span>
         <span><button class="btn" data-s1="${k}" ${left ? '' : 'disabled'}>1개 팔기</button> <button class="btn pri" data-sa="${k}" ${left ? '' : 'disabled'}>최대로</button></span></div></div>`; }).join('')}</div>`
         : '<div class="fact">아직 가방이 비었어요. 과수원 동쪽·남쪽 사냥터에 가 보세요! 🌲</div>'}`;
-    const sell = (k, n) => { n = Math.min(n, lootLeft()); if (n <= 0) return; G.lootWk.n += n; const p = lootPrice(k) * n; G.bag[k] -= n; if (!G.bag[k]) delete G.bag[k]; G.money += p; G.stats.lootSold = (G.stats.lootSold || 0) + p; toast(`💰 ${LOOT[k].name} ${n}개를 ${won(p)}에 팔았어요!`, 'good'); updateHUD(true); todoSig = ''; o.render(o); };
+    const sell = (k, n) => { n = Math.min(n, lootLeft(), Math.floor(huntLeft() / lootPrice(k))); if (n <= 0) { if (lootLeft()) toast('올해는 사냥 수입 한도(과수원 수입의 1/3)를 다 채웠어요', 'bad'); return; } G.lootWk.n += n; const p = lootPrice(k) * n; addInc('hunt', p); G.bag[k] -= n; if (!G.bag[k]) delete G.bag[k]; G.money += p; G.stats.lootSold = (G.stats.lootSold || 0) + p; toast(`💰 ${LOOT[k].name} ${n}개를 ${won(p)}에 팔았어요!`, 'good'); updateHUD(true); todoSig = ''; o.render(o); };
     o.body.querySelectorAll('[data-s1]').forEach(b => b.onclick = () => sell(b.dataset.s1, 1));
     o.body.querySelectorAll('[data-sa]').forEach(b => b.onclick = () => sell(b.dataset.sa, G.bag[b.dataset.sa]));
     o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">가방 전리품 값 ${won(total)} · 이번 주 ${left}개 더 팔 수 있어요</span>${have.length && left ? '<button class="btn" id="slAll">비싼 것부터 팔기</button>' : ''}<button class="btn pri" id="slOk">닫기</button>`;
-    const all = $('#slAll'); if (all) all.onclick = () => { let got = 0, cnt = 0; for (const k of [...have].sort((a, b) => lootPrice(b) - lootPrice(a))) { const n = Math.min(G.bag[k], lootLeft()); if (!n) break; G.lootWk.n += n; got += lootPrice(k) * n; cnt += n; G.bag[k] -= n; if (!G.bag[k]) delete G.bag[k]; } G.money += got; G.stats.lootSold = (G.stats.lootSold || 0) + got; toast(`💰 전리품 ${cnt}개를 ${won(got)}에 팔았어요!`, 'good'); updateHUD(true); todoSig = ''; o.render(o); };
+    const all = $('#slAll'); if (all) all.onclick = () => { let got = 0, cnt = 0; for (const k of [...have].sort((a, b) => lootPrice(b) - lootPrice(a))) { const n = Math.min(G.bag[k], lootLeft(), Math.floor(huntLeft() / lootPrice(k))); if (!n) continue; G.lootWk.n += n; got += lootPrice(k) * n; addInc('hunt', lootPrice(k) * n); cnt += n; G.bag[k] -= n; if (!G.bag[k]) delete G.bag[k]; } G.money += got; G.stats.lootSold = (G.stats.lootSold || 0) + got; toast(`💰 전리품 ${cnt}개를 ${won(got)}에 팔았어요!`, 'good'); updateHUD(true); todoSig = ''; o.render(o); };
     $('#slOk').onclick = () => UI.close();
   }});
 }
@@ -3698,7 +3714,7 @@ function renderTodo(needSpray){
     items.push({ic:T.ic, t:T.name, n:a.n ? `${a.n}그루 남음` : '끝!', done:!a.n, go:a.k});
   }
   if (needSpray) items.push({ic:'💧', t:`방제하기 (${G.wx.dis >= RISK_HIGH && !protectedFor('dis') ? '병' : '해충'} 위험 높음)`, n:won(sprayCost()), hot:true, ui:'spray'});
-  if (sprayState('nutri').ok && G.week % 4 === 0) items.push({ic:'🧪', t:`영양제 주기 (${G.nutri}/3)`, n:won(sprayCost()), ui:'spray'});
+  if (sprayState('nutri').ok) items.push({ic:'🧪', t:`영양제 주기 (${G.nutri}/3)`, n:won(sprayCost()), ui:'spray'});
   const st = totalStock();
   if (st) items.push({ic:'📦', t:'창고 사과 경매로 팔기', n:`${st}상자`, ui:'store'});
   for (const o of G.orders) items.push({ic:o.ic, t:`${o.name} ${gByK(o.g).name}↑ ${o.n}상자`, n:`${o.due}주까지`, hot:canDeliver(o), ui:'store'});
@@ -3937,7 +3953,11 @@ function uiBuild(tab){
       return `<div class="opt ${have ? 'have' : ''}"><span class="t">${d.ic} ${d.name}</span><span>${d.desc}</span><span class="p">${have ? '✔ 있어요' : won(d.price)}</span>${have ? '' : `<button class="btn y" data-dk="${k}" ${G.money >= d.price ? '' : 'disabled'}>사기</button>`}</div>`; }).join('');
     else cards = Object.entries(BUILD).filter(([k, b]) => b.tab === tab).map(([k, b]) => { const n = G.b[k] || 0, max = b.max || 1, have = n >= max;
       return `<div class="opt ${have ? 'have' : ''}"><span class="t">${b.ic} ${b.name}${max > 1 ? ` <small>(${n}/${max})</small>` : ''}</span><span>${b.desc}</span><span class="p">${have ? '✔ 지었어요' : won(b.price)}</span>${have ? '' : `<button class="btn y" data-bk="${k}" ${G.money >= b.price ? '' : 'disabled'}>짓기</button>`}</div>`; }).join('');
+    if (tab === 'b' && hives()) { const lv = hiveLv(), nx = HIVE_UP[lv], st = G.bag.seokcheong || 0;
+      cards += `<div class="opt ${nx ? '' : 'have'}"><span class="t">🍯 꿀벌통 키우기 <small>(${lv}/3단계)</small></span><span>석청을 모아 벌통을 키워요. 단계마다 통당 사과 품질 +1, 3단계면 5~9월에 매주 통당 꿀 2만원.</span>${nx ? `<span class="p">🍯 석청 ${nx.st}개(${st}) + ${won(nx.price)}</span><button class="btn y" id="hiveUp" ${st >= nx.st && G.money >= nx.price ? '' : 'disabled'}>키우기</button>` : '<span class="p">✔ 최고 단계</span>'}</div>`; }
     o.body.innerHTML = tabs + `<div class="grid">${cards}</div>`;
+    const hu = $('#hiveUp'); if (hu) hu.onclick = () => { const nx = HIVE_UP[hiveLv()]; if (!nx || (G.bag.seokcheong || 0) < nx.st || G.money < nx.price) return;
+      G.bag.seokcheong -= nx.st; if (!G.bag.seokcheong) delete G.bag.seokcheong; G.money -= nx.price; G.hiveLv = hiveLv() + 1; sfx('fanfare'); toast(`🍯 꿀벌통이 ${G.hiveLv}단계가 됐어요! 통마다 품질 +${2 + G.hiveLv}`, 'gold'); updateHUD(true); o.render(o); };
     o.body.querySelectorAll('.tab').forEach(b => b.onclick = () => { tab = b.dataset.t; o.render(o); });
     o.body.querySelectorAll('[data-bk]').forEach(b => b.onclick = () => { buyBuild(b.dataset.bk); o.render(o); });
     o.body.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { buyDeco(b.dataset.dk); o.render(o); });
@@ -4081,7 +4101,7 @@ function talkChief(){
     const o = talk('chief', `${esc(e.txt)}<br>${have ? '창고에 사과가 있구먼!' : `아직 창고에 사과가 ${totalStock()}상자뿐이네. 사과를 따면 다시 오게.`}`,
       `<button class="btn" id="tNo">나중에요</button><button class="btn go" id="tGive" ${have ? '' : 'disabled'}>사과 ${e.need}상자 드리기</button>`);
     $('#tNo').onclick = () => UI.close();
-    const give = () => { takeBoxes('C', e.need); G.money += e.pay; G.rep += e.rep; G.errand = null; toast(`👴 이장님 부탁 완료! +${won(e.pay)}, 평판 +${e.rep}`, 'gold'); UI.close(); };
+    const give = () => { takeBoxes('C', e.need); G.money += e.pay; addInc('apple', e.pay); G.rep += e.rep; G.errand = null; toast(`👴 이장님 부탁 완료! +${won(e.pay)}, 평판 +${e.rep}`, 'gold'); UI.close(); };
     $('#tGive').onclick = give; chiefQuizBtn(o);
     if (AUTO) o.timer = setTimeout(() => UI.modal === o && (have ? give() : UI.close()), POPMS / 2);
     return;
@@ -4214,7 +4234,7 @@ function drawPack(c, step, k, done){
 function finishRetail(o){
   if (stockAtLeast(o.g) < o.n) { toast('창고에 사과가 모자라요', 'bad'); return false; }
   takeBoxes(o.g, o.n);
-  const pay = o.unit * o.n; G.money += pay; G.rep += 1; G.stats.retail = (G.stats.retail || 0) + 1; G.stats.sold += o.n;
+  const pay = o.unit * o.n; G.money += pay; addInc('apple', pay); G.rep += 1; G.stats.retail = (G.stats.retail || 0) + 1; G.stats.sold += o.n;
   G.retail = G.retail.filter(x => x !== o);
   sfx('coin'); toast(`🎁 ${o.name}에 ${o.n}상자 보냈어요! +${won(pay)}, 평판 +1`, 'gold'); checkRich();
   return true;
