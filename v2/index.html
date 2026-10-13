@@ -1903,7 +1903,7 @@ function chibiHat(c, S, side, back, hero){
 
 // ===== 과수원 세상 =====
 const SPOT = {
-  hanok:{x:-450, y:900}, shed:{x:510, y:830} /* 2026-10-13 저장하는 한옥은 왼쪽 빈 터로, 사과 창고가 한옥 자리로 크게 */, grandma:{x:395, y:1440}, chief:{x:300, y:1440},
+  hanok:{x:-450, y:900}, shed:{x:510, y:830} /* 2026-10-13 저장하는 한옥은 왼쪽 빈 터로, 사과 창고가 한옥 자리로 크게 */, grandma:{x:480, y:1440}, chief:{x:270, y:1440},
   sarang:{x:170, y:820}, cold:{x:200, y:1190}, factory:{x:430, y:1160}, wondumak:{x:2340, y:780},
   hives:[[2300, 1040], [2350, 1075], [2300, 1110]], drone:{x:900, y:830},
   pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
@@ -2468,7 +2468,7 @@ function render(ctx, dt, T){
     if (vis(x, y)) add(y, () => drawBush(ctx, x, y, s));
   }
   // 사람
-  add(SPOT.grandma.y, () => drawPerson(ctx, SPOT.grandma.x, SPOT.grandma.y, 'grandma', P.x < SPOT.grandma.x ? 2 : 3, 0, 0));
+  add(SPOT.grandma.y, () => drawPerson(ctx, SPOT.grandma.x, SPOT.grandma.y, 'grandma', 0, 0, 0));
   add(SPOT.chief.y, () => drawPerson(ctx, SPOT.chief.x, SPOT.chief.y, 'chief', 0, 0, 0));
   if (workerS.on) add(workerS.y, () => drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act));
   for (const c of critters) if (vis(c.x, c.y)) add(c.y, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
