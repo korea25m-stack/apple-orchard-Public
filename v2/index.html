@@ -145,6 +145,8 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .gh{font-family:var(--display);font-size:22px;margin-bottom:6px}.gh small{font-size:16px;color:var(--muted)}
 .gi{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 4px;border-top:1.5px dashed #e3d8c4;font-size:15px}
 .gi .gimg{flex:none;background:#fffaf1;border:2px solid #e3d8c4;border-radius:12px}.gi .gtx{flex:1;min-width:0}
+.gsb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.btn.sm{font-size:14px!important;padding:4px 9px!important;border-width:2px}.btn.warn{background:#ff6b57;color:#fff}
+.ivc .gsb{justify-content:center}
 .gi.on{background:#fff3c4;border-radius:10px}.gi.lock{opacity:.55}.gi .btn{font-size:16px;padding:6px 10px;white-space:nowrap}
 .gs{color:#b2332b;font-family:var(--display)}.gd{color:var(--muted);font-size:14px}
 .tabs{display:flex;gap:8px;margin-bottom:14px}
@@ -4026,6 +4028,36 @@ function slotStat(slot){ const g = ensureGear(), id = g[slot]; return itemStat(s
 function blockPct(){ const g = ensureGear(), i = GEAR.weapon.items.findIndex(x => x.id === g.weapon); return Math.min(80, 30 + i * 10 + (g.own[g.weapon] || 0) * 4); }
 function upCost(it, lv){ return Math.max(100000, Math.round(it.price * .25 / 10000) * 10000) * (lv + 1) * (lv >= 5 ? 2 : 1); } // +6부터 두 배
 const upRep = (it, lv) => it.rep + (lv + 1) * 4;
+// 2026-10-13 안 쓰는 장비 팔기·버리기: 산 값의 절반 + 돈 들인 강화비의 30%
+function gearSellPrice(slot, id){
+  const it = gearItem(slot, id), lv = ensureGear().own[id] || 0;
+  let up = 0; for (let l = 0; l < lv; l++) up += upCost(it, l);
+  return Math.round((it.price * .5 + up * .3) / 10000) * 10000;
+}
+function dropGear(slot, id, sell){
+  const g = ensureGear(), it = gearItem(slot, id);
+  if (!(id in g.own) || g[slot] === id) return false; // 끼고 있는 건 못 팔아요
+  const pay = sell ? gearSellPrice(slot, id) : 0;
+  delete g.own[id]; G.money += pay;
+  toast(sell ? `💰 ${jo(it.name, '을', '를')} ${won(pay)}에 팔았어요.` : `🗑️ ${jo(it.name, '을', '를')} 버렸어요.`, sell ? 'gold' : '');
+  updateHUD(true); return true;
+}
+// 팔기·버리기 버튼: 한 번 누르면 '정말?'로 바뀌고, 3초 안에 한 번 더 누르면 해요
+function gearSellBtns(slot, it){
+  const g = ensureGear(); if (g[slot] === it.id) return '';
+  const p = gearSellPrice(slot, it.id);
+  return `<span class="gsb">${p > 0 ? `<button class="btn sm" data-sell="${slot}|${it.id}">💰 팔기 ${won(p)}</button>` : ''}<button class="btn sm" data-drop="${slot}|${it.id}">🗑️ 버리기</button></span>`;
+}
+function bindSellBtns(root, o){
+  const arm = (b, txt, run) => b.onclick = e => {
+    e.stopPropagation();
+    if (b.dataset.armed) { run(); o.render(o); return; }
+    b.dataset.armed = 1; b.dataset.t = b.textContent; b.textContent = txt; b.classList.add('warn');
+    setTimeout(() => { if (b.isConnected && b.dataset.armed) { delete b.dataset.armed; b.textContent = b.dataset.t; b.classList.remove('warn'); } }, 3000);
+  };
+  root.querySelectorAll('[data-sell]').forEach(b => { const [s, id] = b.dataset.sell.split('|'), it = gearItem(s, id); arm(b, `${it.unique ? '⚠️ 하나뿐인 장비예요! ' : ''}정말 팔까요? 한 번 더`, () => dropGear(s, id, true)); });
+  root.querySelectorAll('[data-drop]').forEach(b => { const [s, id] = b.dataset.drop.split('|'), it = gearItem(s, id); arm(b, `${it.unique ? '⚠️ 하나뿐인 장비예요! ' : ''}정말 버릴까요? 한 번 더`, () => dropGear(s, id, false)); });
+}
 // 능력치: 레벨이 오르면 힘·체력·솜씨가 늘어요
 function farmer(){
   const g = ensureGear(), lv = G.fm.lv;
@@ -4077,7 +4109,7 @@ function uiGear(){
           else if (own) btn = `<button class="btn" data-eq="${slot}|${it.id}">끼기</button>`;
           else if (it.unique) btn = `<button class="btn" disabled>🐯 호랑이를 이기면 얻어요</button>`;
           else btn = `<button class="btn" data-buy="${slot}|${it.id}" ${lock || G.money < it.price ? 'disabled' : ''}>${lock ? `⭐ 평판 ${it.rep}` : `사기 ${won(it.price)}`}</button>`;
-          return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}">${gearImg(it.id, 56)}<div class="gtx"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 광역 공격' : '+5부터 광역'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span></div>${btn}</div>`;
+          return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}">${gearImg(it.id, 56)}<div class="gtx"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 광역 공격' : '+5부터 광역'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span>${own ? gearSellBtns(slot, it) : ''}</div>${btn}</div>`;
         }).join('')}</div>`;
     };
     o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${f.lv}</b><span class="xpb"><i style="width:${f.xp / f.need * 100}%"></i></span><span>${f.xp}/${f.need}</span>
@@ -4085,6 +4117,7 @@ function uiGear(){
       <p class="gnote">평판(⭐ ${G.rep})이 오르면 더 좋은 장비를 살 수 있고, 강화도 할 수 있어요. ${jo(HN(), '이', '가')} 강해지면 더 센 산짐승이 오지만 이기면 장비·강화석을 떨어뜨려요. 솜씨는 사과 품질을 올리고, 힘·방어·체력은 산짐승을 쫓을 때 써요. 경험치는 일하기·방제 운전·산짐승 쫓기·사냥터에서 얻어요.</p>
       <div class="ggrid">${SLOTS.map(card).join('')}</div>
       <div class="gnote" style="margin-top:12px"><b>🧺 가방</b> ${LOOT_KEYS.filter(k => G.bag[k] > 0).map(k => `${LOOT[k].ic} ${LOOT[k].name} ×${G.bag[k]}`).join(' · ') || '비어 있어요. 사냥터에서 버섯·산삼을 찾아봐요!'}${bagCount() ? ' → 금비상회 황금비 사장님한테 팔아요.' : ''}</div>`;
+    bindSellBtns(o.body, o);
     o.body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.buy.split('|'), it = gearItem(s, id); if (G.money < it.price || G.rep < it.rep) return; G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id; toast(`🎒 ${jo(it.name, '을', '를')} 샀어요!`, 'good'); updateHUD(true); o.render(o); });
     o.body.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.eq.split('|'); G.gear[s] = id; o.render(o); });
     o.body.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.st.split('|'), it = gearItem(s, id); if (!(G.gear.stones > 0) || G.gear.own[id] >= MAX_UP) return; G.gear.stones--; G.gear.own[id]++; toast(`💎 ${it.name} +${G.gear.own[id]} 강화!`, 'good'); o.render(o); });
@@ -4108,11 +4141,12 @@ function uiInv(){
       : '<div class="gnote">아직 전리품이 없어요. 과수원 동쪽·남쪽 사냥터에서 산짐승을 쫓거나 반짝이는 자리를 캐 보세요! 🌲</div>';
     const gear = SLOTS.flatMap(s => GEAR[s].items.filter(it => it.id in g.own).map(it => {
       const lv = g.own[it.id] || 0, on = g[s] === it.id;
-      return `<div class="ivc ${on ? 'on' : ''}" data-eq="${s}|${it.id}">${gearImg(it.id, 64)}<b>${it.name}${lv ? ` +${lv}` : ''}</b><small>${GEAR[s].unit} ${itemStat(s, it.id, lv)}</small>${on ? '<span class="ivt">끼는 중</span>' : '<span class="ivt off">눌러서 끼기</span>'}</div>`;
+      return `<div class="ivc ${on ? 'on' : ''}" data-eq="${s}|${it.id}">${gearImg(it.id, 64)}<b>${it.name}${lv ? ` +${lv}` : ''}</b><small>${GEAR[s].unit} ${itemStat(s, it.id, lv)}</small>${on ? '<span class="ivt">끼는 중</span>' : '<span class="ivt off">눌러서 끼기</span>'}${gearSellBtns(s, it)}</div>`;
     })).join('');
     o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${farmer().lv}</b><span>💰 ${won(G.money)}</span><span>💎 강화석 ${g.stones || 0}개</span><span>🧺 전리품 ${bagCount()}개 · 팔면 약 ${won(total)}</span></div>
       <h3 class="ivh">🧺 전리품</h3><div class="ivg">${loot}</div>
       <h3 class="ivh">🛠️ 장비 <small>눌러서 바꿔 끼기</small></h3><div class="ivg">${gear}</div>`;
+    bindSellBtns(o.body, o);
     o.body.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.eq.split('|'); if (G.gear[s] !== id) { G.gear[s] = id; toast(`🎒 ${jo(gearItem(s, id).name, '을', '를')} 꼈어요!`, 'good'); } o.render(o); });
     o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">I 키로 열고 닫아요 · 전리품은 금비상회에서 팔아요</span><button class="btn" id="ivGear">🔨 장비 사기·강화</button><button class="btn pri" id="ivOk">닫기</button>`;
     $('#ivGear').onclick = () => { UI.close(); setTimeout(uiGear, 160); };
