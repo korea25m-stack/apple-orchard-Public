@@ -306,7 +306,10 @@ const VARS = {
   hongro: {name:'홍로',   col:'#ec3b30', sh:'#a51d16', hv:[36,38], mult:.95, rep:0,  desc:'추석 무렵 나오는 새빨간 사과예요. 달콤하고 향이 좋아요.'},
   fuji:   {name:'부사',   col:'#f0574a', sh:'#a92f28', st:'#ffd27a', hv:[43,46], mult:1, rep:0, desc:'우리나라에서 가장 많이 키우는 사과예요. 줄무늬가 있고 오래 보관돼요.'},
   gamhong:{name:'감홍',   col:'#b81f3c', sh:'#6e0c22', hv:[39,41], mult:1.15, rep:30, desc:'우리나라에서 만든 품종이에요. 아주 달아서 인기가 많아요.'},
-  shinano:{name:'시나노스위트', col:'#f6803a', sh:'#b14a14', hv:[40,42], mult:1.1, rep:60, desc:'주황빛이 도는 사과예요. 즙이 많고 달콤해요.'}
+  shinano:{name:'시나노스위트', col:'#f6803a', sh:'#b14a14', hv:[40,42], mult:1.1, rep:60, desc:'주황빛이 도는 사과예요. 즙이 많고 달콤해요.'},
+  // 2026-10-13 추가: 이지플(국립원예특작과학원이 만든 조·중생종, 홍로보다 진한 빨강, 당도 약 16.7브릭스, 아삭, 저온·우박 같은 기상이변에 강한 품종), 시나노골드(일본 나가노, 골든 딜리셔스×센슈, 노란 사과, 9월 하순~10월, 새콤달콤·아삭, 오래 보관)
+  eziple: {name:'이지플', col:'#c8202a', sh:'#7e0f16', hv:[35,37], mult:1.05, rep:15, tough:1, desc:'우리나라에서 새로 만든 품종이에요. 홍로보다 더 빨갛고 아삭해요. 늦서리·우박 피해를 절반만 받아요.'},
+  sgold:  {name:'시나노골드', col:'#f2cf3a', sh:'#b8920f', hv:[40,42], mult:1.15, rep:45, desc:'껍질이 노란 황금 사과예요. 새콤달콤하고 아삭하며 오래 보관돼요.'}
 };
 const VAR_KEYS = Object.keys(VARS);
 
@@ -773,14 +776,14 @@ function newWeek(){
   if (G.ev.frost === w) {
     emit('wxfx', {k:'frost'});
     if (G.b.frostfan) emit('pop', {ic:'🌀', t:'늦서리!', m:'밤새 서리가 내렸지만 방상팬이 바람을 돌려서 꽃을 지켰어요.'});
-    else { G.trees.forEach(t => { if (t && t.age >= 1) t.bon -= 8; }); emit('pop', {ic:'🥶', t:'늦서리!', m:'밤에 서리가 내려 꽃이 얼었어요. 올해 사과 품질이 조금 떨어져요. 방상팬이 있으면 막을 수 있어요.'}); }
+    else { G.trees.forEach(t => { if (t && t.age >= 1) t.bon -= VARS[t.v].tough ? 4 : 8; }); emit('pop', {ic:'🥶', t:'늦서리!', m:'밤에 서리가 내려 꽃이 얼었어요. 올해 사과 품질이 조금 떨어져요. 방상팬이 있으면 막을 수 있어요.'}); }
   }
   if (G.ev.hail === w && G.trees.some(t => t && t.fr)) {
     emit('wxfx', {k:'hail'});
     if (G.b.hailnet) emit('pop', {ic:'🕸️', t:'우박!', m:'우박이 쏟아졌지만 우박망이 사과를 지켰어요.'});
     else {
       const rowsHit = new Set(); while (rowsHit.size < Math.ceil(G.rows / 2)) rowsHit.add(rint(0, G.rows - 1));
-      G.trees.forEach((t, i) => { if (t && t.fr && rowsHit.has(Math.floor(i / PER_ROW))) t.bon -= 10; });
+      G.trees.forEach((t, i) => { if (t && t.fr && rowsHit.has(Math.floor(i / PER_ROW))) t.bon -= VARS[t.v].tough ? 5 : 10; });
       emit('pop', {ic:'🧊', t:'우박!', m:`우박이 쏟아져서 ${rowsHit.size}줄 사과에 상처가 났어요. 우박망이 있으면 막을 수 있어요.`});
     }
   }
@@ -2311,6 +2314,7 @@ function solids(){
 function blocked(x, y){
   if (x < WX0 + 40 || x > WX1 - 40 || y < WY0 + 120 || y > worldBot() - 40) return true;
   for (const r of solids()) if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return true;
+  if (huntBlocked(x, y)) return true;
   if (G.deco.pond && ((x - SPOT.pond.x) / 160) ** 2 + ((y - SPOT.pond.y) / 78) ** 2 < 1) return true;
   // 나무 줄기
   if (inOrchard(x, y)) {
@@ -2942,6 +2946,27 @@ function buildForest(){
     if (R() < .18) continue;
     FOREST.push({x, y, k:k < .45 ? 'pine' : k < .85 ? 'oak' : k < .95 ? 'bush' : 'rock', s});
   }
+  // 사냥터 경계 소나무 줄 (입구는 비워 둬요)
+  BORDER = [];
+  const R2 = srand(4040), gap = (x, y) => GATES.some(g => Math.hypot(x - g.x, y - g.y) < 150);
+  const pine = (x, y) => BORDER.push({x, y, s:.95 + R2() * .3});
+  for (let y = HOME.y0 + 120; y < HOME.y1; y += 120) { const j = R2() * 20; if (!gap(HOME.x1, y)) pine(HOME.x1 - 20 + j, y); if (!gap(HOME.x0, y)) pine(HOME.x0 + 10 + j, y); }
+  for (let x = HOME.x0 + 40; x < HOME.x1; x += 115) { const j = R2() * 20; if (!gap(x, HOME.y1)) pine(x, HOME.y1 - 10 + j); if (!gap(x, HOME.y0)) pine(x, HOME.y0 + 20 + j); }
+  // 2026-10-13 충돌: 나무 줄기·바위는 사과나무처럼 못 지나가요 (덤불은 지나가요). 400칸 격자에 넣어 빨리 찾아요
+  SOLID_G = new Map();
+  const put = o => { const k = Math.floor(o.x / 400) + ',' + Math.floor(o.y / 400); if (!SOLID_G.has(k)) SOLID_G.set(k, []); SOLID_G.get(k).push(o); };
+  for (const o of FOREST) if (o.k === 'pine') put({x:o.x, y:o.y, rx:15 * o.s, ry:9 * o.s}); else if (o.k === 'oak') put({x:o.x, y:o.y, rx:17 * o.s, ry:10 * o.s}); else if (o.k === 'rock') put({x:o.x, y:o.y - 4 * o.s, rx:36 * o.s, ry:13 * o.s});
+  for (const o of BORDER) put({x:o.x, y:o.y, rx:14 * o.s, ry:8 * o.s});
+}
+let BORDER = [], SOLID_G = null;
+function huntBlocked(x, y){
+  if (!FOREST) buildForest();
+  const cx = Math.floor(x / 400), cy = Math.floor(y / 400);
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = SOLID_G.get((cx + i) + ',' + (cy + j)); if (L) for (const o of L) if (((x - o.x) / o.rx) ** 2 + ((y - o.y) / o.ry) ** 2 < 1) return true; }
+  // 호랑이 굴 바위 벽: 그린 바위 고리와 같은 자리. 숲길 쪽 입구와 북쪽 동굴 옆은 열려 있어요
+  const ux = (x - DEN.x) / (DEN.rx + 30), uy = (y - DEN.y) / (DEN.ry + 26), q = Math.hypot(ux, uy);
+  if (Math.abs(q - 1) < .05) { let a = Math.atan2(uy, ux); if (a < 0) a += 6.283; let da = Math.abs(a - DEN_GATE); da = Math.min(da, 6.283 - da); if (!(da < .24 || Math.abs(a - 4.712) < .26)) return true; }
+  return false;
 }
 function drawOak(c, x, y, s){
   const S = seasonOf(G.week);
@@ -3240,7 +3265,7 @@ const FORAGE = [];
 function spawnForage(){
   for (let k = 0; k < 20; k++) {
     const a = rnd(0, 6.28), d = rnd(700, 2800), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
-    if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 400 || homeDist(x, y) < 150 || inDen(x, y, 100)) continue;
+    if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 400 || homeDist(x, y) < 150 || inDen(x, y, 100) || huntBlocked(x, y) || huntBlocked(x, y + 30)) continue;
     const z = zoneAt(x, y);
     FORAGE.push({x, y, item:rollLoot(FORAGE_TABLE[z]), t:rnd(0, 9)});
     return;
@@ -3433,11 +3458,7 @@ function huntEntities(ctx, add, vis, T){
   if (!FOREST) buildForest();
   if (vis(SPOT.nongmak.x, SPOT.nongmak.y, 300)) add(SPOT.nongmak.y, () => drawNongmak(ctx, SPOT.nongmak.x, SPOT.nongmak.y));
   // 사냥터 경계: 숲 울타리와 입구 표지판
-  const R = srand(4040);
-  const pine = (x, y) => { const s = .95 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); };
-  const gap = (x, y) => GATES.some(g => Math.hypot(x - g.x, y - g.y) < 150);
-  for (let y = HOME.y0 + 120; y < HOME.y1; y += 120) { const j = R() * 20; if (!gap(HOME.x1, y)) pine(HOME.x1 - 20 + j, y); if (!gap(HOME.x0, y)) pine(HOME.x0 + 10 + j, y); }
-  for (let x = HOME.x0 + 40; x < HOME.x1; x += 115) { const j = R() * 20; if (!gap(x, HOME.y1)) pine(x, HOME.y1 - 10 + j); if (!gap(x, HOME.y0)) pine(x, HOME.y0 + 20 + j); }
+  for (const o of BORDER) if (vis(o.x, o.y)) add(o.y, () => drawPine(ctx, o.x, o.y, o.s));
   const [gE, gS, gN, gW] = GATES;
   if (vis(gE.x - 90, gE.y + 130)) add(gE.y + 130, () => drawSign(ctx, gE.x - 90, gE.y + 130, '🌲 동쪽 사냥터 →'));
   if (vis(gS.x + 190, gS.y - 90)) add(gS.y - 90, () => drawSign(ctx, gS.x + 190, gS.y - 90, '🌲 남쪽 사냥터 ↓'));
@@ -4161,7 +4182,7 @@ function chooseSprayMode(k){
   if (G.money < sprayCost()) { toast('돈이 모자라요.', 'bad'); return; }
   UI.open({ic:'🚜', title:'어떻게 뿌릴까요?', w:820, render(o){
     o.body.innerHTML = `<div class="grid g2">
-      <button class="opt" id="drv"><span class="t">🚜 직접 운전하기</span><span>${jo(HN(), '이', '가')} 방제기를 몰고 과수원 길을 위로 달려요(30초). 바위·나뭇가지는 피하고 벌레 떼는 지나가며 잡아요. 점수가 높을수록 약 효과가 길고(최대 10일) 사과 품질과 우주 경험치가 올라요.</span></button>
+      <button class="opt" id="drv"><span class="t">🚜 직접 운전하기</span><span>${jo(HN(), '이', '가')} 방제기를 몰고 과수원 길을 위로 달려요(30초). 바위·나뭇가지는 피하고 벌레 떼는 지나가며 잡아요. 점수가 높을수록 약 효과가 길고(최대 10일) 사과 품질과 ${HN()} 경험치가 올라요.</span></button>
       <button class="opt" id="aut"><span class="t">⚡ 자동으로 뿌리기</span><span>3초면 끝나요. 7일 동안 지켜 줘요. 품질 보너스는 없어요.</span></button></div>`;
     $('#drv').onclick = () => { UI.close(); startDrive(k); };
     $('#aut').onclick = () => { UI.close(); autoSpray(k); };
