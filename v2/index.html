@@ -141,6 +141,7 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .gslot{border:2.5px solid var(--ink);border-radius:16px;background:#fff;padding:10px 12px}
 .gh{font-family:var(--display);font-size:22px;margin-bottom:6px}.gh small{font-size:16px;color:var(--muted)}
 .gi{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 4px;border-top:1.5px dashed #e3d8c4;font-size:15px}
+.gi .gimg{flex:none;background:#fffaf1;border:2px solid #e3d8c4;border-radius:12px}.gi .gtx{flex:1;min-width:0}
 .gi.on{background:#fff3c4;border-radius:10px}.gi.lock{opacity:.55}.gi .btn{font-size:16px;padding:6px 10px;white-space:nowrap}
 .gs{color:#b2332b;font-family:var(--display)}.gd{color:var(--muted);font-size:14px}
 .tabs{display:flex;gap:8px;margin-bottom:14px}
@@ -3676,10 +3677,10 @@ function haruLook(){
 // 손에 든 도구 그리기 (전투용)
 function drawWeapon(c, id, ang){
   c.save(); c.rotate(ang);
-  if (id === 'stick') inkLine(c, [0, 0, 0, -46], 5, '#a8704a');
-  if (id === 'bamboo') { inkLine(c, [0, 0, 0, -60], 5, '#9ccc5a'); for (const y of [-18, -38]) line(c, [-3, y, 3, y], 2, '#5a8a2a'); }
-  if (id === 'rake') { inkLine(c, [0, 0, 0, -50], 5, '#a8704a'); inkLine(c, [-12, -50, 12, -50], 4, '#9aa4ae'); for (const x of [-10, 0, 10]) inkLine(c, [x, -50, x, -60], 3, '#9aa4ae'); }
-  if (id === 'golden') { inkLine(c, [0, 0, 0, -44], 5, '#c08a3a'); cel(c, cc => ell(cc, 0, -50, 11, 11), '#ffd23a', '#d4a020', 2, 2, 2.4); }
+  if (id === 'stick') { inkLine(c, [0, 0, 1, -16, -1, -30, 1, -46], 5, '#a8704a'); inkLine(c, [-1, -30, -9, -38], 2.5, '#a8704a'); }
+  if (id === 'bamboo') { inkLine(c, [0, 0, 0, -62], 5, '#9ccc5a'); for (const y of [-16, -32, -48]) line(c, [-3, y, 3, y], 2, '#4f7f22'); cel(c, cc => { cc.moveTo(0, -62); cc.quadraticCurveTo(10, -70, 14, -62); cc.quadraticCurveTo(6, -60, 0, -62); }, '#7ccf5e', '#4a9a3a', 1, 1, 2); }
+  if (id === 'rake') { inkLine(c, [0, 0, 0, -50], 5, '#a8704a'); cel(c, cc => rr(cc, -14, -55, 28, 7, 2), '#b5bec8', '#7c8792', 1, 1, 2); for (const x of [-10, -3.5, 3.5, 10]) { c.beginPath(); c.moveTo(x, -55); c.quadraticCurveTo(x + 1, -63, x - 2, -68); c.lineWidth = 5; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 2.5; c.strokeStyle = '#c8d0d8'; c.stroke(); } }
+  if (id === 'golden') { inkLine(c, [0, 0, 0, -40], 5, '#c08a3a'); for (const dx of [-4, 0, 4]) inkLine(c, [0, 2, dx, 12], 2, '#e8423a'); cel(c, cc => ell(cc, 0, -50, 12, 12), '#ffd23a', '#d4a020', 2, 2, 2.4); c.beginPath(); c.arc(0, -50, 7, 0, 7); c.lineWidth = 1.5; c.strokeStyle = '#b8860b'; c.stroke(); }
   c.restore();
 }
 
@@ -3697,7 +3698,7 @@ function uiGear(){
           else if (on) btn = lv >= MAX_UP ? `<button class="btn" disabled>최고 강화</button>` : `<button class="btn pri" data-up="${slot}|${it.id}" ${G.rep < upRep(it, lv) || G.money < upCost(it, lv) ? 'disabled' : ''}>강화 ${won(upCost(it, lv))}${G.rep < upRep(it, lv) ? ` · ⭐${upRep(it, lv)}` : ''}</button>`;
           else if (own) btn = `<button class="btn" data-eq="${slot}|${it.id}">끼기</button>`;
           else btn = `<button class="btn" data-buy="${slot}|${it.id}" ${lock || G.money < it.price ? 'disabled' : ''}>${lock ? `⭐ 평판 ${it.rep}` : `사기 ${won(it.price)}`}</button>`;
-          return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}"><div><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 광역 공격' : '+5부터 광역'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span></div>${btn}</div>`;
+          return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}">${gearImg(it.id, 56)}<div class="gtx"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 광역 공격' : '+5부터 광역'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span></div>${btn}</div>`;
         }).join('')}</div>`;
     };
     o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${f.lv}</b><span class="xpb"><i style="width:${f.xp / f.need * 100}%"></i></span><span>${f.xp}/${f.need}</span>
@@ -3728,7 +3729,7 @@ function uiInv(){
       : '<div class="gnote">아직 전리품이 없어요. 과수원 동쪽·남쪽 사냥터에서 산짐승을 쫓거나 반짝이는 자리를 캐 보세요! 🌲</div>';
     const gear = SLOTS.flatMap(s => GEAR[s].items.filter(it => it.id in g.own).map(it => {
       const lv = g.own[it.id] || 0, on = g[s] === it.id;
-      return `<div class="ivc ${on ? 'on' : ''}" data-eq="${s}|${it.id}"><i>${GEAR[s].ic}</i><b>${it.name}${lv ? ` +${lv}` : ''}</b><small>${GEAR[s].unit} ${itemStat(s, it.id, lv)}</small>${on ? '<span class="ivt">끼는 중</span>' : '<span class="ivt off">눌러서 끼기</span>'}</div>`;
+      return `<div class="ivc ${on ? 'on' : ''}" data-eq="${s}|${it.id}">${gearImg(it.id, 64)}<b>${it.name}${lv ? ` +${lv}` : ''}</b><small>${GEAR[s].unit} ${itemStat(s, it.id, lv)}</small>${on ? '<span class="ivt">끼는 중</span>' : '<span class="ivt off">눌러서 끼기</span>'}</div>`;
     })).join('');
     o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${farmer().lv}</b><span>💰 ${won(G.money)}</span><span>💎 강화석 ${g.stones || 0}개</span><span>🧺 전리품 ${bagCount()}개 · 팔면 약 ${won(total)}</span></div>
       <h3 class="ivh">🧺 전리품</h3><div class="ivg">${loot}</div>
@@ -3738,6 +3739,134 @@ function uiInv(){
     $('#ivGear').onclick = () => { UI.close(); setTimeout(uiGear, 160); };
     $('#ivOk').onclick = () => UI.close();
   }});
+}
+
+// ----- 장비 그림 (이름에 맞게 하나씩, 100×100 셀화) -----
+function drawGearIcon(c, id){
+  const I = INK, lw = 3;
+  const P = (pts, close = true) => cc => { cc.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) cc.lineTo(pts[i], pts[i + 1]); if (close) cc.closePath(); };
+  const dot = (x, y, r, col) => { c.beginPath(); ell(c, x, y, r, r); c.fillStyle = col; c.fill(); c.lineWidth = 2; c.strokeStyle = I; c.stroke(); };
+  const shine = (pts, w = 3) => line(c, pts, w, 'rgba(255,255,255,.75)');
+  switch (id) {
+    // --- 도구 ---
+    case 'stick':
+      inkLine(c, [18, 86, 34, 66, 44, 52, 58, 38, 80, 16], 8, '#a8704a');
+      inkLine(c, [44, 52, 30, 40], 4, '#a8704a');
+      line(c, [22, 80, 36, 63, 47, 49], 2, '#d39a6a');
+      cel(c, cc => { cc.moveTo(30, 40); cc.quadraticCurveTo(14, 36, 16, 24); cc.quadraticCurveTo(30, 26, 30, 40); }, '#6cc35a', '#3f9a3e', 2, 2, 2.5);
+      break;
+    case 'bamboo':
+      inkLine(c, [14, 92, 84, 8], 9, '#9ccc5a');
+      for (const t of [.22, .45, .68]) { const x = 14 + 70 * t, y = 92 - 84 * t; line(c, [x - 5, y - 4, x + 5, y + 4], 3, '#4f7f22'); }
+      shine([18, 84, 30, 70], 2.5);
+      for (const [a, b] of [[[84, 8], [96, 20]], [[78, 16], [94, 34]]]) cel(c, cc => { cc.moveTo(a[0], a[1]); cc.quadraticCurveTo((a[0] + b[0]) / 2 + 8, (a[1] + b[1]) / 2 - 8, b[0], b[1]); cc.quadraticCurveTo((a[0] + b[0]) / 2 - 2, (a[1] + b[1]) / 2 + 4, a[0], a[1]); }, '#7ccf5e', '#4a9a3a', 2, 2, 2.5);
+      break;
+    case 'rake':
+      inkLine(c, [16, 92, 62, 34], 8, '#a8704a');
+      line(c, [20, 86, 40, 61], 2, '#d39a6a');
+      cel(c, cc => rr(cc, 46, 18, 40, 13, 4), '#b5bec8', '#7c8792', 2, 2, lw);
+      for (const x of [51, 61, 71, 81]) { c.beginPath(); c.moveTo(x, 31); c.quadraticCurveTo(x + 2, 46, x - 4, 56); c.lineWidth = 8; c.strokeStyle = I; c.lineCap = 'round'; c.stroke(); c.lineWidth = 4.5; c.strokeStyle = '#c8d0d8'; c.stroke(); }
+      shine([50, 21, 80, 21], 2);
+      break;
+    case 'golden':
+      inkLine(c, [24, 80, 58, 42], 7, '#c08a3a');
+      line(c, [28, 75, 42, 59], 2, '#e8b866');
+      for (const [dx, dy] of [[-10, 8], [-4, 12], [2, 11]]) inkLine(c, [24, 80, 24 + dx, 80 + dy], 3, '#e8423a');
+      dot(24, 80, 5, '#ffd25e');
+      cel(c, cc => ell(cc, 66, 32, 19, 19), '#ffd23a', '#d4a020', 4, 4, lw);
+      c.beginPath(); c.arc(66, 32, 11, 0, 7); c.lineWidth = 2.5; c.strokeStyle = '#b8860b'; c.stroke();
+      shine([56, 24, 62, 18]);
+      for (const [x, y] of [[90, 12], [92, 46], [42, 14]]) { line(c, [x - 5, y, x + 5, y], 2.5, '#ffd23a'); line(c, [x, y - 5, x, y + 5], 2.5, '#ffd23a'); }
+      break;
+    // --- 작업복 ---
+    case 'cloth':
+      cel(c, P([30, 16, 42, 12, 50, 20, 58, 12, 70, 16, 90, 34, 80, 46, 72, 40, 72, 90, 28, 90, 28, 40, 20, 46, 10, 34]), '#f2e2c0', '#d4bf96', 5, 4, lw);
+      cel(c, cc => rr(cc, 54, 46, 12, 12, 2), '#e6d1a6', '#cdb88e', 1, 1, 2);
+      line(c, [42, 12, 50, 24, 58, 12], 2.5, I);
+      break;
+    case 'denim':
+      cel(c, P([30, 16, 42, 12, 50, 18, 58, 12, 70, 16, 88, 32, 80, 44, 72, 38, 72, 52, 28, 52, 28, 38, 20, 44, 12, 32]), '#fff4e0', '#e3d3b4', 4, 3, lw);
+      cel(c, P([32, 40, 68, 40, 72, 92, 54, 92, 50, 70, 46, 92, 28, 92]), '#4f86c8', '#33609a', 5, 4, lw);
+      inkLine(c, [36, 40, 34, 14], 4, '#4f86c8'); inkLine(c, [64, 40, 66, 14], 4, '#4f86c8');
+      dot(36, 44, 3.5, '#ffd25e'); dot(64, 44, 3.5, '#ffd25e');
+      cel(c, cc => rr(cc, 42, 50, 16, 12, 2), '#6a9ad6', '#4a78b2', 1, 1, 2);
+      c.setLineDash([3, 3]); line(c, [31, 86, 46, 86], 1.5, '#ffd25e'); line(c, [54, 86, 69, 86], 1.5, '#ffd25e'); c.setLineDash([]);
+      break;
+    case 'leather':
+      cel(c, P([30, 14, 44, 14, 50, 50, 56, 14, 70, 14, 78, 30, 74, 90, 54, 90, 50, 60, 46, 90, 26, 90, 22, 30]), '#a0623a', '#7a4424', 5, 4, lw);
+      c.setLineDash([3, 3]); line(c, [32, 20, 28, 84], 1.6, '#e8b07a'); line(c, [68, 20, 72, 84], 1.6, '#e8b07a'); c.setLineDash([]);
+      for (const y of [62, 72, 82]) { dot(44, y, 2.6, '#e6c060'); dot(56, y, 2.6, '#e6c060'); }
+      cel(c, cc => rr(cc, 30, 56, 12, 9, 2), '#8a5230', '#6e3c1e', 1, 1, 2);
+      break;
+    case 'guard':
+      cel(c, P([30, 14, 42, 10, 50, 18, 58, 10, 70, 14, 92, 36, 82, 50, 74, 44, 74, 92, 26, 92, 26, 44, 18, 50, 8, 36]), '#f08a2a', '#c8641a', 5, 4, lw);
+      for (const y of [56, 74]) { cel(c, cc => rr(cc, 26, y, 48, 7, 1), '#e8f0f4', '#b8c8d0', 0, 1, 2); }
+      line(c, [50, 18, 50, 92], 3, I);
+      for (const [x, y] of [[38, 30], [62, 30]]) cel(c, cc => rr(cc, x - 8, y - 6, 16, 12, 4), '#4a6a3a', '#34502a', 1, 1, 2);
+      dot(50, 40, 4, '#ffd25e');
+      break;
+    // --- 신발 ---
+    case 'rubber':
+      cel(c, cc => { cc.moveTo(8, 30); cc.quadraticCurveTo(10, 74, 36, 78); cc.lineTo(80, 78); cc.quadraticCurveTo(94, 76, 92, 52); cc.quadraticCurveTo(82, 56, 74, 44); cc.quadraticCurveTo(48, 50, 26, 46); cc.quadraticCurveTo(14, 44, 8, 30); cc.closePath(); }, '#f4f6f8', '#c4ccd4', 4, 5, lw);
+      c.beginPath(); ell(c, 54, 47, 20, 5); c.fillStyle = '#3a3f46'; c.fill(); c.lineWidth = 2; c.strokeStyle = I; c.stroke();
+      line(c, [18, 68, 84, 72], 2.5, '#9aa4ae');
+      shine([14, 44, 22, 60], 3);
+      break;
+    case 'rainboot':
+      cel(c, P([30, 12, 62, 12, 62, 64, 88, 70, 88, 88, 26, 88, 28, 60]), '#ffd23a', '#e0a818', 5, 4, lw);
+      cel(c, cc => rr(cc, 26, 82, 64, 9, 3), '#3a3f46', '#22262c', 1, 1, 2);
+      cel(c, cc => rr(cc, 28, 10, 36, 9, 3), '#f2b81c', '#c88e10', 1, 1, 2);
+      shine([36, 24, 36, 56], 3);
+      break;
+    case 'sneaker':
+      cel(c, cc => { cc.moveTo(12, 74); cc.lineTo(14, 44); cc.quadraticCurveTo(26, 36, 40, 42); cc.lineTo(58, 54); cc.quadraticCurveTo(84, 58, 90, 70); cc.lineTo(90, 76); cc.closePath(); }, '#e8423a', '#b82a24', 4, 4, lw);
+      cel(c, cc => rr(cc, 10, 72, 82, 12, 5), '#ffffff', '#d4dade', 1, 2, lw);
+      for (const x of [42, 50, 58]) line(c, [x - 4, 46 + (x - 42) * .5, x + 4, 52 + (x - 42) * .5], 3, '#fff');
+      c.beginPath(); c.moveTo(16, 60); c.quadraticCurveTo(40, 52, 64, 66); c.lineWidth = 3; c.strokeStyle = '#fff'; c.stroke();
+      break;
+    case 'wind':
+      for (const y of [48, 60, 72]) line(c, [2, y, 14, y], 3, '#7cc7f2');
+      cel(c, cc => { cc.moveTo(18, 74); cc.lineTo(20, 44); cc.quadraticCurveTo(32, 36, 46, 42); cc.lineTo(62, 54); cc.quadraticCurveTo(86, 58, 92, 70); cc.lineTo(92, 76); cc.closePath(); }, '#8fd8ff', '#4aa8dc', 4, 4, lw);
+      cel(c, cc => rr(cc, 16, 72, 78, 12, 5), '#ffffff', '#d4dade', 1, 2, lw);
+      cel(c, cc => { cc.moveTo(30, 46); cc.quadraticCurveTo(24, 22, 6, 18); cc.quadraticCurveTo(12, 28, 8, 32); cc.quadraticCurveTo(16, 34, 12, 40); cc.quadraticCurveTo(22, 40, 22, 48); cc.closePath(); }, '#ffffff', '#cfe6f4', 2, 2, 2.5);
+      for (const x of [48, 56, 64]) line(c, [x - 4, 48 + (x - 48) * .5, x + 4, 54 + (x - 48) * .5], 3, '#fff');
+      break;
+    // --- 모자 ---
+    case 'straw':
+      cel(c, cc => ell(cc, 50, 66, 40, 13), '#f2d37a', '#d4ae4c', 3, 4, lw);
+      cel(c, cc => { cc.moveTo(28, 64); cc.quadraticCurveTo(28, 30, 50, 30); cc.quadraticCurveTo(72, 30, 72, 64); cc.closePath(); }, '#f6dc8a', '#d8b456', 5, 3, lw);
+      cel(c, cc => rr(cc, 28, 52, 44, 8, 2), '#e8423a', '#b82a24', 1, 1, 2);
+      for (const x of [38, 50, 62]) line(c, [x, 34, x - 1, 50], 1.5, '#c89a3a');
+      break;
+    case 'wide':
+      cel(c, cc => ell(cc, 50, 66, 48, 16), '#f2d37a', '#d4ae4c', 3, 4, lw);
+      c.beginPath(); ell(c, 50, 66, 38, 11); c.lineWidth = 1.5; c.strokeStyle = '#c89a3a'; c.stroke();
+      cel(c, cc => { cc.moveTo(30, 64); cc.quadraticCurveTo(30, 34, 50, 34); cc.quadraticCurveTo(70, 34, 70, 64); cc.closePath(); }, '#f6dc8a', '#d8b456', 5, 3, lw);
+      cel(c, cc => rr(cc, 30, 52, 40, 8, 2), '#4fae5a', '#357e3e', 1, 1, 2);
+      cel(c, cc => { cc.moveTo(66, 58); cc.lineTo(80, 80); cc.lineTo(72, 80); cc.lineTo(64, 62); cc.closePath(); }, '#4fae5a', '#357e3e', 1, 1, 2);
+      dot(30, 56, 5, '#ff9ab8');
+      break;
+    case 'helmet':
+      cel(c, cc => rr(cc, 10, 62, 80, 10, 5), '#ffc21a', '#d89a10', 2, 2, lw);
+      cel(c, cc => { cc.moveTo(18, 66); cc.quadraticCurveTo(18, 22, 50, 22); cc.quadraticCurveTo(82, 22, 82, 66); cc.closePath(); }, '#ffd23a', '#e0a818', 6, 4, lw);
+      cel(c, cc => rr(cc, 44, 20, 12, 46, 5), '#ffe066', '#e8b820', 2, 1, 2.5);
+      shine([28, 50, 30, 36], 3);
+      break;
+    case 'apple':
+      cel(c, cc => ell(cc, 50, 70, 40, 11), '#4fae5a', '#357e3e', 3, 3, lw);
+      cel(c, cc => { cc.moveTo(22, 70); cc.quadraticCurveTo(22, 38, 50, 38); cc.quadraticCurveTo(78, 38, 78, 70); cc.closePath(); }, '#6cc35a', '#4a9a3e', 5, 3, lw);
+      cel(c, cc => rr(cc, 22, 58, 56, 8, 2), '#ffd23a', '#d4a020', 1, 1, 2);
+      cel(c, cc => { cc.moveTo(50, 20); cc.bezierCurveTo(30, 8, 26, 42, 50, 44); cc.bezierCurveTo(74, 42, 70, 8, 50, 20); }, '#e8423a', '#b82a24', 4, 4, lw);
+      inkLine(c, [50, 20, 52, 10], 2.5, '#7a4a2a');
+      cel(c, cc => { cc.moveTo(52, 12); cc.quadraticCurveTo(62, 4, 68, 10); cc.quadraticCurveTo(60, 16, 52, 12); }, '#6cc35a', '#3f9a3e', 1, 1, 2);
+      shine([42, 22, 40, 30], 3);
+      break;
+  }
+}
+const _gearImg = {};
+function gearImg(id, px = 64){
+  if (!_gearImg[id]) { const cv = mk(200, 200), c = cv.getContext('2d'); c.scale(2, 2); drawGearIcon(c, id); _gearImg[id] = cv.toDataURL(); }
+  return `<img class="gimg" src="${_gearImg[id]}" width="${px}" height="${px}" alt="">`;
 }
 
 // ===== 시작할 때 주인공 고르기 + 이름 정하기 =====
