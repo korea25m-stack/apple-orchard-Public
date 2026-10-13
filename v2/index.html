@@ -3035,7 +3035,7 @@ function uiNongmak(){
       <p>${restsFound().length ? '⛺ 찾은 숲속 쉼터로 바로 갈 수 있어요.' : '⛺ 사냥터 곳곳에 쉼터가 숨어 있어요. 찾으면 여기서 바로 갈 수 있어요.'}</p>
       <p>푹 자고 일어나면 <b>다음 할 일이 생기는 날 아침</b>까지 시간이 가요. 체력도 가득 차요. ${hasWork() ? '지금은 할 일이 남아 있어서 내일 아침에 깨요.' : ''}</p>`;
     drawRoom($('#roomCv'));
-    o.footEl.innerHTML = `${warpButtons(null)}<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기</button>`;
+    o.footEl.innerHTML = `${warpButtons(null)}<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기 (F)</button>`;
     bindWarp(o);
     $('#nmSave').onclick = () => { UI.close(); setTimeout(uiSave, 160); };
     $('#nmOut').onclick = () => UI.close();
@@ -4274,6 +4274,8 @@ function toWorld(p){ return {x:cam.x + (p.x - W / 2) / cam.z, y:cam.y + (p.y - H
 addEventListener('keydown', e => {
   if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
   keys[e.code] = true;
+  // 농막 안에서는 F = 자고 일어나기 (2026-10-13)
+  if (e.code === 'KeyF' && !e.repeat && UI.modal && $('#nmSleep')) { e.preventDefault(); $('#nmSleep').click(); return; }
   if (e.code === 'KeyF' && !e.repeat && !inCombat()) pressF();
   if (e.code === 'Space' || e.code === 'KeyJ') { e.preventDefault(); if (UI.free()) heroAttack(); }
   if (e.code === 'KeyQ' && UI.free()) heroGong();
