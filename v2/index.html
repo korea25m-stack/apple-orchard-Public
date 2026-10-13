@@ -59,7 +59,11 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .sp{width:46px;height:42px;border-radius:12px;border:2.5px solid var(--ink);background:#fff;font-size:18px}
 .sp.on{background:var(--sun)}
 
-#todo{right:20px;top:322px;width:360px;padding:12px 14px}
+#todo{right:20px;top:316px;width:252px;box-sizing:border-box;padding:10px 10px} /* 2026-10-13 작은 지도와 같은 폭 */
+#todo h3{font-size:21px!important}
+#todo li{font-size:15px!important;padding:6px 7px!important;gap:6px!important;word-break:keep-all;line-height:1.25}
+#todo li .n{font-size:15px!important}
+#todo li .ic{font-size:19px!important}
 #todo h3{margin:0;font-family:var(--display);font-weight:400;font-size:24px;display:flex;justify-content:space-between;cursor:pointer}
 #todo ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:7px;max-height:440px;overflow:auto}
 #todo li{display:flex;align-items:center;gap:8px;font-size:17px;padding:7px 9px;border:2px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
