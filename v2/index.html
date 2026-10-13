@@ -3187,7 +3187,7 @@ function killMon(m){
     if (got.length) { floats.push({x:m.x, y:m.y - 150, s:got.join(' · '), t:2.2, c:'#2f8a3e'}); toast(`🧺 ${m.V.name}가 도망가면서 떨어뜨렸어요: ${got.join(', ')}`, 'good'); }
     else floats.push({x:m.x, y:m.y - 150, s:'도망갔다!', t:1.6, c:'#2f8a3e'});
     gainXp(Math.round(m.V.xp * .6));
-    if (Math.random() < [.03, .05, .08, .12][m.tier]) { const dr = huntDrop(m.tier); if (dr) setTimeout(() => toast(`🎁 ${dr}`, 'good'), 700); }
+    if (Math.random() < [.006, .01, .016, .024][m.tier]) { const dr = huntDrop(m.tier); if (dr) setTimeout(() => toast(`🎁 ${dr}`, 'good'), 700); }
   }
   todoSig = '';
   if (f0.lv !== farmer().lv) ensureHero();
@@ -5489,6 +5489,8 @@ function raidDrop(tier){
   if (Math.random() > [.2, .4, .65, 1][tier]) return null;
   const slot = pick(SLOTS), it = GEAR[slot].items[Math.min(3, tier + 1)];
   if (!(it.id in G.gear.own)) { G.gear.own[it.id] = 0; return `${jo(it.name, '을', '를')} 주웠어요! 🎒 장비에서 낄 수 있어요.`; }
+  // 2026-10-13 강화석은 예전의 1/5 확률로만 나와요
+  if (Math.random() >= .2) return null;
   const n = 1 + (tier >= 2 ? 1 : 0); G.gear.stones = (G.gear.stones || 0) + n;
   return `💎 강화석 ${n}개를 얻었어요! 장비를 공짜로 강화할 수 있어요.`;
 }
