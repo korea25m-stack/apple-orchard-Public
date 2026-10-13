@@ -729,7 +729,8 @@ function endDay(){
 // 심은 다음 해(2년차)부터 조금씩 열리고 10년차까지 늘어요. 그 뒤로는 그대로 (다 자란 나무 1~3상자)
 const treeYear = t => t.age + 1; // 심은 해 = 1년차
 function yieldFactor(t){ return clamp(.2 + .8 * (treeYear(t) - 2) / 8, .2, 1); }
-function treeBoxes(t){ const e = rnd(1, 3) * yieldFactor(t); return Math.max(1, Math.floor(e) + (Math.random() < e % 1 ? 1 : 0)); }
+function treeBoxes(t){ const e = rnd(1, 3) * 2 * yieldFactor(t); // 2026-10-13 수확량 2배
+  return Math.max(1, Math.floor(e) + (Math.random() < e % 1 ? 1 : 0)); }
 function newWeek(){
   G.week++;
   if (G.week > 52) {
@@ -779,6 +780,7 @@ function newWeek(){
   });
   if (G.year >= 2 && w >= 30 && w <= 46 && G.orders.length < 2 && Math.random() < .4) makeOrder();
   // 품평회
+  retailWeek();
   if (w === 50 && G.stats.bestQ > 0) emit('contest');
   emit('week');
 }
@@ -3541,6 +3543,7 @@ function renderTodo(needSpray){
   const st = totalStock();
   if (st) items.push({ic:'📦', t:'창고 사과 경매로 팔기', n:`${st}상자`, ui:'store'});
   for (const o of G.orders) items.push({ic:o.ic, t:`${o.name} ${gByK(o.g).name}↑ ${o.n}상자`, n:`${o.due}주까지`, hot:canDeliver(o), ui:'store'});
+  for (const o of (G.retail || [])) items.push({ic:'🛍️', t:`소매 ${o.name} ${o.n}상자 포장`, n:`${o.due}주까지`, hot:stockAtLeast(o.g) >= o.n, ui:'retail'});
   if (G.errand) items.push({ic:'👴', t:`이장님 부탁: 사과 ${G.errand.need}상자`, n:totalStock() >= G.errand.need ? '갖다 드리기' : '사과 필요', go:'chief'});
   if (quizReady('grandma')) items.push({ic:'👵', t:'순자 할머니 사과 퀴즈', n:'이번 주', go:'grandma'});
   if (quizReady('chief')) items.push({ic:'👴', t:'이장님 사과 퀴즈', n:'이번 주', go:'chief'});
@@ -3573,7 +3576,7 @@ function nearestOf(k){
 }
 
 // ----- 아래 도구 창들 -----
-function openUI(k){ if (!UI.free()) return; ({plant:uiPlant, spray:uiSpray, worker:uiWorker, store:uiStore, build:uiBuild, land:uiLand, book:uiBook, save:uiSave, gear:uiGear, inv:uiInv, sound:uiSound})[k](); }
+function openUI(k){ if (!UI.free()) return; ({plant:uiPlant, spray:uiSpray, worker:uiWorker, store:uiStore, retail:() => uiStore('retail'), build:uiBuild, land:uiLand, book:uiBook, save:uiSave, gear:uiGear, inv:uiInv, sound:uiSound})[k](); }
 
 function uiPlant(){
   UI.open({ic:'🌱', title:'묘목 고르기', render(o){
@@ -3668,7 +3671,7 @@ function uiStore(tab){
   tab = tab || 'stock';
   UI.open({ic:'📦', title:'사과 창고', render(o){
     const keys = Object.keys(G.stock).filter(k => G.stock[k] > 0).sort((a, b) => a.split('|')[1].localeCompare(b.split('|')[1]));
-    const tabs = `<div class="tabs"><button class="tab ${tab === 'stock' ? 'on' : ''}" data-t="stock">🍎 보관 중</button><button class="tab ${tab === 'order' ? 'on' : ''}" data-t="order">📦 주문 ${G.orders.length ? '(' + G.orders.length + ')' : ''}</button></div>`;
+    const tabs = `<div class="tabs"><button class="tab ${tab === 'stock' ? 'on' : ''}" data-t="stock">🍎 보관 중</button><button class="tab ${tab === 'order' ? 'on' : ''}" data-t="order">📦 주문 ${G.orders.length ? '(' + G.orders.length + ')' : ''}</button><button class="tab ${tab === 'retail' ? 'on' : ''}" data-t="retail">🛍️ 소매 ${(G.retail || []).length ? '(' + G.retail.length + ')' : ''}</button></div>`;
     let body = '';
     if (tab === 'stock') {
       body = keys.length ? `<table class="tbl"><tr><th>품종</th><th>등급</th><th>상자</th><th>예상 값(상자당)</th><th></th></tr>${keys.map(k => {
@@ -3679,6 +3682,8 @@ function uiStore(tab){
           <td style="text-align:right"><button class="btn y" data-sell="${k}">경매</button> ${canP ? `<button class="btn" data-proc="${k}">${gk === 'C' ? '즙' : '잼'}(${gk === 'C' ? 5 : 6}만)</button>` : ''}</td></tr>`; }).join('')}</table>`
         : `<p>창고가 비어 있어요. 사과를 따면 여기에 상자로 쌓여요.</p>`;
       body += `<div class="fact">💡 경매에는 중도매인 10명이 와요. 가끔(10%) 큰손 상인이 와서 상자당 10만원에 사 가요.${G.b.cold ? ' 저온저장고 덕분에 10% 더 받아요.' : ''}</div>`;
+    } else if (tab === 'retail') {
+      body = retailBody();
     } else {
       body = G.orders.length ? G.orders.map(o2 => `<div class="opt" style="margin-bottom:10px"><span class="t">${o2.ic} ${esc(o2.name)}</span>
         <span>${gByK(o2.g).name} 등급 이상 <b>${o2.n}상자</b> · 상자당 ${won(o2.price)} · <b>${o2.due}주까지</b> · 평판 +${o2.rep}</span>
@@ -3690,6 +3695,7 @@ function uiStore(tab){
     o.body.querySelectorAll('.tab').forEach(b => b.onclick = () => { tab = b.dataset.t; o.render(o); });
     o.body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => { UI.close(); setTimeout(() => uiShip([b.dataset.sell]), 160); });
     o.body.querySelectorAll('[data-proc]').forEach(b => b.onclick = () => { const m = processLot(b.dataset.proc); toast(`🫙 가공해서 팔았어요. +${won(m)}`, 'good'); o.render(o); });
+    o.body.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => { const r = G.retail.find(x => x.id == b.dataset.rt); UI.close(); setTimeout(() => uiPack(r), 160); });
     o.body.querySelectorAll('[data-ord]').forEach(b => b.onclick = () => { deliver(G.orders.find(x => x.id == b.dataset.ord)); o.render(o); });
     o.footEl.innerHTML = keys.length && tab === 'stock' ? `<button class="btn pri" id="sellAll">🚚 경매 출하하기 (${totalStock()}상자 중 고르기)</button>` : '';
     const sa = $('#sellAll'); if (sa) sa.onclick = () => { UI.close(); setTimeout(() => uiShip(keys), 160); };
@@ -3965,6 +3971,92 @@ function bindUI(){
   $('#todoH').onclick = () => { const f = !$('#todo').classList.contains('fold'); $('#todo').classList.toggle('fold', f); $('#todoArrow').textContent = f ? '▸' : '▾'; store.set('haru-todo', f ? '1' : '0'); };
 }
 
+// ===== 소매 판매 + 포장 (2026-10-13) =====
+// 손님이 직접 사 가는 주문. 경매 상한(상자당 10만원)의 최대 2배까지 받아요.
+// 포장은 주문 하나당 한 번: 상자 펴기 → 사과 담기 → 완충제 넣기 하면 그 주문 전체가 포장돼요.
+const RETAIL_C = [
+  {name:'서울 단골 손님', ic:'📮'}, {name:'캠핑장 사장님', ic:'🏕️'}, {name:'옆 마을 빵집', ic:'🥐'}, {name:'유치원 간식', ic:'🧸'},
+  {name:'등산객 가족', ic:'🥾'}, {name:'카페 사장님', ic:'☕'}, {name:'할머니 손주 선물', ic:'🎀'}, {name:'동네 반찬가게', ic:'🍱'}
+];
+const RETAIL_MAX = 200000, RETAIL_P = .35;
+function retailUnit(gk){ const hi = clamp(gByK(gk).base * 1.07 * (G.b.cold ? 1.1 : 1), 3, 10); return Math.min(RETAIL_MAX, Math.round(hi * 2 * 10) * 1000); }
+function retailWeek(){
+  if (!G.retail) G.retail = [];
+  G.retail = G.retail.filter(o => { if (o.year < G.year || o.due < G.week) { toast(`${o.name} 소매 주문 날짜가 지났어요`, 'bad'); return false; } return true; });
+  if (totalStock() < 2 || G.retail.length >= 2 || Math.random() > RETAIL_P) return;
+  const gs = GRADES.map(g => g.k).filter(k => stockAtLeast(k) >= 2);
+  if (!gs.length) return;
+  const t = pick(RETAIL_C), g = pick(gs);
+  const o = {id:G.oid++, name:t.name, ic:t.ic, g, n:Math.min(rint(2, 6), stockAtLeast(g) + rint(0, 2)), unit:retailUnit(g), due:Math.min(52, G.week + 2), year:G.year};
+  G.retail.push(o);
+  emit('pop', {ic:'🛍️', t:'소매 주문이 들어왔어요', m:`${t.ic} ${o.name}: ${gByK(g).name} 등급 이상 ${o.n}상자, 상자당 <b>${won(o.unit)}</b>(경매보다 비싸요!). 창고 → 🛍️ 소매에서 포장해서 보내 주세요. ${o.due}주까지.`});
+}
+function retailBody(){
+  const L = G.retail || [];
+  return (L.length ? L.map(o => { const ok = stockAtLeast(o.g) >= o.n; return `<div class="opt" style="margin-bottom:10px"><span class="t">${o.ic} ${esc(o.name)}</span>
+    <span>${gByK(o.g).name} 등급 이상 <b>${o.n}상자</b> · 상자당 <b>${won(o.unit)}</b> · 합계 ${won(o.unit * o.n)} · <b>${o.due}주까지</b></span>
+    <span>창고에 맞는 사과: ${stockAtLeast(o.g)}상자</span>
+    <div><button class="btn go" data-rt="${o.id}" ${ok ? '' : 'disabled'}>🎁 포장하고 보내기</button></div></div>`; }).join('')
+    : `<p>아직 소매 주문이 없어요. 창고에 사과가 있으면 손님이 가끔 직접 사러 와요.</p>`)
+    + `<div class="fact">💡 소매는 손님한테 직접 팔아서 경매보다 비싸요(상자당 최고 ${won(RETAIL_MAX)}). 대신 주문이 가끔 들어오고, 포장을 해야 보낼 수 있어요.</div>`;
+}
+const PACK_STEPS = [{ic:'📦', t:'상자 펴기', s:'snip'}, {ic:'🍎', t:'사과 담기', s:'pick'}, {ic:'🫧', t:'완충제 넣기', s:'plant'}];
+function uiPack(o){
+  if (!o || stockAtLeast(o.g) < o.n) return;
+  let step = 0, anim = 0, raf = 0, last = performance.now();
+  UI.open({ic:'🎁', title:'사과 포장', noX:true, onClose(){ cancelAnimationFrame(raf); }, render(m){
+    m.body.innerHTML = `<div style="display:flex;gap:18px;align-items:center">
+      <canvas id="packCv" width="420" height="300" style="width:420px;height:300px;border-radius:16px;background:#fff4dc;border:3px solid var(--ink,#3a2a20)"></canvas>
+      <div style="flex:1"><div style="font-size:22px;margin-bottom:8px">${o.ic} <b>${esc(o.name)}</b> · ${o.n}상자</div>
+      ${PACK_STEPS.map((s, i) => `<div class="opt ${i < step ? 'have' : ''}" style="margin:6px 0;${i === step ? 'outline:3px solid #ffb13b' : ''}"><span class="t">${i < step ? '✔' : i + 1} ${s.ic} ${s.t}</span></div>`).join('')}
+      <div class="fact">한 번만 포장하면 주문한 ${o.n}상자가 다 포장돼요. F / Space 로도 눌러져요.</div></div></div>`;
+    const done = step >= PACK_STEPS.length;
+    m.footEl.innerHTML = done ? `<button class="btn pri" id="pkGo">🚚 보내기 (+${won(o.unit * o.n)})</button>` : `<button class="btn pri" id="pkStep">${PACK_STEPS[step].ic} ${PACK_STEPS[step].t}</button>`;
+    const b = $('#pkStep'); if (b) b.onclick = () => { if (anim > 0) return; sfx(PACK_STEPS[step].s); step++; anim = 1; m.render(m); };
+    const g = $('#pkGo'); if (g) g.onclick = () => { finishRetail(o); UI.close(); };
+    const cv = $('#packCv'), c = cv.getContext('2d');
+    const loop = t => { const dt = Math.min(.05, (t - last) / 1000); last = t; anim = Math.max(0, anim - dt * 3); drawPack(c, step, 1 - anim, done); if (UI.modal === m) raf = requestAnimationFrame(loop); };
+    cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
+  }});
+}
+function drawPack(c, step, k, done){
+  const e = 1 - (1 - k) ** 3; c.clearRect(0, 0, 420, 300); c.save(); c.translate(210, 175);
+  if (step < 1) { c.globalAlpha = .4; c.font = '64px sans-serif'; c.textAlign = 'center'; c.fillText('📦', 0, 10); c.restore(); return; }
+  const lift = step === 1 ? (1 - e) * 40 : 0;
+  // 상자 몸통
+  cel(c, cc => { cc.moveTo(-120, -50 + lift); cc.lineTo(120, -50 + lift); cc.lineTo(110, 80); cc.lineTo(-110, 80); cc.closePath(); }, '#d9a46a', '#b47c44', 6, 6, 3);
+  if (!done) { // 열린 뚜껑
+    cel(c, cc => { cc.moveTo(-120, -50 + lift); cc.lineTo(-150, -95 + lift); cc.lineTo(-30, -95 + lift); cc.lineTo(0, -50 + lift); cc.closePath(); }, '#e8b67c', '#c48c50', 3, 3, 3);
+    cel(c, cc => { cc.moveTo(120, -50 + lift); cc.lineTo(150, -95 + lift); cc.lineTo(30, -95 + lift); cc.lineTo(0, -50 + lift); cc.closePath(); }, '#e8b67c', '#c48c50', 3, 3, 3);
+    c.beginPath(); c.moveTo(-112, -44); c.lineTo(112, -44); c.lineTo(104, -20); c.lineTo(-104, -20); c.closePath(); c.fillStyle = '#7a5230'; c.fill();
+  }
+  if (step >= 2 && !done) { // 사과가 하나씩 쏙
+    for (let i = 0; i < 6; i++) { const kk = step === 2 ? clamp(e * 6 - i, 0, 1) : 1; if (!kk) continue; const x = -80 + i * 32, y = -40 - (1 - kk) * 80;
+      drawApple(c, x, y, 18, '#e8423a', '#b8231e'); }
+  }
+  if (step >= 3 && !done) { // 완충제(뽁뽁이) 덮기
+    c.globalAlpha = step === 3 ? e : 1;
+    cel(c, cc => rr(cc, -108, -62, 216, 30, 10), 'rgba(220,240,255,.9)', 'rgba(170,205,235,.9)', 2, 2, 2.4);
+    for (let i = 0; i < 14; i++) { c.beginPath(); ell(c, -96 + i * 14.5, -47 + (i % 2) * 6, 5, 5); c.fillStyle = 'rgba(255,255,255,.95)'; c.fill(); c.lineWidth = 1.2; c.strokeStyle = '#8ab4d8'; c.stroke(); }
+    c.globalAlpha = 1;
+  }
+  if (done) { // 뚜껑 닫고 테이프 + 사과 스티커
+    cel(c, cc => rr(cc, -124, -64, 248, 20, 4), '#e8b67c', '#c48c50', 2, 2, 3);
+    cel(c, cc => rr(cc, -22, -64, 44, 144, 3), '#f6e3a8', '#d8c07a', 1, 1, 2);
+    drawApple(c, 0, 20, 22, '#e8423a', '#b8231e');
+    c.font = '26px Jua'; c.textAlign = 'center'; c.fillStyle = '#3a2a20'; c.fillText('포장 완료!', 0, -100);
+  }
+  c.restore();
+}
+function finishRetail(o){
+  if (stockAtLeast(o.g) < o.n) { toast('창고에 사과가 모자라요', 'bad'); return false; }
+  takeBoxes(o.g, o.n);
+  const pay = o.unit * o.n; G.money += pay; G.rep += 1; G.stats.retail = (G.stats.retail || 0) + 1; G.stats.sold += o.n;
+  G.retail = G.retail.filter(x => x !== o);
+  sfx('coin'); toast(`🎁 ${o.name}에 ${o.n}상자 보냈어요! +${won(pay)}, 평판 +1`, 'gold'); checkRich();
+  return true;
+}
+
 // ===== 키 설정 (2026-10-13): 기본은 마우스 왼쪽 = 공격, 오른쪽 = 막기. 플레이어가 직접 바꿀 수 있어요 =====
 const KEY_ACTS = [
   ['attack', '⚔️ 공격 (휘두르기)'], ['block', '🛡️ 막기 (누르고 있기)'], ['interact', '✋ 일하기·말 걸기'],
@@ -4148,7 +4240,14 @@ function drawWeapon(c, id, ang){
   if (id === 'stick') { inkLine(c, [0, 0, 1, -16, -1, -30, 1, -46], 5, '#a8704a'); inkLine(c, [-1, -30, -9, -38], 2.5, '#a8704a'); }
   if (id === 'bamboo') { inkLine(c, [0, 0, 0, -62], 5, '#9ccc5a'); for (const y of [-16, -32, -48]) line(c, [-3, y, 3, y], 2, '#4f7f22'); cel(c, cc => { cc.moveTo(0, -62); cc.quadraticCurveTo(10, -70, 14, -62); cc.quadraticCurveTo(6, -60, 0, -62); }, '#7ccf5e', '#4a9a3a', 1, 1, 2); }
   if (id === 'rake') { inkLine(c, [0, 0, 0, -50], 5, '#a8704a'); cel(c, cc => rr(cc, -14, -55, 28, 7, 2), '#b5bec8', '#7c8792', 1, 1, 2); for (const x of [-10, -3.5, 3.5, 10]) { c.beginPath(); c.moveTo(x, -55); c.quadraticCurveTo(x + 1, -63, x - 2, -68); c.lineWidth = 5; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 2.5; c.strokeStyle = '#c8d0d8'; c.stroke(); } }
-  if (id === 'tclaw') { inkLine(c, [0, 0, 0, -56], 5, '#3a2a20'); for (const x of [-8, 0, 8]) { c.beginPath(); c.moveTo(x, -56); c.quadraticCurveTo(x + 3, -68, x - 3, -78); c.lineWidth = 6; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 3; c.strokeStyle = '#fff8ec'; c.stroke(); } cel(c, cc => rr(cc, -11, -60, 22, 8, 3), '#f2922c', '#c4661a', 1, 1, 2); }
+  if (id === 'tclaw') { // 2026-10-13 다시 그림: 줄무늬 자루 + 호랑이 앞발 + 큰 하얀 발톱 4개
+    inkLine(c, [0, 4, 0, -50], 6, '#f2922c'); for (const y of [-8, -20, -32, -44]) line(c, [-3, y, 3, y - 3], 2.5, INK);
+    c.save(); c.shadowColor = '#ffb13b'; c.shadowBlur = 10;
+    for (const x of [-10, -3.5, 3.5, 10]) { c.beginPath(); c.moveTo(x, -60); c.quadraticCurveTo(x + 1, -76, x + 9, -84); c.lineWidth = 8; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 4.5; c.strokeStyle = '#fffaf1'; c.stroke(); }
+    c.restore();
+    cel(c, cc => ell(cc, 0, -56, 14, 10), '#f2922c', '#c4661a', 2, 2, 2.6);
+    for (const x of [-7, 0, 7]) line(c, [x - 1, -64, x + 1, -58], 2.4, INK);
+    c.beginPath(); ell(c, 0, -52, 5, 3.5); c.fillStyle = '#ffb3a8'; c.fill(); }
   if (id === 'golden') { inkLine(c, [0, 0, 0, -40], 5, '#c08a3a'); for (const dx of [-4, 0, 4]) inkLine(c, [0, 2, dx, 12], 2, '#e8423a'); cel(c, cc => ell(cc, 0, -50, 12, 12), '#ffd23a', '#d4a020', 2, 2, 2.4); c.beginPath(); c.arc(0, -50, 7, 0, 7); c.lineWidth = 1.5; c.strokeStyle = '#b8860b'; c.stroke(); }
   c.restore();
 }
@@ -4250,13 +4349,18 @@ function drawGearIcon(c, id){
       shine([56, 24, 62, 18]);
       for (const [x, y] of [[90, 12], [92, 46], [42, 14]]) { line(c, [x - 5, y, x + 5, y], 2.5, '#ffd23a'); line(c, [x, y - 5, x, y + 5], 2.5, '#ffd23a'); }
       break;
-    case 'tclaw':
-      inkLine(c, [18, 90, 58, 44], 8, '#3a2a20');
-      for (const [dx, dy] of [[0, 0], [6, 0], [12, 0]]) line(c, [22 + dx, 84, 26 + dx, 80], 2, '#f2922c');
-      cel(c, P([44, 46, 70, 24, 78, 33, 52, 55]), '#f2922c', '#c4661a', 2, 2, lw);
-      for (const k of [-1, 0, 1]) { const bx = 60 + k * 11, by = 36 - k * 9; c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + 12, by - 22, bx + 30, by - 26); c.lineWidth = 9; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 5; c.strokeStyle = '#fff8ec'; c.stroke(); }
-      for (const [x, y] of [[54, 52], [64, 44]]) { c.beginPath(); ell(c, x, y, 4, 2.5); c.fillStyle = INK; c.fill(); }
-      break;
+    case 'tclaw': { // 2026-10-13 다시 그림: 줄무늬 자루 + 호랑이 앞발 + 하얀 발톱 4개 + 금빛
+      c.save(); c.globalAlpha = .35; c.beginPath(); ell(c, 66, 32, 30, 30); c.fillStyle = '#ffd23a'; c.fill(); c.restore();
+      inkLine(c, [16, 92, 54, 48], 10, '#f2922c');
+      for (const t of [.15, .35, .55, .75]) { const x = 16 + 38 * t, y = 92 - 44 * t; line(c, [x - 4, y - 4, x + 5, y + 3], 3, I); }
+      for (const [sx, sy, ex, ey] of [[52, 34, 70, 6], [60, 30, 84, 10], [66, 36, 94, 24], [68, 46, 96, 42]]) {
+        c.beginPath(); c.moveTo(sx, sy); c.quadraticCurveTo((sx + ex) / 2 - 4, (sy + ey) / 2 - 6, ex, ey); c.lineCap = 'round';
+        c.lineWidth = 11; c.strokeStyle = I; c.stroke(); c.lineWidth = 6.5; c.strokeStyle = '#fffaf1'; c.stroke(); }
+      cel(c, cc => ell(cc, 58, 42, 17, 14), '#f2922c', '#c4661a', 3, 3, lw);
+      for (const [x1, y1, x2, y2] of [[50, 32, 54, 40], [58, 29, 60, 38], [66, 32, 65, 40]]) line(c, [x1, y1, x2, y2], 3, I);
+      c.beginPath(); ell(c, 56, 48, 7, 5); c.fillStyle = '#ffb3a8'; c.fill(); c.lineWidth = 2; c.strokeStyle = I; c.stroke();
+      shine([46, 38, 50, 34]);
+      break; }
     // --- 작업복 ---
     case 'cloth':
       cel(c, P([30, 16, 42, 12, 50, 20, 58, 12, 70, 16, 90, 34, 80, 46, 72, 40, 72, 90, 28, 90, 28, 40, 20, 46, 10, 34]), '#f2e2c0', '#d4bf96', 5, 4, lw);
