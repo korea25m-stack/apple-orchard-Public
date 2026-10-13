@@ -2746,6 +2746,13 @@ function heroHurt(m, base){
 // ----- 산짐승 -----
 const MONS = [];
 let monId = 1, spawnT = 0;
+// 2026-10-13 필드 산짐승 1.5배: 최대 8→12마리, 생성 5초→3.3초. 이미 많은 종류는 덜 나와서 골고루 섞여요
+const MON_CAP = 12, MON_EVERY = 3.3;
+function pickKind(tab){
+  const n = {}; for (const m of MONS) if (!m.dead && !m.raid) n[m.kind] = (n[m.kind] || 0) + 1;
+  const w = {}; for (const k in tab) w[k] = tab[k] / (1 + (n[k] || 0) * 1.5);
+  return rollLoot(w);
+}
 function makeMon(kind, tier, x, y, raid){
   const V = {...BEAST[kind][tier], tier};
   return {id:monId++, kind, V, tier, x, y, hx:x, hy:y, hp:V.hp, max:V.hp, st:raid ? 'raid' : 'wander', tm:0, stun:0, flip:false, cc:1, kb:null,
@@ -2756,7 +2763,7 @@ function spawnHuntMon(){
     const a = rnd(0, 6.28), d = rnd(1150, 2600), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
     if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 700 || homeDist(x, y) < 300 || restAt(x, y, 500) || inDen(x, y, 350)) continue;
     const z = zoneAt(x, y), tier = Math.max(0, Math.min(3, z - (Math.random() < .3 ? 1 : 0)));
-    MONS.push(makeMon(rollLoot(SPAWN_MIX[Math.max(0, z)]), tier, x, y, false));
+    MONS.push(makeMon(pickKind(SPAWN_MIX[Math.max(0, z)]), tier, x, y, false));
     return;
   }
 }
@@ -2940,7 +2947,7 @@ function updateHunt(dt){
   const hunting = inHunt(P.x, P.y) || gateDist(P.x, P.y) < 1600;
   if (hunting) {
     spawnT -= dt;
-    if (spawnT <= 0 && MONS.filter(m => !m.raid && !m.dead).length < 8) { spawnHuntMon(); spawnT = 5; }
+    if (spawnT <= 0 && MONS.filter(m => !m.raid && !m.dead).length < MON_CAP) { spawnHuntMon(); spawnT = MON_EVERY; }
     if (FORAGE.length < 8) spawnForage();
     updateTiger();
   }
@@ -3227,8 +3234,8 @@ function drawRoom(cv){
 const MON_IC = {boar:'🐗', deer:'🦌', hare:'🐇', snake:'🐍', raccoon:'🦝', badger:'🦡', tiger:'🐯'};
 const CHARGER = {boar:1, badger:1, tiger:1};      // 돌진하는 녀석들 (나머지는 가까이 와서 할퀴기·물기)
 const CHASE_SP = {boar:150, badger:140, tiger:185, deer:190, hare:220, raccoon:170, snake:115};
-const SPAWN_MIX = [{hare:3, snake:2, raccoon:3, deer:2, boar:1}, {hare:1, snake:2, raccoon:2, deer:2, boar:2, badger:2},
-  {snake:1, raccoon:1, deer:2, boar:3, badger:3}, {snake:1, deer:2, boar:3, badger:3}];
+const SPAWN_MIX = [{hare:3, snake:2, raccoon:3, deer:2, boar:1, badger:1}, {hare:2, snake:2, raccoon:2, deer:2, boar:2, badger:2},
+  {hare:1, snake:2, raccoon:2, deer:2, boar:3, badger:3}, {hare:1, snake:2, raccoon:1, deer:2, boar:3, badger:3}];
 const NEW_BEAST = {
   hare:[{name:'산토끼', hp:40, dmg:.7, spd:1.1, sc:.75, xp:30}, {name:'날쌘 산토끼', hp:70, dmg:1, spd:1.2, sc:.8, xp:50},
     {name:'산토끼 대장', hp:110, dmg:1.4, spd:1.25, sc:.9, b:'#9a6a3a', bs:'#6a4422', xp:80}, {name:'전설의 달토끼', hp:170, dmg:1.9, spd:1.3, sc:1, b:'#f4f2ee', bs:'#c8c2d4', crown:1, xp:120}],
