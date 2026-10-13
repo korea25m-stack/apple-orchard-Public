@@ -3546,10 +3546,12 @@ function showToast(msg, kind){
 hooks.toast = showToast;
 
 // 알림 창 (자동플레이 땐 5초 뒤 저절로 닫힘)
+// 글자 안의 <b>…</b>만 굵게 살리고 나머지 태그는 글자 그대로(2026-10-13: 태그가 글자로 보이던 버그)
+const richEsc = s => esc(s).replace(/&lt;(\/?)(b|br)&gt;/g, '<$1$2>');
 function popup(ic, title, msg, extra){
   UI.push(() => {
     const o = UI.open({ic, title, w:760, render(o){
-      o.body.innerHTML = `<div class="big-emoji">${ic}</div><p style="font-size:22px;text-align:center;margin:8px 10px">${esc(msg)}</p>${extra || ''}`;
+      o.body.innerHTML = `<div class="big-emoji">${ic}</div><p style="font-size:22px;text-align:center;margin:8px 10px">${richEsc(msg)}</p>${extra || ''}`;
       o.footEl.innerHTML = `<button class="btn pri" id="popOk">알겠어요</button>`;
       $('#popOk').onclick = () => UI.close();
     }});
@@ -3609,8 +3611,8 @@ function renderTodo(needSpray){
   for (const o of G.orders) items.push({ic:o.ic, t:`${o.name} ${gByK(o.g).name}↑ ${o.n}상자`, n:`${o.due}주까지`, hot:canDeliver(o), ui:'store'});
   for (const o of (G.retail || [])) items.push({ic:'🛍️', t:`소매 ${o.name} ${o.n}상자 포장`, n:`${o.due}주까지`, hot:stockAtLeast(o.g) >= o.n, ui:'retail'});
   if (G.errand) items.push({ic:'👴', t:`이장님 부탁: 사과 ${G.errand.need}상자`, n:totalStock() >= G.errand.need ? '갖다 드리기' : '사과 필요', go:'chief'});
-  if (quizReady('grandma')) items.push({ic:'👵', t:'순자 할머니 사과 퀴즈', n:'이번 주', go:'grandma'});
-  if (quizReady('chief')) items.push({ic:'👴', t:'이장님 사과 퀴즈', n:'이번 주', go:'chief'});
+  if (quizReady('grandma')) items.push({ic:'👵', t:'순자 할머니 사과 퀴즈', n:'지금 가능', go:'grandma'});
+  if (quizReady('chief')) items.push({ic:'👴', t:'이장님 사과 퀴즈', n:'지금 가능', go:'chief'});
   const upcoming = VAR_KEYS.filter(v => G.trees.some(t => t && t.v === v && t.fr) && G.week < VARS[v].hv[0]);
   for (const v of upcoming) items.push({ic:'⏳', t:`${VARS[v].name} 수확은 ${VARS[v].hv[0]}주부터`, n:`${VARS[v].hv[0] - G.week}주 뒤`, done:true});
   huntTodo(items);
@@ -3943,7 +3945,10 @@ function weekId(){ return absDay() - G.day; }
 // 사과 퀴즈: 순자 할머니(G.quizDay)·이장님(G.quizDayC) 각각 한 주에 한 문제
 const QZ = {grandma:{k:'quizDay', name:'김순자 할머니', ask:n => `${jo(n, '아', '야')}, 할미가 사과 문제 하나 낼게. 맞히면 용돈 줄게!`, ok:n => `딩동댕! 역시 우리 ${jo(n, '이야', '야')}. 용돈 5만원 받으렴.`, no:'아깝다! 정답은'},
   chief:{k:'quizDayC', name:'고만수 이장님', ask:n => `${n}, 이장이 사과 문제 하나 내 보겠네. 맞히면 마을에서 상금을 주지!`, ok:n => `허허, 정답이네! 역시 ${jo(n, '이', '가')} 사과 박사구먼. 상금 5만원 받게.`, no:'아쉽구먼! 정답은'}};
-const quizReady = who => G[QZ[who].k] !== weekId();
+// 2026-10-13 퀴즈는 문제를 낸 순간부터 2~3주 뒤에 다시 나와요(창을 닫아 버려도 다시 안 나옴)
+const quizReady = who => absDay() >= ((G.quizNext || {})[who] || 0);
+function quizUsed(who){ if (!G.quizNext) G.quizNext = {}; G.quizNext[who] = absDay() + rint(14, 21); G[QZ[who].k] = weekId(); }
+const quizWait = who => Math.max(1, Math.ceil((((G.quizNext || {})[who] || 0) - absDay()) / 7));
 function pickQuiz(){
   if (!G.quizSeen) G.quizSeen = [];
   let pool = QUIZ.map((q, i) => i).filter(i => !G.quizSeen.includes(i));
@@ -3953,11 +3958,10 @@ function pickQuiz(){
   return {q:q.q, e:q.e, a:ord.map(k => q.a[k]), c:ord.indexOf(q.c)};
 }
 function askQuiz(who){
-  const Z = QZ[who], q = pickQuiz();
+  const Z = QZ[who], q = pickQuiz(); quizUsed(who);
   const o = talk(who, `${Z.ask(HN())}<br><b style="font-family:var(--display);font-weight:400;font-size:24px">Q. ${esc(q.q)}</b>`, '');
   $('#talkX').innerHTML = `<div class="quiz">${q.a.map((a, i) => `<button class="btn" data-a="${i}">${'①②③'[i]} ${esc(a)}</button>`).join('')}</div>`;
   const answer = i => {
-    G[Z.k] = weekId();
     const right = i === q.c;
     if (right) { G.money += 50000; G.rep += 1; G.stats.quiz++; if (G.stats.quiz >= 5) unlock('quiz5'); updateHUD(true); }
     o.body.querySelector('.bubble').innerHTML = `<div class="who">${Z.name}</div>${right ? `${Z.ok(HN())} (평판 +1)` : `${Z.no} <b>${esc(q.a[q.c])}</b>${who === 'chief' ? '일세.' : '이란다.'}`}${q.e ? `<div class="fact" style="margin-top:10px">💡 ${esc(q.e)}</div>` : ''}`;
@@ -3975,7 +3979,7 @@ function chiefQuizBtn(o){
   $('#tQuiz').onclick = () => { UI.close(); setTimeout(() => askQuiz('chief'), 160); };
 }
 function talkGrandma(){
-  if (!quizReady('grandma')) { talk('grandma', `아이고 우리 ${HN()} 왔니? 이번 주 퀴즈는 벌써 풀었지.${quizReady('chief') ? ' 옆에 이장님도 문제를 내신단다.' : ''}<br>💡 ${esc(pick(FACTS))}`); return; }
+  if (!quizReady('grandma')) { talk('grandma', `아이고 우리 ${HN()} 왔니? 다음 사과 퀴즈는 ${quizWait('grandma')}주쯤 뒤에 내 줄게.${quizReady('chief') ? ' 옆에 이장님도 문제를 내신단다.' : ''}<br>💡 ${esc(pick(FACTS))}`); return; }
   askQuiz('grandma');
 }
 function talkChief(){
@@ -5061,7 +5065,7 @@ function autoTick(dt){
   if (G.errand && totalStock() >= G.errand.need) return walkTo('chief');
   const i = nearestTask(P, false);
   if (i >= 0 && !(taskFor(i) === 'plant' && G.money < 1500000 + SAPLING && G.year > 1)) { const p = treePos(i); P.tgt = {x:p.x, y:p.y + 46}; P.pend = {kind:'tree', i}; return; }
-  if (G.quizDay !== weekId() && G.week % 4 === 2 && G.quizDay < weekId() - 21) return walkTo('grandma');
+  if (quizReady('grandma')) return walkTo('grandma');
   if (!G.errand && G.year >= 2 && Math.random() < .3) return walkTo('chief');
   if (totalStock() > 0 && !G.orders.some(o => stockAtLeast(o.g) < o.n && G.week <= o.due)) { auction(Object.keys(G.stock)); return; }
   if (totalStock() > 60) { auction(Object.keys(G.stock)); return; }
