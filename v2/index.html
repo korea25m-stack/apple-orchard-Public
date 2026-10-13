@@ -3089,7 +3089,7 @@ function drawHurtVignette(c){
 const AOE_LV = 5;
 // 2026-10-13 공격력 - 방어도 상쇄: 산짐승마다 방어도가 있어요(단계 0/3/7/12 + 종류 보정)
 const KIND_DEF = {boar:2, badger:3, hare:-2, snake:-1, raccoon:0, deer:0, lynx:0, wdog:0, wolf:1, bear:4};
-function monDef(m){ return m.V.def != null ? m.V.def : Math.max(0, [0, 3, 7, 12][m.tier] + (KIND_DEF[m.kind] || 0)); }
+function monDef(m){ return m.V.def != null ? m.V.def : Math.max(0, [0, 1, 7, 12][m.tier] + (m.tier >= 2 ? KIND_DEF[m.kind] || 0 : 0)); }
 const TIGER_NEED = 27; // 호랑이는 도구 데미지가 27 이상이어야 상처가 나요(황금 꽹과리채 +5 정도)
 function weaponUp(){ const g = ensureGear(); return g.own[g.weapon] || 0; }
 function hitMon(m, dmg, f, main){
@@ -3148,8 +3148,11 @@ function pickKind(tab){
   const w = {}; for (const k in tab) w[k] = tab[k] / (1 + (n[k] || 0) * 1.5);
   return rollLoot(w);
 }
+const EASY_DMG = [.45, .55], EASY_HP = [.7, .8];
 function makeMon(kind, tier, x, y, raid){
   const V = {...BEAST[kind][tier], tier};
+  // 2026-10-13 처음 하는 사람도 할 만하게: ★1·★2는 덜 아프게 물고 체력도 낮아요(★3·★4·호랑이는 그대로)
+  if (tier < 2 && kind !== 'tiger') { V.dmg *= EASY_DMG[tier] * (CHARGER[kind] ? .75 : 1); V.hp = Math.round(V.hp * EASY_HP[tier] * (CHARGER[kind] ? .8 : 1)); }
   return {id:monId++, kind, V, tier, x, y, hx:x, hy:y, hp:V.hp, max:V.hp, st:raid ? 'raid' : 'wander', tm:0, stun:0, flip:false, cc:1, kb:null,
     tx:x, ty:y, wait:rnd(0, 2), hitT:0, raid, eng:false, eat:0, bites:0, dead:false, deadT:0, t:rnd(0, 9)};
 }
