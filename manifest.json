@@ -1,6 +1,6 @@
 {
-  "name": "사과 과수원",
-  "short_name": "사과 과수원",
+  "name": "과수원키우기",
+  "short_name": "과수원키우기",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
