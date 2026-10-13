@@ -702,16 +702,26 @@ function advance(hours){
   while (G.hour >= 20) { G.hour -= 14; endDay(); }
 }
 let workerAcc = 0, workerLast = -1;
+// 2026-10-13 인부는 '일한 시간'으로 계산해요: 하루 = 일하는 시간 14시간(6시~20시).
+// 낮에 늦게 불러도, 할 일이 없어 쉬어도 그 시간은 안 빠져요(예전엔 오후에 부르면 반나절만 일하고 하루가 빠졌어요).
+const WORKER_DAY_H = 14;
+function workerHrs(){ if (G.workerHrs == null) G.workerHrs = (G.worker || 0) * WORKER_DAY_H; return G.workerHrs; }
+function syncWorker(){ G.worker = Math.ceil(workerHrs() / WORKER_DAY_H - 1e-6); }
 function workerTick(h){
-  if (G.worker <= 0) return;
-  workerAcc += h * 1.6 * (G.b.wondumak ? 1.25 : 1);
+  if (workerHrs() <= 0) { G.worker = 0; return; }
+  const rate = 1.6 * (G.b.wondumak ? 1.25 : 1);
+  if (nearestTask(workerLast >= 0 ? treePos(workerLast) : treePos(0), true) < 0) { workerAcc = 0; return; } // 할 일 없으면 쉬어요(시간 안 빠짐)
+  const use = Math.min(h, G.workerHrs);
+  G.workerHrs -= use; workerAcc += use * rate;
   while (workerAcc >= 1) {
     workerAcc -= 1;
     const i = nearestTask(workerLast >= 0 ? treePos(workerLast) : treePos(0), true);
-    if (i < 0) { workerAcc = 0; return; }
-    const r = doTask(i, 'worker');
-    if (r) { workerLast = i; G.workerWorked = 1; emit('workerDid', {i, r}); } else { workerAcc = 0; return; }
+    const r = i < 0 ? null : doTask(i, 'worker');
+    if (r) { workerLast = i; G.workerWorked = 1; emit('workerDid', {i, r}); }
+    else { G.workerHrs += workerAcc / rate; workerAcc = 0; break; } // 못 한 몫은 시간으로 돌려줘요
   }
+  syncWorker();
+  if (G.workerHrs <= 1e-6) { G.workerHrs = 0; G.worker = 0; workerAcc = 0; workerLast = -1; toast('인부 아저씨가 약속한 일을 다 하고 돌아갔어요.'); }
 }
 function nearestTask(p, forWorker){
   let best = -1, bd = 1e18;
@@ -732,8 +742,6 @@ function endDay(){
     if (x.pest >= RISK_HIGH && !protectedFor('pest')) hit += 1.6;
     if (hit) G.trees.forEach(t => { if (t && t.age >= 1) t.dmg += hit; });
   }
-  // 2026-10-13 인부는 실제로 일한 날만 하루로 쳐요
-  if (G.worker > 0 && G.workerWorked) { G.worker--; if (!G.worker) { toast('인부 아저씨가 오늘 일을 마치고 돌아갔어요.'); workerLast = -1; } }
   G.workerWorked = 0;
   G.day++;
   if (G.day >= 7) { G.day = 0; newWeek(); }
@@ -4113,7 +4121,7 @@ function renderTodo(needSpray){
   const upcoming = VAR_KEYS.filter(v => G.trees.some(t => t && t.v === v && t.fr) && G.week < VARS[v].hv[0]);
   for (const v of upcoming) items.push({ic:'⏳', t:`${VARS[v].name} 수확은 ${VARS[v].hv[0]}주부터`, n:`${VARS[v].hv[0] - G.week}주 뒤`, done:true});
   huntTodo(items);
-  if (G.worker > 0) items.push({ic:'👷', t:'인부 아저씨 일하는 중', n:`남은 ${G.worker}일`, done:true});
+  if (G.worker > 0) items.push({ic:'👷', t:'인부 아저씨 일하는 중', n:`남은 ${workerLeftTxt()}`, done:true});
   if (!items.filter(i => !i.done).length) items.push({ic:'☕', t:'급한 일은 없어요. 농막에서 자면 다음 할 일까지 시간이 가요.', n:'', done:true});
   const sig = JSON.stringify(items);
   if (sig === todoSig) return; todoSig = sig;
@@ -4229,8 +4237,8 @@ function uiWorker(){
     const pay = workerPay(), per = Math.round(22 * (G.b.wondumak ? 1.25 : 1));
     o.body.innerHTML = `<div class="talk"><canvas width="160" height="160" id="wkP"></canvas><div class="bubble"><div class="who">인부 아저씨</div>
       하루 일당 ${won(pay)}이면 하루에 나무 ${per}그루쯤 일해 드릴게요. 지금 할 일: ${tasks.length ? tasks.map(a => `${TASKS[a.k].name} ${a.n}그루`).join(', ') : '없네요'}.
-      <br>일당은 선불이고, 할 일이 없는 날은 쉬니까 그날은 일수에서 안 빠져요.
-      ${G.worker ? `<br>지금 ${G.worker}일 더 일할 예정이에요.` : ''}</div></div>
+      <br>일당은 선불이고, 하루는 일하는 시간 14시간(아침 6시~저녁 8시)으로 쳐요. 할 일이 없어 쉬는 시간은 안 빠져요.
+      ${G.worker ? `<br>지금 ${workerLeftTxt()} 더 일할 예정이에요.` : ''}</div></div>
       <div style="display:flex;align-items:center;gap:14px;margin-top:14px;font-size:20px"><b>고용 일수</b>
       <button class="btn" id="wkM">−</button><input id="wkR" type="range" min="1" max="30" value="${days}" style="flex:1">
       <button class="btn" id="wkPl">+</button><b id="wkD" style="min-width:150px"></b></div>`;
@@ -4241,25 +4249,26 @@ function uiWorker(){
     R.oninput = () => { days = +R.value; sync(); };
     $('#wkM').onclick = () => { days = Math.max(1, days - 1); sync(); };
     $('#wkPl').onclick = () => { days = Math.min(30, days + 1); sync(); };
-    o.footEl.innerHTML = `<button class="btn go" data-hire>고용하기</button>` + (G.worker ? ` <button class="btn" data-fire>그만 부르기 (남은 ${G.worker}일 ${won(workerRefund())} 돌려받기)</button>` : '');
+    o.footEl.innerHTML = `<button class="btn go" data-hire>고용하기</button>` + (G.worker ? ` <button class="btn" data-fire>그만 부르기 (남은 ${workerLeftTxt()} ${won(workerRefund())} 돌려받기)</button>` : '');
     o.footEl.querySelector('[data-hire]').onclick = () => { if (can()) { hireWorker(days); UI.close(); } };
     const f = o.footEl.querySelector('[data-fire]'); if (f) f.onclick = () => { fireWorker(); UI.close(); };
     sync();
   }});
 }
-const workerRefund = () => G.worker * (G.workerRate || workerPay());
+const workerRefund = () => Math.round(workerHrs() / WORKER_DAY_H * (G.workerRate || workerPay()) / 1000) * 1000;
+function workerLeftTxt(){ const h = Math.round(workerHrs()), d = Math.floor(h / WORKER_DAY_H), r = h % WORKER_DAY_H; return d && r ? `${d}일 ${r}시간` : d ? `${d}일` : `${Math.max(1, r)}시간`; }
 function hireWorker(d){
   const pay = workerPay() * d; if (G.money < pay) return false;
   // 이미 일하는 중이면 남은 일수는 새 일당으로 맞춰요
-  if (G.worker && G.workerRate && G.workerRate !== workerPay()) G.money += G.worker * (G.workerRate - workerPay());
-  G.money -= pay; G.worker += d; G.workerRate = workerPay();
+  if (workerHrs() > 0 && G.workerRate && G.workerRate !== workerPay()) G.money += Math.round(G.workerHrs / WORKER_DAY_H * (G.workerRate - workerPay()));
+  G.money -= pay; G.workerHrs += d * WORKER_DAY_H; syncWorker(); G.workerRate = workerPay();
   workerS.on = true; workerS.x = SPOT.shed.x; workerS.y = SPOT.shed.y + 30;
   toast(`👷 인부 아저씨가 일 있는 날로 ${d}일 동안 일해요. (${won(pay)})`, 'good');
   return true;
 }
 function fireWorker(){
   if (!G.worker) return;
-  const back = workerRefund(); G.money += back; G.worker = 0; workerLast = -1;
+  const back = workerRefund(); G.money += back; G.worker = 0; G.workerHrs = 0; workerLast = -1;
   toast(`👷 인부 아저씨가 돌아갔어요. 남은 일당 ${won(back)}을 돌려받았어요.`, 'good');
 }
 
