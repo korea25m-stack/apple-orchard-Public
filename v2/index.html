@@ -276,9 +276,10 @@ const RISK_HIGH = 65;
 const WORKER_PAY = 130000;
 const DAY_SEC = 10;                 // 1배속 하루 10초
 // 2026-10-12 과수원이 맵 한가운데. 집·마을 둘레(HOME) 바깥은 사방이 사냥터
-const WX0 = -2700, WY0 = -3600, WX1 = 5900, WY1 = 6200;
+// 2026-10-13 맵 4배(가로·세로 2배, 17200×19600). 가운데 = 과수원 한가운데(1600, 2180)
+const WX0 = -7000, WY0 = -7620, WX1 = 10200, WY1 = 11980;
 const WORLD_W = WX1 - WX0, WORLD_H = WY1 - WY0;
-const HOME = {x0:0, y0:440, x1:2880, y1:4420};
+const HOME = {x0:-2100, y0:440, x1:2880, y1:4600};
 const worldH = rows => OY + rows * ROW_H + 520;
 
 const VARS = {
@@ -1566,11 +1567,11 @@ const SPOT = {
   hanok:{x:520, y:820}, shed:{x:780, y:1060}, grandma:{x:745, y:905}, chief:{x:300, y:1440},
   sarang:{x:170, y:820}, cold:{x:200, y:1190}, factory:{x:430, y:1160}, wondumak:{x:2340, y:780},
   hives:[[2300, 1040], [2350, 1075], [2300, 1110]], drone:{x:900, y:830},
-  pond:{x:660, y:1470}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
-  rabbit:{x:2440, y:1360}, chicken:{x:900, y:1260}, cat:{x:350, y:858}, dog:{x:690, y:980},
-  jangdok:{x:110, y:960}, sotdae:{x:190, y:1560}, nongmak:{x:2620, y:1180}
+  pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
+  rabbit:{x:2440, y:1360}, chicken:{x:560, y:1720}, cat:{x:350, y:858}, dog:{x:690, y:980},
+  jangdok:{x:110, y:960}, sotdae:{x:110, y:1600}, nongmak:{x:800, y:1400} // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
 };
-const ROAD = [[0, 1700], [300, 1440], [650, 1250], [905, 1175], [930, 1150]];
+const ROAD = [[-1000, 1250], [-300, 1270], [300, 1440], [650, 1250], [905, 1175], [930, 1150]];
 const YARD = {x:520, y:925, rx:270, ry:85};
 
 let P = {x:930, y:1000, dir:0, walk:0, act:0, tgt:null, spd:270};
@@ -1597,17 +1598,17 @@ function nearRoad(x, y, d){
 function buildFeats(){
   const R = srand(4242), WH = WORLD_H;
   feats = {blobs:[], tufts:[], flw:[]};
-  for (let i = 0; i < 2600; i++) {
+  for (let i = 0; i < 10400; i++) {
     const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH, r = 40 + R() * 110, pts = [];
     const n = 9; for (let k = 0; k < n; k++) { const a = k / n * 6.283, rr2 = r * (.7 + R() * .45); pts.push([x + Math.cos(a) * rr2, y + Math.sin(a) * rr2 * .55]); }
     feats.blobs.push({x, y, r, pts, dark:R() < .55});
   }
-  for (let i = 0; i < 26000; i++) {
+  for (let i = 0; i < 104000; i++) {
     const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH;
     if (inOrchard(x, y) || nearRoad(x, y, 70) || inYard(x, y)) continue;
     feats.tufts.push([x, y, R()]);
   }
-  for (let i = 0; i < 6000; i++) {
+  for (let i = 0; i < 24000; i++) {
     const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH;
     if (inOrchard(x, y, 20) || nearRoad(x, y, 80) || inYard(x, y)) continue;
     feats.flw.push([x, y, Math.floor(R() * 4)]);
@@ -1896,7 +1897,7 @@ function findTarget(){
   for (const n of NPCS) cands.push({kind:'npc', n:n.i, x:n.x, y:n.y});
   for (const c of cands) {
     const d = (c.x - P.x) ** 2 + ((c.y - P.y) * 1.3) ** 2;
-    const lim = c.kind === 'hanok' || c.kind === 'nongmak' ? 150 * 150 : c.kind === 'tree' ? 70 * 70 : bd;
+    const lim = c.kind === 'hanok' || c.kind === 'nongmak' || c.kind === 'rest' ? 150 * 150 : c.kind === 'tree' ? 70 * 70 : bd;
     if (d < lim && d < (best ? best.d : 1e9)) best = {...c, d};
   }
   return best;
@@ -1906,6 +1907,7 @@ function targetLabel(t){
   if (t.kind === 'tree') { const k = taskFor(t.i); if (k) return TASKS[k].verb; return G.trees[t.i] ? '살펴보기' : ''; }
   if (t.kind === 'npc') return NPCS[t.n].name;
   if (t.kind === 'forage') return '캐기: ' + LOOT[t.f.item].name;
+  if (t.kind === 'rest') return '⛺ 쉬기';
   return {grandma:'김순자 할머니', chief:'고만수 이장님', shed:'창고 열기', hanok:'저장하기', nongmak:'농막 들어가기'}[t.kind];
 }
 
@@ -1946,7 +1948,8 @@ function render(ctx, dt, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = PAL[seasonOf(G.week)].g; ctx.fillRect(0, 0, W, H);
   const vx = cam.x - W / 2 / z, vy = cam.y - H / 2 / z, vw = W / z, vh = H / z;
-  ctx.setTransform(z, 0, 0, z, -vx * z, -vy * z);
+  const shx = FX.shake > 0 ? rnd(-1, 1) * FX.shake * 16 : 0, shy = FX.shake > 0 ? rnd(-1, 1) * FX.shake * 12 : 0;
+  ctx.setTransform(z, 0, 0, z, -vx * z + shx, -vy * z + shy);
   ctx.imageSmoothingEnabled = true;
   for (let ty = Math.floor(vy / TILE); ty <= Math.floor((vy + vh) / TILE); ty++)
     for (let tx = Math.floor(vx / TILE); tx <= Math.floor((vx + vw) / TILE); tx++)
@@ -2024,8 +2027,8 @@ function render(ctx, dt, T){
   villageEntities(ctx, add, vis);
   huntEntities(ctx, add, vis, T);
   const R3 = srand(55);
-  for (let k = 0; k < 60; k++) {
-    const x = R3() * 2880, y = 560 + R3() * 3800, s = .7 + R3() * .5;
+  for (let k = 0; k < 110; k++) {
+    const x = HOME.x0 + R3() * (HOME.x1 - HOME.x0), y = HOME.y0 + 120 + R3() * (HOME.y1 - HOME.y0 - 160), s = .7 + R3() * .5;
     if (inVillage(x, y) || inOrchard(x, y, 60) || nearRoad(x, y, 90) || inYard(x, y) || blockedSpot(x, y)) continue;
     if (vis(x, y)) add(y, () => drawBush(ctx, x, y, s));
   }
@@ -2087,15 +2090,19 @@ function render(ctx, dt, T){
       ctx.textAlign = 'left'; ctx.fillText(lab, bx - tw / 2 + 42, by + 6);
     }
   }
-  // 떠오르는 글자
+  drawFx(ctx);
+  // 떠오르는 글자 (타격 숫자는 톡 튀어나와요)
   for (const f of floats) {
+    if (f.age == null) f.age = 0; f.age += dt;
+    const pop = f.pop ? 1 + Math.max(0, 1 - f.age / f.pop) * .7 : 1;
     ctx.globalAlpha = clamp(f.t * 2, 0, 1);
-    ctx.font = '26px Jua'; ctx.textAlign = 'center'; ctx.lineWidth = 6; ctx.strokeStyle = '#fffaf1'; ctx.strokeText(f.s, f.x, f.y); ctx.fillStyle = f.c || INK; ctx.fillText(f.s, f.x, f.y);
+    ctx.font = Math.round((f.sz || 26) * pop) + 'px Jua'; ctx.textAlign = 'center'; ctx.lineWidth = 6; ctx.strokeStyle = '#fffaf1'; ctx.strokeText(f.s, f.x, f.y); ctx.fillStyle = f.c || INK; ctx.fillText(f.s, f.x, f.y);
     ctx.globalAlpha = 1;
   }
 
   // 화면 효과
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  drawHurtVignette(ctx);
   drawSkyFx(ctx, dt, T);
   drawHuntOverlay(ctx, T);
 }
@@ -2166,9 +2173,12 @@ function drawSkyFx(ctx, dt, T){
   if (a > 0) { ctx.fillStyle = `rgba(255,160,90,${a})`; ctx.fillRect(0, 0, W, H); }
 }
 
-// ===== 사과골 마을 (과수원 남서쪽) =====
-const VROADS = [[[300, 1440], [430, 1700], [430, 3020]], [[50, 2190], [900, 2190]]];
-const PLAZA = {x:430, y:2190, rx:165, ry:70};
+// ===== 사과골 마을 (과수원 서쪽) =====
+// 2026-10-13 마을 2배: 아래 좌표(옛 배치)를 광장 기준으로 두 배 넓혀 서쪽으로 옮겨요 → vxy()
+const VSC = 2, VOLD = {x:430, y:2190}, VNEW = {x:-1000, y:2500};
+const vxy = (x, y) => [VNEW.x + (x - VOLD.x) * VSC, VNEW.y + (y - VOLD.y) * VSC];
+const VROADS = [[[-1000, 1250], [-1000, 4440]], [[-2100, 2500], [-60, 2500]], [[-60, 2500], [250, 1900], [300, 1440]]];
+const PLAZA = {x:VNEW.x, y:VNEW.y, rx:280, ry:115};
 const VB = [
   {x:210, y:1900, roof:'#6f8fd8', wall:'#fff3dc', sign:'복순 떡방앗간'},
   {x:660, y:1900, roof:'#e8634a', wall:'#fffaf0', sign:'금비상회'},
@@ -2180,13 +2190,31 @@ const VB = [
   {x:660, y:2690, roof:'#c08a3a', wall:'#fff3dc', sign:'벌찬꿀집'},
   {x:210, y:2910, roof:'#e8c040', wall:'#fffaf0', sign:'햇살분교', big:1},
   {x:660, y:2910, roof:'#3a5aa0', wall:'#f2f6fb', sign:'사과골 파출소'}
-];
-const JEONGJA = {x:300, y:2320}, BIGTREE = {x:575, y:2330};
+].map(b => { const [x, y] = vxy(b.x, b.y); return {...b, x, y}; }).concat([
+  // 2026-10-13 마을이 넓어지면서 새로 생긴 집
+  {x:-1440, y:1480, roof:'#9a6ad8', wall:'#fff6ee', sign:'도윤이네 집'},
+  {x:-560, y:1480, roof:'#d85a6a', wall:'#fffaf2', sign:'빛나네 집'},
+  {x:-230, y:2290, roof:'#e84a3a', wall:'#fffaf0', sign:'사과골 우체국'},
+  {x:-230, y:2840, roof:'#8a6a3a', wall:'#fff3dc', sign:'할매 국밥집'},
+  {x:-1440, y:4380, roof:'#4aa0a0', wall:'#fffaf0', sign:'작은 도서관', big:1},
+  {x:-560, y:4380, roof:'#f07a3a', wall:'#fff6e6', sign:'사과즙 공방'}
+]);
+// 길가 나무 (넓어진 마을이 휑하지 않게)
+const VSTREET = -1000, PLAY = {x:430, y:3150};
+const VTREES = [];
+for (let y = 1720; y < 4400; y += 290) for (const side of [-1, 1]) {
+  const x = VSTREET + side * 175;
+  if (Math.abs(y - VNEW.y) < 300 || VB.some(b => Math.abs(b.y + 15 - y) < 90 && Math.sign(b.x - VSTREET) === side)) continue;
+  VTREES.push({x, y});
+}
+const JEONGJA = (([x, y]) => ({x, y}))(vxy(300, 2320)), BIGTREE = (([x, y]) => ({x, y}))(vxy(575, 2330));
 const worldBot = () => WY1;
-function inVillage(x, y){ return x < 960 && y > 1720; }
+function inVillage(x, y){ return x > HOME.x0 && x < 40 && y > 1300 && y < HOME.y1; }
 function villageSolids(s){
   for (const b of VB) { const hw = b.big ? 120 : 90; s.push({x:b.x - hw, y:b.y - 80, w:hw * 2, h:80}); }
   s.push({x:BIGTREE.x - 18, y:BIGTREE.y - 14, w:36, h:16});
+  for (const t of VTREES) s.push({x:t.x - 10, y:t.y - 10, w:20, h:12});
+  s.push({x:PLAY.x + 60, y:PLAY.y - 16, w:110, h:18}, {x:PLAY.x - 200, y:PLAY.y - 12, w:12, h:14}, {x:PLAY.x - 70, y:PLAY.y - 12, w:12, h:14});
 }
 
 // ----- 마을 사람 18명 (+ 이장님·순자 할머니 = 20명) -----
@@ -2246,6 +2274,9 @@ const NPC_DATA = [
    look:{skin:'#ffe4d0', hair:'#d9a03a', hs:'long', eye:'#6a4a2a', top:'#b98cff', outfit:'jacket', o2:'#ff6b8a', pants:'#3a3a5a', shoe:'#ffffff', girl:1},
    lines:['안녕하세요, 빛나TV! 오늘은 사과골 농부님을 만나러 왔어요!', '구독자들이 {N}네 과수원 사과 맛을 궁금해해요!', '사과 따는 날 영상 찍어도 돼요?']}
 ];
+for (const d of NPC_DATA) { d.home = vxy(...d.home); if (d.r) d.r = [d.r[0] * VSC, d.r[1] * VSC]; }
+// 아이들은 새 놀이터에서 놀아요
+for (const d of NPC_DATA) if (d.look.kid) { d.home = [PLAY.x + rnd(-120, 120), PLAY.y + 40]; d.r = [230, 70]; }
 const NPCS = NPC_DATA.map((d, i) => ({...d, i, hx:d.home[0], hy:d.home[1], x:d.home[0], y:d.home[1], tx:d.home[0], ty:d.home[1], dir:0, walk:0, wait:rnd(0, 3), li:0}));
 function updateVillagers(dt){
   if (!UI.free()) return;
@@ -2291,6 +2322,10 @@ function drawVillageGround(c, win){
   // 보도블록 무늬
   c.strokeStyle = win ? '#e2e8ee' : '#d6cdbc'; c.lineWidth = 2;
   for (let k = 1; k < 4; k++) { c.beginPath(); ell(c, PLAZA.x, PLAZA.y, PLAZA.rx * k / 4, PLAZA.ry * k / 4); c.stroke(); }
+  // 집 앞에서 큰길까지 오솔길
+  for (const b of VB) { const sx = b.x > -300 ? -60 : VSTREET; road([[b.x, b.y + 16], [sx, b.y + 16]], 44, win ? '#e9eef2' : '#d9c9a4'); }
+  // 놀이터 모래밭
+  c.beginPath(); ell(c, PLAY.x, PLAY.y, 300, 120); c.fillStyle = win ? '#e9eef2' : '#e8d4a0'; c.fill(); c.lineWidth = 3; c.strokeStyle = win ? '#c8d2da' : '#c8a868'; c.stroke();
   // 집 앞마당
   for (const b of VB) { const hw = b.big ? 130 : 100; c.beginPath(); rr(c, b.x - hw, b.y - 10, hw * 2, 40, 14); c.fillStyle = win ? '#e9eef2' : '#d9c9a4'; c.fill(); }
 }
@@ -2323,6 +2358,18 @@ function drawVHouse(c, b){
   }
   c.restore();
 }
+function drawPlayground(c, x, y){
+  c.save(); c.translate(x, y);
+  // 그네
+  for (const px of [-200, -70]) cel(c, cc => rr(cc, px, -150, 10, 150, 3), '#e8423a', '#b02a22', 2, 0, 2.4);
+  cel(c, cc => rr(cc, -206, -160, 152, 14, 5), '#ffd23a', '#d8a020', 2, 2, 2.4);
+  for (const sx of [-170, -110]) { line(c, [sx - 12, -146, sx - 12, -40, sx + 12, -40, sx + 12, -146], 2, '#6a6a6a'); cel(c, cc => rr(cc, sx - 18, -44, 36, 8, 3), '#4aa8e8', '#2a78b8', 1, 1, 2); }
+  // 미끄럼틀
+  cel(c, cc => { cc.moveTo(70, 0); cc.lineTo(70, -120); cc.lineTo(110, -120); cc.lineTo(110, 0); cc.closePath(); }, '#ffd23a', '#d8a020', 2, 2, 2.6);
+  for (let k = 1; k < 5; k++) line(c, [70, -k * 24, 110, -k * 24], 3, '#b07a10');
+  cel(c, cc => { cc.moveTo(108, -120); cc.quadraticCurveTo(150, -70, 175, -6); cc.lineTo(150, 0); cc.quadraticCurveTo(130, -60, 104, -100); cc.closePath(); }, '#ff6b8a', '#d84a6a', 3, 2, 2.6);
+  c.restore();
+}
 function drawJeongja(c, x, y){
   c.save(); c.translate(x, y);
   shadow(c, 0, 4, 100, 20, .22);
@@ -2348,9 +2395,12 @@ function villageEntities(ctx, add, vis){
   for (const b of VB) if (vis(b.x, b.y, 300)) add(b.y, () => drawVHouse(ctx, b));
   if (vis(JEONGJA.x, JEONGJA.y, 300)) add(JEONGJA.y, () => drawJeongja(ctx, JEONGJA.x, JEONGJA.y));
   if (vis(BIGTREE.x, BIGTREE.y, 340)) add(BIGTREE.y, () => drawBigTree(ctx, BIGTREE.x, BIGTREE.y));
-  if (vis(520, 1760)) add(1760, () => drawSign(ctx, 530, 1760, '🏡 사과골 마을'));
+  for (const t of VTREES) if (vis(t.x, t.y, 200)) add(t.y, () => drawOak(ctx, t.x, t.y, .62));
+  if (vis(PLAY.x, PLAY.y, 400)) { add(PLAY.y - 4, () => drawPlayground(ctx, PLAY.x, PLAY.y)); add(PLAY.y + 140, () => drawSign(ctx, PLAY.x, PLAY.y + 140, '🛝 사과골 놀이터')); }
+  if (vis(-760, 1330)) add(1330, () => drawSign(ctx, -760, 1330, '🏡 사과골 마을'));
   // 화가의 이젤
-  if (vis(675, 2352)) add(2352, () => { ctx.save(); ctx.translate(675, 2352); line(ctx, [-12, 0, 0, -58, 12, 0], 3, '#8a5432'); cel(ctx, cc => rr(cc, -16, -64, 32, 26, 2), '#ffffff', '#e0e0e0', 1, 1, 2.2); ctx.beginPath(); ctx.arc(-4, -52, 6, 0, 7); ctx.fillStyle = '#e8423a'; ctx.fill(); ctx.beginPath(); ctx.arc(6, -46, 4, 0, 7); ctx.fillStyle = '#5cb85c'; ctx.fill(); ctx.restore(); });
+  const EZ = vxy(675, 2352);
+  if (vis(EZ[0], EZ[1])) add(EZ[1], () => { ctx.save(); ctx.translate(EZ[0], EZ[1]); line(ctx, [-12, 0, 0, -58, 12, 0], 3, '#8a5432'); cel(ctx, cc => rr(cc, -16, -64, 32, 26, 2), '#ffffff', '#e0e0e0', 1, 1, 2.2); ctx.beginPath(); ctx.arc(-4, -52, 6, 0, 7); ctx.fillStyle = '#e8423a'; ctx.fill(); ctx.beginPath(); ctx.arc(6, -46, 4, 0, 7); ctx.fillStyle = '#5cb85c'; ctx.fill(); ctx.restore(); });
   for (const n of NPCS) if (vis(n.x, n.y)) add(n.y, () => drawPerson(ctx, n.x, n.y, n.look, n.dir, n.walk, 0));
 }
 function drawVillageTags(ctx){
@@ -2367,22 +2417,23 @@ function drawVillageTags(ctx){
 
 // ===== 뒷산 사냥터: 넓은 숲, 같은 화면에서 실시간 전투, 전리품 =====
 // 2026-10-12: 과수원이 맵 가운데. 집·마을 둘레(HOME) 바깥 사방이 사냥터. 집에서 멀수록 센 산짐승과 귀한 전리품.
-const GATES = [{x:HOME.x1, y:1200}, {x:450, y:HOME.y1}, {x:2400, y:HOME.y0}, {x:HOME.x0, y:1700}];
+const GATES = [{x:HOME.x1, y:1200}, {x:1600, y:HOME.y1}, {x:2400, y:HOME.y0}, {x:HOME.x0, y:2500}]; // 동·남·북·서 입구
 function inHunt(x, y){ return x < HOME.x0 || x > HOME.x1 || y < HOME.y0 || y > HOME.y1; }
 function gateDist(x, y){ return Math.min(...GATES.map(g => Math.hypot(x - g.x, y - g.y))); }
 function homeDist(x, y){ return Math.hypot(Math.max(HOME.x0 - x, 0, x - HOME.x1), Math.max(HOME.y0 - y, 0, y - HOME.y1)); }
-function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = homeDist(x, y); return d < 900 ? 0 : d < 1900 ? 1 : d < 3000 ? 2 : 3; }
+function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = homeDist(x, y); return d < 1600 ? 0 : d < 3400 ? 1 : d < 5200 ? 2 : 3; } // 2026-10-13 맵 4배라 구역도 두 배 넓게
 const ZONES = [
   {name:'얕은 숲', stars:'★'}, {name:'깊은 숲', stars:'★★'}, {name:'골짜기', stars:'★★★'}, {name:'전설의 산', stars:'★★★★'}
 ];
-const TRAILS = [
-  [[2880, 1200], [3500, 1300], [4200, 1000], [4900, 1500], [5600, 1200]],
-  [[3500, 1300], [3800, 2400], [4500, 3300], [5200, 4400], [5500, 5700]],
-  [[450, 4420], [700, 5000], [1600, 5500], [2800, 5300], [3800, 5800]], [[2800, 5300], [3600, 4600], [4500, 3300]],
-  [[2400, 440], [2300, -300], [1600, -1100], [600, -1800], [-400, -2600], [-1500, -3200]],
-  [[2300, -300], [3400, -900], [4400, -1800], [5200, -3000]], [[1600, -1100], [1800, -2400], [2600, -3200]], [[3400, -900], [4200, 1000]],
-  [[0, 1700], [-700, 1600], [-1400, 2300], [-1900, 3400], [-1400, 4600], [-300, 5300], [700, 5000]],
-  [[-700, 1600], [-1200, 600], [-1800, -400], [-400, -2600]]
+const TRAILS = [ // 2026-10-13 맵 4배에 맞춰 새로 낸 숲길
+  [[2880, 1200], [4400, 1300], [5800, 800], [7400, 1500], [9200, 1000]],
+  [[4400, 1300], [5000, 3200], [6400, 4800], [7800, 6600], [8800, 9200]],
+  [[1600, 4600], [1800, 6000], [3200, 7000], [5000, 6600], [6800, 7800], [8800, 9200]], [[5000, 6600], [6400, 4800]],
+  [[1800, 6000], [700, 7800], [-600, 9800], [1400, 11000], [3600, 10400]],
+  [[2400, 440], [2300, -900], [1300, -2400], [-200, -3600], [-2000, -5000], [-4200, -6400]],
+  [[2300, -900], [4400, -2000], [6200, -3400], [7800, -5800]], [[1300, -2400], [1700, -4800], [2400, -6600]], [[4400, -2000], [5800, 800]],
+  [[-2100, 2500], [-3300, 2300], [-4600, 3600], [-5400, 5600], [-4600, 7800], [-2600, 9000], [-600, 9800]],
+  [[-3300, 2300], [-4400, 600], [-5600, -1200], [-4200, -3200], [-2000, -5000]]
 ];
 const CLEARINGS = TRAILS.flat().filter(([x, y]) => inHunt(x, y) && gateDist(x, y) > 500).map(([x, y]) => ({x, y, r:230}));
 function nearTrail(x, y, d){
@@ -2460,7 +2511,7 @@ function drawHuntGround(c, x0, y0, w, h, win){
   // 숲 바닥: 깊이 들어갈수록 조금씩 짙어져요
   for (let cy = y0; cy < y0 + h; cy += 64) for (let cx = x0; cx < x0 + w; cx += 64) {
     if (!inHunt(cx + 32, cy + 32)) continue;
-    const t = clamp(homeDist(cx + 32, cy + 32) / 4500, 0, 1);
+    const t = clamp(homeDist(cx + 32, cy + 32) / 7000, 0, 1);
     c.fillStyle = mix(base, dark, .1 + t * .35); c.fillRect(cx, cy, 65, 65);
   }
   const R = srand((x0 / 512 | 0) * 977 + (y0 / 512 | 0) * 131 + 5);
@@ -2494,13 +2545,42 @@ function heroAttack(){
   if (!best) return;
   // 강화 +5부터는 휘두르면 닿는 산짐승이 모두 맞아요(옆 짐승은 70%)
   if (weaponUp() >= AOE_LV) for (const o of MONS) if (o !== best && !o.dead && Math.hypot(o.x - P.x, (o.y - P.y) * 1.2) < reach) hitMon(o, Math.round((f.atk + rint(0, 4)) * .7), f);
-  hitMon(best, f.atk + rint(0, 4), f);
+  hitMon(best, f.atk + rint(0, 4), f, true);
+}
+// ----- 전투 손맛 (2026-10-13): 멈칫(히트스톱)·화면 흔들림·번쩍·불꽃 -----
+const FX = {stop:0, shake:0, hurt:0, parts:[]};
+function burst(x, y, n, cols, sp, life){
+  for (let k = 0; k < n; k++) { const a = rnd(0, 6.283), v = rnd(.35, 1) * sp; FX.parts.push({x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v * .7 - sp * .25, t:life * rnd(.6, 1), t0:life, c:pick(cols), r:rnd(4, 9)}); }
+  if (FX.parts.length > 260) FX.parts.splice(0, FX.parts.length - 260);
+}
+function updateFx(dt){
+  FX.shake = Math.max(0, FX.shake - dt * 2.4); FX.hurt = Math.max(0, FX.hurt - dt * 1.6);
+  for (const p of FX.parts) { p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; p.vx *= 1 - dt * 2; }
+  for (let i = FX.parts.length - 1; i >= 0; i--) if (FX.parts[i].t <= 0) FX.parts.splice(i, 1);
+}
+function drawFx(c){
+  for (const p of FX.parts) {
+    const a = clamp(p.t / p.t0, 0, 1); c.globalAlpha = a;
+    c.save(); c.translate(p.x, p.y); c.rotate(p.t * 9);
+    c.beginPath(); for (let k = 0; k < 4; k++) { const an = k * Math.PI / 2; c.lineTo(Math.cos(an) * p.r, Math.sin(an) * p.r); c.lineTo(Math.cos(an + .785) * p.r * .4, Math.sin(an + .785) * p.r * .4); } c.closePath();
+    c.fillStyle = p.c; c.fill(); c.lineWidth = 1.5; c.strokeStyle = INK; c.stroke(); c.restore();
+  }
+  c.globalAlpha = 1;
+}
+function drawHurtVignette(c){
+  if (FX.hurt <= 0) return;
+  const g = c.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .85);
+  g.addColorStop(0, 'rgba(214,55,44,0)'); g.addColorStop(1, `rgba(214,55,44,${FX.hurt * .55})`);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
 }
 const AOE_LV = 5;
 function weaponUp(){ const g = ensureGear(); return g.own[g.weapon] || 0; }
-function hitMon(m, dmg, f){
+function hitMon(m, dmg, f, main){
   const bd = Math.max(1, Math.hypot(m.x - P.x, (m.y - P.y) * 1.2));
-  m.hp -= dmg; m.hitT = 4; m.eng = true; sfx('hit');
+  const crit = main && Math.random() < .15; if (crit) dmg = Math.round(dmg * 1.6);
+  m.hp -= dmg; m.hitT = 4; m.eng = true; m.flash = .12;
+  if (main) { sfx(crit ? 'crit' : 'hit'); setTimeout(() => sfx(m.kind === 'boar' ? 'oink' : 'bleat'), 60); FX.stop = Math.max(FX.stop, crit ? .1 : .055); FX.shake = Math.max(FX.shake, crit ? .55 : .28); }
+  burst(m.x, m.y - 50 * m.V.sc, crit ? 14 : 8, crit ? ['#ffd23a', '#ff6b57', '#fffaf1'] : ['#fffaf1', '#ffe36a'], crit ? 520 : 380, .45);
   if (!['wind', 'charge', 'kick'].includes(m.st)) {
     m.stun = f.reach >= 1.25 ? .35 : .2;
     const k = Math.max(1, bd); m.kb = {x:(m.x - P.x) / k * 520, y:(m.y - P.y) / k * 520, t:.18};
@@ -2509,7 +2589,7 @@ function hitMon(m, dmg, f){
     else { m.st = 'hop'; m.tm = .45; m.hv = {x:(m.x - P.x) / Math.max(1, bd) * 560, y:(m.y - P.y) / Math.max(1, bd) * 560}; m.cc = Math.max(m.cc, .9); }
     if (m.st !== 'hop') m.st = 'chase';
   }
-  floats.push({x:m.x, y:m.y - 90, s:'-' + dmg, t:.9, c:'#d6372c'});
+  floats.push({x:m.x + rnd(-14, 14), y:m.y - 90, s:crit ? `치명타! -${dmg}` : '-' + dmg, t:.9, c:crit ? '#ff7a1a' : '#d6372c', sz:crit ? 40 : 30, pop:.18});
   if (m.hp <= 0) killMon(m);
 }
 function heroGong(){
@@ -2523,12 +2603,14 @@ function heroHurt(m, base){
   let dmg, txt, col = '#d6372c';
   if (P.blk) {
     const perfect = P.blkT < 1.1; sfx(perfect ? 'clang' : 'block');
+    burst(P.x + P.face * 30, P.y - 70, perfect ? 12 : 6, ['#bfe0ff', '#fffaf1', '#7ab0e8'], perfect ? 460 : 300, .4); FX.shake = Math.max(FX.shake, perfect ? .35 : .2); if (perfect) FX.stop = Math.max(FX.stop, .08);
     dmg = perfect ? 0 : Math.max(1, Math.round(base * m.V.dmg * (1 - blockPct() / 100)) - f.def);
     txt = perfect ? '🛡️ 딱 막았다!' : `🛡️ 막기 -${dmg}`; col = '#2f6fb8';
     P.kb = {x:(P.x - m.x) / d * 220, y:(P.y - m.y) / d * 220, t:.15};
     if (perfect) { m.stun = 1.2; m.kb = {x:(m.x - P.x) / d * 420, y:(m.y - P.y) / d * 420, t:.2}; }
   } else {
     dmg = Math.max(2, Math.round(base * m.V.dmg) - f.def); txt = '-' + dmg; sfx('hurt');
+    FX.hurt = .7; FX.shake = Math.max(FX.shake, .5); FX.stop = Math.max(FX.stop, .06); burst(P.x, P.y - 70, 8, ['#ff6b57', '#fffaf1'], 360, .4);
     P.kb = {x:(P.x - m.x) / d * 600, y:(P.y - m.y) / d * 600, t:.2};
   }
   P.hp -= dmg; P.inv = .9; P.hurtT = 0;
@@ -2547,7 +2629,7 @@ function makeMon(kind, tier, x, y, raid){
 function spawnHuntMon(){
   for (let k = 0; k < 20; k++) {
     const a = rnd(0, 6.28), d = rnd(1150, 2600), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
-    if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 700 || homeDist(x, y) < 300) continue;
+    if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 700 || homeDist(x, y) < 300 || restAt(x, y, 500)) continue;
     const z = zoneAt(x, y), tier = Math.max(0, Math.min(3, z - (Math.random() < .3 ? 1 : 0)));
     MONS.push(makeMon(Math.random() < .5 ? 'boar' : 'deer', tier, x, y, false));
     return;
@@ -2564,7 +2646,8 @@ function spawnRaid(kind){
   todoSig = '';
 }
 function killMon(m){
-  m.dead = true; m.deadT = 0; m.st = 'dead'; sfx('win');
+  m.dead = true; m.deadT = 0; m.st = 'dead'; sfx('kill');
+  FX.stop = Math.max(FX.stop, .13); FX.shake = Math.max(FX.shake, .6); burst(m.x, m.y - 40, 22, ['#ffd23a', '#ff6b57', '#7fcf5a', '#fffaf1'], 620, .7);
   const f0 = farmer();
   if (m.raid) {
     G.money += m.V.pay; G.rep += m.V.rep; G.stats.raids++; unlock('raid');
@@ -2595,6 +2678,7 @@ function updateMon(m, dt){
   m.t += dt;
   if (m.dead) { m.deadT += dt; return; }
   if (m.hitT > 0) m.hitT -= dt;
+  if (m.flash > 0) m.flash -= dt;
   if (m.kb) { m.x += m.kb.x * dt; m.y += m.kb.y * dt; m.kb.t -= dt; if (m.kb.t <= 0) m.kb = null; }
   if (m.stun > 0) { m.stun -= dt; return; }
   const pd = Math.hypot(P.x - m.x, P.y - m.y), boar = m.kind === 'boar', sp = m.V.spd;
@@ -2639,8 +2723,8 @@ function updateMon(m, dt){
     m.tm -= dt; m.x += m.hv.x * dt; m.y += m.hv.y * dt; if (Math.abs(m.hv.x) > 10) m.flip = m.hv.x < 0;
     if (m.tm <= 0) m.st = 'chase';
   }
-  // 사냥터 산짐승은 숲 밖으로 안 나와요
-  if (!m.raid && !inHunt(m.x, m.y)) { m.x = ox; m.y = oy; if (m.st === 'wander') { m.tx = m.hx; m.ty = m.hy; } }
+  // 사냥터 산짐승은 숲 밖·쉼터 안으로 안 들어와요
+  if (!m.raid && (!inHunt(m.x, m.y) || restAt(m.x, m.y, 120))) { m.x = ox; m.y = oy; if (m.st === 'wander') { m.tx = m.hx; m.ty = m.hy; } }
   m.x = clamp(m.x, WX0 + 60, WX1 - 60); m.y = clamp(m.y, WY0 + 160, WY1 - 30);
 }
 
@@ -2662,7 +2746,52 @@ function pickForage(f){
   toast(`🧺 ${jo(LOOT[f.item].name, '을', '를')} 캤어요! 💡 ${LOOT[f.item].desc}`, 'good');
   P.sw = .3; todoSig = '';
 }
-function huntTargets(cands){ for (const f of FORAGE) cands.push({kind:'forage', f, x:f.x, y:f.y}); }
+function huntTargets(cands){ for (const f of FORAGE) cands.push({kind:'forage', f, x:f.x, y:f.y}); for (const r of RESTS) cands.push({kind:'rest', r, x:r.x, y:r.y + 10}); }
+
+// ----- 숲속 쉼터 (2026-10-13): 체력 회복, 한 번 찾으면 농막·다른 쉼터로 바로 이동 -----
+const RESTS = [
+  {id:'e', name:'동쪽 숲 쉼터', x:5800, y:800}, {id:'s', name:'남쪽 숲 쉼터', x:3200, y:7000},
+  {id:'n', name:'북쪽 숲 쉼터', x:1300, y:-2400}, {id:'w', name:'서쪽 숲 쉼터', x:-4600, y:3600},
+  {id:'v', name:'골짜기 쉼터', x:6400, y:4800}, {id:'m', name:'전설의 산 쉼터', x:2400, y:-6600}
+];
+function restAt(x, y, pad = 0){ return RESTS.find(r => Math.hypot(x - r.x, (y - r.y) * 1.2) < 160 + pad); }
+function restsFound(){ if (!G.rests) G.rests = {}; return RESTS.filter(r => G.rests[r.id]); }
+function warpTo(x, y, txt){
+  UI.close();
+  fadeScreen(txt, () => { P.x = x; P.y = y; P.tgt = null; P.kb = null; cam.x = P.x; cam.y = P.y; for (const m of MONS) if (!m.raid) { m.eng = false; m.st = 'wander'; } }, () => {});
+}
+function warpButtons(skip){
+  const list = restsFound().filter(r => r !== skip);
+  return list.map(r => `<button class="btn" data-warp="${r.id}">⛺ ${r.name}</button>`).join('');
+}
+function bindWarp(o){ o.footEl.querySelectorAll('[data-warp]').forEach(b => b.onclick = () => { const r = RESTS.find(q => q.id === b.dataset.warp); warpTo(r.x, r.y + 70, `🚶 ${r.name}로 가는 중…`); }); }
+function uiRest(r){
+  ensureHero(); if (!G.rests) G.rests = {};
+  const first = !G.rests[r.id]; G.rests[r.id] = 1;
+  P.hp = P.max; sfx(first ? 'fanfare' : 'good');
+  if (first) unlockRestToast(r);
+  UI.open({ic:'⛺', title:r.name, w:860, render(o){
+    o.body.innerHTML = `<p style="margin-top:0">모닥불 옆에서 쉬었더니 <b>체력이 가득 찼어요!</b> ❤️ ${Math.round(P.hp)}/${P.max}</p>
+      <p>${ZONES[Math.max(0, zoneAt(r.x, r.y))].stars} ${ZONES[Math.max(0, zoneAt(r.x, r.y))].name} 한가운데예요. 쉼터 안에는 산짐승이 못 들어와요.</p>
+      <p class="gnote">찾은 쉼터 ${restsFound().length}/${RESTS.length}곳 · 찾은 쉼터끼리, 그리고 농막에서 바로 오갈 수 있어요.</p>`;
+    o.footEl.innerHTML = `${warpButtons(r)}<button class="btn" data-home="1">🛖 농막으로</button><button class="btn pri" id="rsOk">더 둘러보기</button>`;
+    bindWarp(o);
+    o.footEl.querySelector('[data-home]').onclick = () => warpTo(SPOT.nongmak.x, SPOT.nongmak.y + 50, '🚶 농막으로 돌아가는 중…');
+    $('#rsOk').onclick = () => UI.close();
+  }});
+}
+function unlockRestToast(r){ floats.push({x:r.x, y:r.y - 200, s:'⛺ 새 쉼터 발견!', t:2, c:'#ff6b57'}); gainXp(20); }
+function drawRest(c, r, T){
+  drawJeongja(c, r.x, r.y - 30);
+  // 모닥불
+  c.save(); c.translate(r.x + 120, r.y + 40);
+  for (const a of [-.5, .5]) { c.save(); c.rotate(a); cel(c, cc => rr(cc, -26, -5, 52, 10, 4), '#9a6a44', '#6a4428', 1, 1, 2.2); c.restore(); }
+  const fl = 1 + Math.sin(T * 9) * .12;
+  cel(c, cc => { cc.moveTo(-14, 0); cc.quadraticCurveTo(-16 * fl, -26, 0, -44 * fl); cc.quadraticCurveTo(16 * fl, -26, 14, 0); cc.closePath(); }, '#ff8a2a', '#e8502a', 0, 0, 2.4);
+  c.beginPath(); ell(c, 0, -14, 6, 12 * fl); c.fillStyle = '#ffe36a'; c.fill();
+  c.restore();
+  drawSign(c, r.x - 170, r.y + 70, `⛺ ${r.name}`);
+}
 
 // ----- 매 프레임 -----
 let zoneShow = {z:-2, t:0};
@@ -2725,8 +2854,9 @@ function drawMon(c, m){
   c.save();
   if (m.dead) c.globalAlpha = clamp(1 - m.deadT, 0, 1);
   c.translate(m.x + (m.st === 'wind' ? rnd(-2, 2) : 0), m.y); const s = 1.25 * m.V.sc; c.scale(s, s);
+  if (m.flash > 0) { c.filter = 'brightness(2.6) saturate(.4)'; c.scale(1.06, .94); }
   drawAnimal(c, m.kind, 0, 0, m.st === 'eat' ? m.t * .5 : m.stun > 0 || m.st === 'wander' && m.wait > 0 ? 0 : m.t, m.flip, m.V);
-  c.restore();
+  c.filter = 'none'; c.restore();
   if (m.dead) return;
   const top = m.y - 80 * m.V.sc;
   if (m.st === 'wind' || m.st === 'kick') { c.font = '44px Jua'; c.textAlign = 'center'; c.lineWidth = 7; c.strokeStyle = '#fffaf1'; c.strokeText('!', m.x, top - 20); c.fillStyle = '#d6372c'; c.fillText('!', m.x, top - 20); }
@@ -2768,12 +2898,15 @@ function huntEntities(ctx, add, vis, T){
   // 사냥터 경계: 숲 울타리와 입구 표지판
   const R = srand(4040);
   const pine = (x, y) => { const s = .95 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); };
-  for (let y = HOME.y0 + 120; y < HOME.y1; y += 120) { const j = R() * 20; if (y < 1020 || y > 1380) pine(HOME.x1 - 20 + j, y); if (y < 1600 || y > 1820) pine(HOME.x0 + 10 + j, y); }
-  for (let x = HOME.x0 + 40; x < HOME.x1; x += 115) { const j = R() * 20; if (x < 340 || x > 560) pine(x, HOME.y1 - 10 + j); if (x < 2280 || x > 2520) pine(x, HOME.y0 + 20 + j); }
-  if (vis(2800, 1330)) add(1330, () => drawSign(ctx, 2790, 1330, '🌲 동쪽 사냥터 →'));
-  if (vis(620, 4330)) add(4330, () => drawSign(ctx, 640, 4330, '🌲 남쪽 사냥터 ↓'));
-  if (vis(2580, 600)) add(600, () => drawSign(ctx, 2600, 600, '🌲 북쪽 사냥터 ↑'));
-  if (vis(110, 1560)) add(1560, () => drawSign(ctx, 120, 1560, '← 서쪽 사냥터 🌲'));
+  const gap = (x, y) => GATES.some(g => Math.hypot(x - g.x, y - g.y) < 150);
+  for (let y = HOME.y0 + 120; y < HOME.y1; y += 120) { const j = R() * 20; if (!gap(HOME.x1, y)) pine(HOME.x1 - 20 + j, y); if (!gap(HOME.x0, y)) pine(HOME.x0 + 10 + j, y); }
+  for (let x = HOME.x0 + 40; x < HOME.x1; x += 115) { const j = R() * 20; if (!gap(x, HOME.y1)) pine(x, HOME.y1 - 10 + j); if (!gap(x, HOME.y0)) pine(x, HOME.y0 + 20 + j); }
+  const [gE, gS, gN, gW] = GATES;
+  if (vis(gE.x - 90, gE.y + 130)) add(gE.y + 130, () => drawSign(ctx, gE.x - 90, gE.y + 130, '🌲 동쪽 사냥터 →'));
+  if (vis(gS.x + 190, gS.y - 90)) add(gS.y - 90, () => drawSign(ctx, gS.x + 190, gS.y - 90, '🌲 남쪽 사냥터 ↓'));
+  if (vis(gN.x + 200, gN.y + 160)) add(gN.y + 160, () => drawSign(ctx, gN.x + 200, gN.y + 160, '🌲 북쪽 사냥터 ↑'));
+  if (vis(gW.x + 130, gW.y - 120)) add(gW.y - 120, () => drawSign(ctx, gW.x + 130, gW.y - 120, '← 서쪽 사냥터 🌲'));
+  for (const r of RESTS) if (vis(r.x, r.y, 400)) { add(r.y, () => drawRest(ctx, r, T)); }
   for (const o of FOREST) if (vis(o.x, o.y)) add(o.y, () => o.k === 'pine' ? drawPine(ctx, o.x, o.y, o.s * 1.1) : o.k === 'oak' ? drawOak(ctx, o.x, o.y, o.s) : o.k === 'rock' ? drawRock(ctx, o.x, o.y, o.s) : drawBush(ctx, o.x, o.y, o.s * 1.2));
   for (const f of FORAGE) if (vis(f.x, f.y)) add(f.y - 1, () => drawForage(ctx, f));
   for (const m of MONS) if (vis(m.x, m.y)) add(m.y, () => drawMon(ctx, m));
@@ -2785,7 +2918,7 @@ function buildMiniBase(){
   miniBase = mk(MM.w, MM.h); const c = miniBase.getContext('2d'), s = MM.w / WORLD_W;
   for (let y = 0; y < MM.h; y += 4) for (let x = 0; x < MM.w; x += 4) {
     const wx = WX0 + x / s, wy = WY0 + y / s;
-    c.fillStyle = inHunt(wx, wy) ? mix('#7fbf5a', '#2f5a2a', clamp(homeDist(wx, wy) / 4500, 0, 1) * .8) : '#a6dc78'; c.fillRect(x, y, 4, 4);
+    c.fillStyle = inHunt(wx, wy) ? mix('#7fbf5a', '#2f5a2a', clamp(homeDist(wx, wy) / 7000, 0, 1) * .8) : '#a6dc78'; c.fillRect(x, y, 4, 4);
   }
   c.translate(-WX0 * s, -WY0 * s);
   c.strokeStyle = '#c99d62'; c.lineWidth = 2; c.lineCap = 'round';
@@ -2793,8 +2926,8 @@ function buildMiniBase(){
   c.fillStyle = '#b9875a'; c.fillRect(OX * s, OY * s, ORCH_W * s, MAX_ROWS * ROW_H * s);
   c.fillStyle = '#e8634a'; for (const b of VB) c.fillRect(b.x * s - 2, b.y * s - 3, 5, 4);
   c.font = '11px Jua'; c.fillStyle = INK; c.textAlign = 'center';
-  c.fillText('과수원', (OX + ORCH_W / 2) * s, OY * s - 2); c.fillText('마을', 430 * s, 2000 * s);
-  [['얕은 숲', 3500, 2000], ['깊은 숲', 4700, 3600], ['골짜기', -1700, -900], ['전설의 산', 1500, -2900]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
+  c.fillText('과수원', (OX + ORCH_W / 2) * s, OY * s - 2); c.fillText('마을', VNEW.x * s, (VNEW.y - 1100) * s);
+  [['얕은 숲', 4300, 2600], ['깊은 숲', 6600, 3600], ['골짜기', -4800, -1600], ['전설의 산', 1600, -6200]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
 }
 function drawHuntOverlay(ctx, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2806,6 +2939,8 @@ function drawHuntOverlay(ctx, T){
   const vw = W / cam.z, vh = H / cam.z;
   ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(mx(cam.x - vw / 2), my(cam.y - vh / 2), vw * s, vh * s);
   ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🛖', mx(SPOT.nongmak.x), my(SPOT.nongmak.y) + 4);
+  for (const r of RESTS) { const f = G.rests && G.rests[r.id]; ctx.globalAlpha = f ? 1 : .55; ctx.font = f ? '12px sans-serif' : 'bold 11px Jua'; ctx.fillStyle = INK; ctx.fillText(f ? '⛺' : '?', mx(r.x), my(r.y) + 4); }
+  ctx.globalAlpha = 1;
   for (const m of MONS) if (!m.dead) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), m.raid ? 4.5 : 2.2, 0, 7); ctx.fillStyle = m.raid ? '#ff3b30' : '#7a2a1a'; ctx.fill(); }
   ctx.beginPath(); ctx.arc(mx(P.x), my(P.y), 4.5, 0, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
   ctx.restore();
@@ -2893,9 +3028,11 @@ function heroFaint(){
 function uiNongmak(){
   UI.open({ic:'🛖', title:HN() + '네 농막', w:960, render(o){
     o.body.innerHTML = `<canvas id="roomCv" width="880" height="330" style="width:100%;border:3px solid var(--ink);border-radius:18px;display:block"></canvas>
+      <p>${restsFound().length ? '⛺ 찾은 숲속 쉼터로 바로 갈 수 있어요.' : '⛺ 사냥터 곳곳에 쉼터가 숨어 있어요. 찾으면 여기서 바로 갈 수 있어요.'}</p>
       <p>푹 자고 일어나면 <b>다음 할 일이 생기는 날 아침</b>까지 시간이 가요. 체력도 가득 차요. ${hasWork() ? '지금은 할 일이 남아 있어서 내일 아침에 깨요.' : ''}</p>`;
     drawRoom($('#roomCv'));
-    o.footEl.innerHTML = `<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기</button>`;
+    o.footEl.innerHTML = `${warpButtons(null)}<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기</button>`;
+    bindWarp(o);
     $('#nmSave').onclick = () => { UI.close(); setTimeout(uiSave, 160); };
     $('#nmOut').onclick = () => UI.close();
     $('#nmSleep').onclick = sleepUntilWork;
@@ -3603,6 +3740,23 @@ function noise(t0, dur, vol, out, hp){
   fl.type = 'highpass'; fl.frequency.value = hp || 800; s.buffer = b; g.gain.value = vol;
   s.connect(fl); fl.connect(g); g.connect(out); s.start(t0);
 }
+// 필터가 움직이는 잡음 (휙·퍽 소리용)
+function noiseF(t0, dur, vol, out, type, f0, f1, q){
+  const c = SND.ctx, n = Math.floor(c.sampleRate * dur), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const s = c.createBufferSource(), g = c.createGain(), fl = c.createBiquadFilter();
+  fl.type = type; fl.Q.value = q || 1; fl.frequency.setValueAtTime(f0, t0); if (f1) fl.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + Math.min(.015, dur / 5)); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  s.buffer = b; s.connect(fl); fl.connect(g); g.connect(out); s.start(t0); s.stop(t0 + dur + .05);
+}
+// 떨리는 울음소리 (멧돼지·고라니)
+function cry(t0, f, dur, vol, out, type, wob){
+  const c = SND.ctx, o = c.createOscillator(), g = c.createGain(), l = c.createOscillator(), lg = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0); o.frequency.exponentialRampToValueAtTime(f * .7, t0 + dur);
+  l.frequency.value = wob; lg.gain.value = f * .08; l.connect(lg); lg.connect(o.frequency);
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + .02); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  o.connect(g); g.connect(out); o.start(t0); l.start(t0); o.stop(t0 + dur + .05); l.stop(t0 + dur + .05);
+}
 const NOTE = n => 440 * Math.pow(2, (n - 69) / 12);
 // 효과음
 function sfx(k){
@@ -3618,9 +3772,14 @@ function sfx(k){
     case 'good': [72, 76, 79].forEach((n, i) => tone('triangle', NOTE(n), t + i * .07, .18, .28, o)); break;
     case 'bad': tone('triangle', NOTE(64), t, .16, .3, o); tone('triangle', NOTE(60), t + .14, .26, .3, o); break;
     case 'fanfare': [72, 76, 79, 84].forEach((n, i) => tone('square', NOTE(n), t + i * .1, i === 3 ? .45 : .14, .14, o)); break;
-    case 'swing': noise(t, .14, .22, o, 1500); break;
-    case 'hit': tone('square', 180, t, .1, .3, o, 70); noise(t, .07, .25, o, 400); break;
-    case 'hurt': tone('sawtooth', 260, t, .22, .22, o, 110); break;
+    // 2026-10-13 전투 손맛: 휙(바람) → 퍽(묵직한 저음 + 짧은 타격음)
+    case 'swing': noiseF(t, .18, .32, o, 'bandpass', 600, 2600, 2.5); break;
+    case 'hit': tone('sine', 150, t, .16, .55, o, 45); noiseF(t, .06, .45, o, 'lowpass', 2400, 300); tone('square', 520, t, .035, .12, o, 200); break;
+    case 'crit': tone('sine', 120, t, .26, .7, o, 35); noiseF(t, .1, .55, o, 'lowpass', 3200, 200); tone('triangle', 1760, t + .02, .22, .22, o, 1320); tone('triangle', 2640, t + .05, .18, .12, o); break;
+    case 'kill': tone('sine', 110, t, .3, .5, o, 40); noiseF(t, .25, .3, o, 'lowpass', 1600, 120); [72, 76, 79, 84].forEach((n, i) => tone('triangle', NOTE(n), t + .12 + i * .07, .2, .26, o)); break;
+    case 'oink': cry(t, 260, .22, .22, o, 'sawtooth', 28); break;
+    case 'bleat': cry(t, 720, .28, .16, o, 'triangle', 18); break;
+    case 'hurt': tone('sine', 200, t, .2, .5, o, 70); noiseF(t, .12, .35, o, 'lowpass', 1200, 200); tone('sawtooth', 300, t + .02, .2, .14, o, 120); break;
     case 'block': tone('square', 520, t, .08, .18, o, 400); noise(t, .05, .2, o, 2500); break;
     case 'clang': tone('triangle', 1320, t, .4, .3, o); tone('triangle', 1980, t, .3, .15, o); break;
     case 'gong': tone('sine', 220, t, 1.1, .45, o, 200); tone('triangle', 440, t, .8, .2, o); noise(t, .2, .15, o, 1200); break;
@@ -3950,6 +4109,7 @@ function act(t){
   else if (t.kind === 'npc') talkNpc(NPCS[t.n]);
   else if (t.kind === 'nongmak') uiNongmak();
   else if (t.kind === 'forage') pickForage(t.f);
+  else if (t.kind === 'rest') uiRest(t.r);
   else if (t.kind === 'shed') uiStore();
   else if (t.kind === 'hanok') uiSave();
 }
@@ -4195,7 +4355,7 @@ function boot(){
     const dt = Math.min(.05, (now - last) / 1000); last = now; T += dt;
     try {
       if (MINI.on) updateDrive(dt);
-      else { update(dt); render(ctx, dt, T); updateHUD(); }
+      else { const hs = FX.stop > 0; FX.stop = Math.max(0, FX.stop - dt); update(hs ? dt * .06 : dt); updateFx(dt); render(ctx, dt, T); updateHUD(); }
     } catch (err) { console.error(err); }
     requestAnimationFrame(frame);
   };
