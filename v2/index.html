@@ -1686,7 +1686,7 @@ function wjPortraitLook(){
 // 발끝이 (0,0). 어른 키 약 128px(머리카락 끝). dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
 // 예전 그림이 뿌옇던 이유: 아주 작은 조각을 여러 겹 겹쳐 그리고(머리결·귀·눈썹마다 외곽선), 반투명 머리 광택, 몸을 가로세로 다르게 늘려서 선 굵기가 들쭉날쭉했어요.
 // 새 그림은 큰 조각 몇 개만, 같은 굵기 외곽선 한 겹, 색은 전부 불투명하게 그려요.
-const OL = '#3a2215', OLW = 3, CHAR_K = 1.18; // 게임 화면에서 얼굴이 잘 보이게 조금 크게
+const OL = '#3a2215', OLW = 3, CHAR_K = .944; // 게임 화면에서 얼굴이 잘 보이게 조금 크게
 function pc(c, path, base, shade, sx = 3, sy = 3, lw = OLW){
   c.save(); c.beginPath(); path(c); c.fillStyle = shade; c.fill(); c.clip();
   c.translate(-sx, -sy); c.beginPath(); path(c); c.fillStyle = base; c.fill(); c.restore();
@@ -1780,6 +1780,8 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
   if (side) arm(2, swing, false);
   else if (!back) { arm(-tw - 3, .26 + swing, false); arm(tw + 3, -.26 - swing, false); }
   if (S.scarf) { pc(c, cc => rr(cc, side ? -9 : -13, -73, side ? 18 : 26, 8, 4), S.scarf, shd(S.scarf, .3), 1.5, 1.5, 2.4); if (!side) pc(c, cc => { cc.moveTo(back ? 3 : -8, -68); cc.lineTo(back ? 6 : -12, -54); cc.lineTo(back ? 11 : -4, -55); cc.closePath(); }, S.scarf, shd(S.scarf, .3), 1, 1, 2.2); }
+  // ── 목 (뒷모습·옆모습에서 머리와 몸 사이가 비지 않게)
+  if (!S.scarf) pc(c, cc => rr(cc, side ? -4.5 : -5.5, -78, side ? 9 : 11, 12, 4), shd(skin, .1), shd(skin, .3), 1, 1, 2.4);
   // ── 머리
   chibiHead(c, S, side, back, act, hero);
   c.restore();
@@ -2843,7 +2845,7 @@ function drawVillageTags(ctx){
   for (const n of NPCS) {
     const d = Math.hypot(n.x - P.x, n.y - P.y); if (d > 300) continue;
     ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
-    const tw = ctx.measureText(n.name).width + 18, ty = n.y - (n.look.kid ? 128 : 168);
+    const tw = ctx.measureText(n.name).width + 18, ty = n.y - (n.look.kid ? 104 : 136);
     ctx.beginPath(); rr(ctx, n.x - tw / 2, ty - 18, tw, 25, 10); ctx.fillStyle = 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.fillText(n.name, n.x, ty);
   }
@@ -3172,7 +3174,8 @@ function updateMon(m, dt){
   const ox = m.x, oy = m.y;
   const moveTo = (tx, ty, s) => { const dx = tx - m.x, dy = ty - m.y, d = Math.hypot(dx, dy) || 1; const st = Math.min(d, s * dt); m.x += dx / d * st; m.y += dy / d * st; if (Math.abs(dx) > 4) m.flip = dx < 0; return d; };
   const canSee = tig ? inDen(P.x, P.y, 60) : (m.raid || inHunt(P.x, P.y));
-  if ((m.st === 'wander' || m.st === 'raid' || m.st === 'eat') && canSee && (tig || pd < (m.raid ? 430 : 360))) { m.st = 'chase'; m.eng = true; m.eat = 0; }
+  // 2026-10-13 ★1·★2(tier 0·1)는 비선공: 먼저 때려야(m.eng) 덤벼요
+  if ((m.st === 'wander' || m.st === 'raid' || m.st === 'eat') && canSee && (m.raid || tig || m.tier >= 2 || m.eng) && (tig || pd < (m.raid ? 430 : 360))) { m.st = 'chase'; m.eng = true; m.eat = 0; }
   if (m.st === 'wander') {
     if (m.wait > 0) m.wait -= dt;
     else if (moveTo(m.tx, m.ty, 60 * sp) < 6) { m.wait = rnd(1, 4); m.tx = m.hx + rnd(-260, 260); m.ty = m.hy + rnd(-160, 160); }
@@ -3349,20 +3352,20 @@ function drawHero(c){
   const armed = P.asw > 0 || spinning || inCombat() || inHunt(P.x, P.y);
   if (spinning) {
     const an = (P.aim || 0) - Math.PI / 2 + Math.PI * (1 - (1 - sk) ** 3), rr0 = 34;
-    c.save(); c.translate(P.x + Math.cos(an) * rr0, P.y - 46 + Math.sin(an) * rr0 * .5); drawWeapon(c, ensureGear().weapon, an + 1.57); c.restore();
+    c.save(); c.translate(P.x + Math.cos(an) * rr0, P.y - 38 + Math.sin(an) * rr0 * .5); drawWeapon(c, ensureGear().weapon, an + 1.57); c.restore();
     drawSpinGlow(c, sk, false);
   } else if (armed) {
-    c.save(); c.translate(P.x + (P.dir === 2 ? -14 : P.dir === 3 ? 14 : P.face * 20), P.y - 44);
+    c.save(); c.translate(P.x + (P.dir === 2 ? -11 : P.dir === 3 ? 11 : P.face * 16), P.y - 36);
     const sw = P.asw > 0 ? 1 - P.asw / .25 : 0;
     drawWeapon(c, ensureGear().weapon, P.face * (P.asw > 0 ? -1.4 + sw * 3 : .5));
     c.restore();
   }
   if (P.asw > 0) { c.beginPath(); c.arc(P.x, P.y - 50, 125 * farmer().reach, P.face > 0 ? -1.2 : Math.PI - .3, P.face > 0 ? .3 : Math.PI + 1.2); c.lineWidth = 8; c.strokeStyle = `rgba(255,250,241,${P.asw * 3})`; c.stroke(); }
-  if (!P.blk && P.blkCd > 0 && inCombat()) { c.save(); c.translate(P.x + P.face * 22, P.y - 68); c.globalAlpha = .55; cel(c, cc => { cc.moveTo(-13, -20); cc.quadraticCurveTo(0, -27, 13, -20); cc.lineTo(12, 7); cc.quadraticCurveTo(0, 22, -12, 7); cc.closePath(); }, '#b8bcc4', '#8a8e96', 2, 2, 2.6); c.globalAlpha = 1; c.font = '14px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(Math.ceil(P.blkCd), 0, 2); c.restore(); }
-  if (P.blk) { c.beginPath(); c.arc(P.x + P.face * 22, P.y - 74, 24, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - P.blkT / BLOCK_MAX)); c.lineWidth = 4; c.strokeStyle = '#2f6fb8'; c.stroke(); }
-  if (P.blk) { c.save(); c.translate(P.x + P.face * 22, P.y - 68); cel(c, cc => { cc.moveTo(-13, -20); cc.quadraticCurveTo(0, -27, 13, -20); cc.lineTo(12, 7); cc.quadraticCurveTo(0, 22, -12, 7); cc.closePath(); }, '#7ab0e8', '#4a7ab8', 2, 2, 2.6); c.font = '13px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(blockPct() + '%', 0, 1); c.restore(); }
+  if (!P.blk && P.blkCd > 0 && inCombat()) { c.save(); c.translate(P.x + P.face * 20, P.y - 56); c.globalAlpha = .55; cel(c, cc => { cc.moveTo(-13, -20); cc.quadraticCurveTo(0, -27, 13, -20); cc.lineTo(12, 7); cc.quadraticCurveTo(0, 22, -12, 7); cc.closePath(); }, '#b8bcc4', '#8a8e96', 2, 2, 2.6); c.globalAlpha = 1; c.font = '14px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(Math.ceil(P.blkCd), 0, 2); c.restore(); }
+  if (P.blk) { c.beginPath(); c.arc(P.x + P.face * 20, P.y - 62, 24, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - P.blkT / BLOCK_MAX)); c.lineWidth = 4; c.strokeStyle = '#2f6fb8'; c.stroke(); }
+  if (P.blk) { c.save(); c.translate(P.x + P.face * 20, P.y - 56); cel(c, cc => { cc.moveTo(-13, -20); cc.quadraticCurveTo(0, -27, 13, -20); cc.lineTo(12, 7); cc.quadraticCurveTo(0, 22, -12, 7); cc.closePath(); }, '#7ab0e8', '#4a7ab8', 2, 2, 2.6); c.font = '13px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(blockPct() + '%', 0, 1); c.restore(); }
   if (P.hp < P.max || inCombat()) {
-    const w = 64, y = P.y - 172;
+    const w = 64, y = P.y - 140;
     c.beginPath(); rr(c, P.x - w / 2, y, w, 9, 4.5); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke();
     c.beginPath(); rr(c, P.x - w / 2 + 2, y + 2, (w - 4) * clamp(P.hp / P.max, 0, 1), 5, 2.5); c.fillStyle = P.hp < P.max * .3 ? '#ff6b57' : '#5cc46c'; c.fill();
   }
@@ -3585,7 +3588,7 @@ function drawRoom(cv){
   c.font = '18px Jua'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(`${G.year}년차`, 395, 59);
   c.fillStyle = INK; c.font = '30px Jua'; c.fillText(`${G.week}주`, 395, 108);
   // 우주
-  c.save(); c.translate(520, 305); c.scale(1.85, 1.85); drawPerson(c, 0, 0, 'haru', 0, 0, 0); c.restore();
+  c.save(); c.translate(520, 305); c.scale(2.3, 2.3); drawPerson(c, 0, 0, 'haru', 0, 0, 0); c.restore();
 }
 
 // ===== 2026-10-13 새 산짐승(산토끼·뱀·너구리·오소리) + 전설 보스 호랑이 =====
@@ -4762,8 +4765,9 @@ function uiGear(){
         ${S.items.map(it => {
           const own = it.id in g.own, lv = g.own[it.id] || 0, on = g[slot] === it.id, lock = G.rep < it.rep;
           let btn;
-          if (on && lv < MAX_UP && g.stones > 0) btn = `<button class="btn pri" data-st="${slot}|${it.id}">💎 강화석으로 강화</button>`;
-          else if (on) btn = lv >= MAX_UP ? `<button class="btn" disabled>최고 강화</button>` : `<button class="btn pri" data-up="${slot}|${it.id}" ${G.rep < upRep(it, lv) || G.money < upCost(it, lv) ? 'disabled' : ''}>강화 ${won(upCost(it, lv))}${G.rep < upRep(it, lv) ? ` · ⭐${upRep(it, lv)}` : ''}</button>`;
+          const moneyBtn = () => `<button class="btn pri" data-up="${slot}|${it.id}" ${G.rep < upRep(it, lv) || G.money < upCost(it, lv) ? 'disabled' : ''}>💰 강화 ${won(upCost(it, lv))}${G.rep < upRep(it, lv) ? ` · ⭐${upRep(it, lv)}` : ''}</button>`;
+          if (on && lv < MAX_UP && g.stones > 0) btn = `<button class="btn pri" data-st="${slot}|${it.id}">💎 강화석으로 (${g.stones}개)</button> ${moneyBtn()}`; // 2026-10-13 강화석/돈 중 골라요
+          else if (on) btn = lv >= MAX_UP ? `<button class="btn" disabled>최고 강화</button>` : moneyBtn();
           else if (own) btn = `<button class="btn" data-eq="${slot}|${it.id}">끼기</button>`;
           else if (it.unique) btn = `<button class="btn" disabled>🐯 호랑이를 이기면 얻어요</button>`;
           else if (it.craft) { const need = it.craft.tskin, have = G.bag.tskin || 0; btn = `<button class="btn" data-craft="${slot}|${it.id}" ${have < need || G.money < it.price || lock ? 'disabled' : ''}>🐯 가죽 ${need}장(${have}) + ${won(it.price)}로 만들기</button>`; }
@@ -4800,7 +4804,7 @@ function drawDoll(cv){
   const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
   const g = c.createRadialGradient(160, 330, 20, 160, 300, 220); g.addColorStop(0, '#fff3c4'); g.addColorStop(1, '#fffaf1');
   c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
-  c.save(); c.translate(160, 392); c.scale(2.3, 2.3);
+  c.save(); c.translate(160, 392); c.scale(2.85, 2.85);
   drawPerson(c, 0, 0, 'haru', 0, 0, 0);
   c.save(); c.translate(-22, -44); drawWeapon(c, ensureGear().weapon, -.35); c.restore();
   c.restore();
@@ -5022,7 +5026,7 @@ function uiHeroPick(done){
       <div class="hpn"><label for="hpName">주인공 이름</label><input id="hpName" maxlength="8" placeholder="우주" value="${esc(name)}" autocomplete="off"><small>비워 두면 '우주'예요. 8글자까지.</small></div>`;
     o.body.querySelectorAll('.hpk').forEach(b => {
       const h = HEROES.find(x => x.id === b.dataset.h), cv = b.querySelector('canvas'), c = cv.getContext('2d');
-      c.save(); c.translate(60, 196); c.scale(1.22, 1.22); drawHuman(c, 0, 0, h, 0, 0, 0, false); c.restore();
+      c.save(); c.translate(60, 196); c.scale(1.52, 1.52); drawHuman(c, 0, 0, h, 0, 0, 0, false); c.restore();
       b.onclick = () => { sel = h.id; name = $('#hpName').value; o.render(o); };
     });
     const inp = $('#hpName');
