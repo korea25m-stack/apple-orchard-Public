@@ -2858,7 +2858,10 @@ function updateMon(m, dt){
     if (m.tm <= 0) m.st = 'chase';
   }
   // 사냥터 산짐승은 숲 밖·쉼터 안으로 안 들어와요
-  if (!m.raid && (!inHunt(m.x, m.y) || restAt(m.x, m.y, 120) || (tig ? !inDen(m.x, m.y, -80) : inDen(m.x, m.y, 120)))) { m.x = ox; m.y = oy; if (m.st === 'wander') { m.tx = m.hx; m.ty = m.hy; } }
+  // 2026-10-13 굴 경계 무적 틈 수정: 예전엔 호랑이는 굴 안쪽(-80)까지, 다른 짐승은 굴 바깥(+120)까지만 와서 경계에 아무도 못 닿는 띠가 있었어요.
+  // 이제 호랑이는 굴 밖 DEN_LEASH까지 쫓아오고, 다른 짐승은 굴 가장자리 안쪽까지 들어와요(둘이 겹쳐서 빈틈 없음).
+  if (tig && !inDen(P.x, P.y, DEN_LEASH)) m.hp = Math.min(m.max, m.hp + m.max * .04 * dt); // 굴 밖에서 치고 빠지기 방지
+  if (!m.raid && (!inHunt(m.x, m.y) || restAt(m.x, m.y, 120) || (tig ? !inDen(m.x, m.y, DEN_LEASH) : inDen(m.x, m.y, -120)))) { m.x = ox; m.y = oy; if (m.st === 'wander') { m.tx = m.hx; m.ty = m.hy; } }
   m.x = clamp(m.x, WX0 + 60, WX1 - 60); m.y = clamp(m.y, WY0 + 160, WY1 - 30);
 }
 
@@ -3249,7 +3252,7 @@ const NEW_BEAST = {
 // 호랑이: 전설의 산 깊은 곳 '호랑이 굴'에만 1마리. 최고 장비 4종 + 도구·작업복 +6 이상이어야 상처를 낼 수 있어요
 const TIGER = {name:'전설의 호랑이', hp:3000, dmg:4.2, spd:1.25, sc:1.7, xp:500, boss:1};
 NEW_BEAST.tiger = [TIGER, TIGER, TIGER, TIGER];
-const DEN = {x:-4200, y:-6250, rx:900, ry:680};
+const DEN = {x:-4200, y:-6250, rx:900, ry:680}, DEN_LEASH = 260;
 const inDen = (x, y, pad = 0) => ((x - DEN.x) / (DEN.rx + pad)) ** 2 + ((y - DEN.y) / (DEN.ry + pad)) ** 2 < 1;
 const DEN_GATE = Math.atan2((-5000 - DEN.y) / DEN.ry, (-2000 - DEN.x) / DEN.rx); // 숲길이 들어오는 쪽(남동)
 function tigerReady(){
