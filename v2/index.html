@@ -1920,7 +1920,7 @@ const SPOT = {
   hives:[[2300, 1040], [2350, 1075], [2300, 1110]], drone:{x:900, y:830},
   pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
   rabbit:{x:2440, y:1360}, chicken:{x:560, y:1720}, cat:{x:250, y:880}, dog:{x:690, y:980},
-  jangdok:{x:110, y:960}, sotdae:{x:110, y:1600}, nongmak:{x:800, y:1400} // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
+  jangdok:{x:110, y:960}, sotdae:{x:-90, y:1560}, nongmak:{x:800, y:1400}, portal:{x:110, y:1680} /* 2026-10-13 이장님 아래 순간이동 포탈 */ // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
 };
 const ROAD = [[-1000, 1250], [-300, 1270], [300, 1440], [650, 1250], [905, 1175], [930, 1150]];
 const YARD = {x:520, y:925, rx:270, ry:85}, HYARD = {x:-450, y:1000, rx:230, ry:72};
@@ -2339,12 +2339,12 @@ function findTarget(){
   const cands = [];
   for (let i = 0; i < G.trees.length; i++) { const p = treePos(i); cands.push({kind:'tree', i, x:p.x, y:p.y + 10}); }
   cands.push({kind:'grandma', x:SPOT.grandma.x, y:SPOT.grandma.y}, {kind:'chief', x:SPOT.chief.x, y:SPOT.chief.y},
-             {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 10}, {kind:'hanok', x:SPOT.hanok.x, y:SPOT.hanok.y + 10}, {kind:'nongmak', x:SPOT.nongmak.x, y:SPOT.nongmak.y + 10});
+             {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 10}, {kind:'hanok', x:SPOT.hanok.x, y:SPOT.hanok.y + 10}, {kind:'nongmak', x:SPOT.nongmak.x, y:SPOT.nongmak.y + 10}, {kind:'portal', x:SPOT.portal.x, y:SPOT.portal.y});
   huntTargets(cands);
   for (const n of NPCS) cands.push({kind:'npc', n:n.i, x:n.x, y:n.y});
   for (const c of cands) {
     const d = (c.x - P.x) ** 2 + ((c.y - P.y) * 1.3) ** 2;
-    const lim = c.kind === 'hanok' || c.kind === 'nongmak' || c.kind === 'rest' ? 150 * 150 : c.kind === 'tree' ? 70 * 70 : bd;
+    const lim = c.kind === 'hanok' || c.kind === 'nongmak' || c.kind === 'rest' || c.kind === 'portal' ? 150 * 150 : c.kind === 'tree' ? 70 * 70 : bd;
     if (d < lim && d < (best ? best.d : 1e9)) best = {...c, d};
   }
   return best;
@@ -2355,7 +2355,7 @@ function targetLabel(t){
   if (t.kind === 'npc') return NPCS[t.n].name;
   if (t.kind === 'forage') return '캐기: ' + LOOT[t.f.item].name;
   if (t.kind === 'rest') return '⛺ 쉬기';
-  return {grandma:'김순자 할머니', chief:'고만수 이장님', shed:'창고 열기', hanok:'저장하기', nongmak:'농막 들어가기'}[t.kind];
+  return {grandma:'김순자 할머니', chief:'고만수 이장님', shed:'창고 열기', hanok:'저장하기', nongmak:'농막 들어가기', portal:'🌀 순간이동 포탈'}[t.kind];
 }
 
 // ----- 동물·나비 -----
@@ -2482,6 +2482,7 @@ function render(ctx, dt, T){
   // 사람
   add(SPOT.grandma.y, () => drawPerson(ctx, SPOT.grandma.x, SPOT.grandma.y, 'grandma', 0, 0, 0));
   add(SPOT.chief.y, () => drawPerson(ctx, SPOT.chief.x, SPOT.chief.y, 'chief', 0, 0, 0));
+  if (vis(SPOT.portal.x, SPOT.portal.y, 300)) add(SPOT.portal.y - 60, () => drawPortal(ctx, SPOT.portal.x, SPOT.portal.y, T));
   if (workerS.on) add(workerS.y, () => drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act));
   for (const c of critters) if (vis(c.x, c.y)) add(c.y, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
   if (raidAnim) add(raidAnim.y, () => drawAnimal(ctx, raidAnim.kind, raidAnim.x, raidAnim.y, T, raidAnim.flip));
@@ -2559,7 +2560,7 @@ let curTarget = null;
 const mist = [];
 let raidAnim = null;
 function blockedSpot(x, y){
-  const all = [SPOT.hanok, SPOT.shed, SPOT.grandma, SPOT.chief, SPOT.sarang, SPOT.cold, SPOT.factory, SPOT.wondumak, SPOT.pond, SPOT.jangdok, SPOT.sotdae, SPOT.rabbit, SPOT.chicken, ...SPOT.blossom.map(([x2, y2]) => ({x:x2, y:y2})), ...SPOT.flowers.map(([x2, y2]) => ({x:x2, y:y2}))];
+  const all = [SPOT.hanok, SPOT.shed, SPOT.grandma, SPOT.chief, SPOT.portal, SPOT.sarang, SPOT.cold, SPOT.factory, SPOT.wondumak, SPOT.pond, SPOT.jangdok, SPOT.sotdae, SPOT.rabbit, SPOT.chicken, ...SPOT.blossom.map(([x2, y2]) => ({x:x2, y:y2})), ...SPOT.flowers.map(([x2, y2]) => ({x:x2, y:y2}))];
   return all.some(s => Math.abs(s.x - x) < 200 && Math.abs(s.y - y) < 150);
 }
 function drawFlowerBed(c, x, y){
@@ -3253,11 +3254,12 @@ function pickForage(f){
 }
 function huntTargets(cands){ for (const f of FORAGE) cands.push({kind:'forage', f, x:f.x, y:f.y}); for (const r of RESTS) cands.push({kind:'rest', r, x:r.x, y:r.y + 10}); }
 
-// ----- 숲속 쉼터 (2026-10-13): 체력 회복, 한 번 찾으면 농막·다른 쉼터로 바로 이동 -----
+// ----- 숲속 쉼터 (2026-10-13): 체력 회복, 한 번 찾으면 마을 포탈·다른 쉼터로 바로 이동 -----
 const RESTS = [
-  {id:'e', name:'동쪽 숲 쉼터', x:5800, y:800}, {id:'s', name:'남쪽 숲 쉼터', x:3200, y:7000},
-  {id:'n', name:'북쪽 숲 쉼터', x:1300, y:-2400}, {id:'w', name:'서쪽 숲 쉼터', x:-4600, y:3600},
-  {id:'v', name:'골짜기 쉼터', x:6400, y:4800}, {id:'m', name:'전설의 산 쉼터', x:2400, y:-6600}
+  // 2026-10-13 마을에서 더 멀리(마을 둘레에서 3300~4500), 서로 6000 넘게 떨어지게 다시 놓았어요. id는 그대로라 찾은 기록이 남아요
+  {id:'e', name:'동쪽 숲 쉼터', x:7400, y:1500}, {id:'s', name:'남쪽 숲 쉼터', x:-600, y:9800},
+  {id:'n', name:'북서쪽 숲 쉼터', x:-5600, y:-1200}, {id:'w', name:'서쪽 숲 쉼터', x:-5400, y:5600},
+  {id:'v', name:'남동쪽 골짜기 쉼터', x:6800, y:7800}, {id:'m', name:'전설의 산 쉼터', x:2400, y:-6600}
 ];
 function restAt(x, y, pad = 0){ return RESTS.find(r => Math.hypot(x - r.x, (y - r.y) * 1.2) < 160 + pad); }
 function restsFound(){ if (!G.rests) G.rests = {}; return RESTS.filter(r => G.rests[r.id]); }
@@ -3278,10 +3280,10 @@ function uiRest(r){
   UI.open({ic:'⛺', title:r.name, w:860, render(o){
     o.body.innerHTML = `<p style="margin-top:0">모닥불 옆에서 쉬었더니 <b>체력이 가득 찼어요!</b> ❤️ ${Math.round(P.hp)}/${P.max}</p>
       <p>${ZONES[Math.max(0, zoneAt(r.x, r.y))].stars} ${ZONES[Math.max(0, zoneAt(r.x, r.y))].name} 한가운데예요. 쉼터 안에는 산짐승이 못 들어와요.</p>
-      <p class="gnote">찾은 쉼터 ${restsFound().length}/${RESTS.length}곳 · 찾은 쉼터끼리, 그리고 농막에서 바로 오갈 수 있어요.</p>`;
-    o.footEl.innerHTML = `${warpButtons(r)}<button class="btn" data-home="1">🛖 농막으로</button><button class="btn pri" id="rsOk">더 둘러보기</button>`;
+      <p class="gnote">찾은 쉼터 ${restsFound().length}/${RESTS.length}곳 · 찾은 쉼터끼리, 그리고 마을의 🌀 순간이동 포탈(이장님 아래)에서 바로 오갈 수 있어요.</p>`;
+    o.footEl.innerHTML = `${warpButtons(r)}<button class="btn" data-home="1">🌀 마을 포탈로</button><button class="btn pri" id="rsOk">더 둘러보기</button>`;
     bindWarp(o);
-    o.footEl.querySelector('[data-home]').onclick = () => warpTo(SPOT.nongmak.x, SPOT.nongmak.y + 50, '🚶 농막으로 돌아가는 중…');
+    o.footEl.querySelector('[data-home]').onclick = () => { sfx('whirl'); warpTo(SPOT.portal.x, SPOT.portal.y + 70, '🌀 마을 포탈로 돌아가는 중…'); };
     $('#rsOk').onclick = () => UI.close();
   }});
 }
@@ -3565,11 +3567,10 @@ function heroFaint(){
 function uiNongmak(){
   UI.open({ic:'🛖', title:HN() + '네 농막', w:960, render(o){
     o.body.innerHTML = `<canvas id="roomCv" width="880" height="330" style="width:100%;border:3px solid var(--ink);border-radius:18px;display:block"></canvas>
-      <p>${restsFound().length ? '⛺ 찾은 숲속 쉼터로 바로 갈 수 있어요.' : '⛺ 사냥터 곳곳에 쉼터가 숨어 있어요. 찾으면 여기서 바로 갈 수 있어요.'}</p>
+      <p>⛺ 숲속 쉼터로 바로 가려면 이장님 아래 <b>🌀 순간이동 포탈</b>을 쓰세요.</p>
       <p>푹 자고 일어나면 <b>다음 할 일이 생기는 날 아침</b>까지 시간이 가요. 체력도 가득 차요. ${hasWork() ? '지금은 할 일이 남아 있어서 내일 아침에 깨요.' : ''}</p>`;
     drawRoom($('#roomCv'));
-    o.footEl.innerHTML = `${warpButtons(null)}<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기 (F)</button>`;
-    bindWarp(o);
+    o.footEl.innerHTML = `<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기 (F)</button>`;
     $('#nmSave').onclick = () => { UI.close(); setTimeout(uiSave, 160); };
     $('#nmOut').onclick = () => UI.close();
     $('#nmSleep').onclick = sleepUntilWork;
@@ -3853,6 +3854,40 @@ function drawNewBeast(c, kind, t, V){
     cel(c, cc => { cc.moveTo(68, -52); cc.lineTo(76, -52); cc.lineTo(72, -47); cc.closePath(); }, '#e86a7a', '#b84a5a', 0, 1, 1.8);
     for (const [x, y] of [[66, -46], [66, -43]]) line(c, [x, y, x + 16, y + (y + 44.5)], 1.4, INK);
   }
+}
+
+// ----- 2026-10-13 마을 순간이동 포탈 (이장님 아래): 찾은 숲속 쉼터로 바로 가요 -----
+function uiPortal(){
+  sfx('pop');
+  UI.open({ic:'🌀', title:'순간이동 포탈', w:860, render(o){
+    const n = restsFound().length;
+    o.body.innerHTML = `<p style="margin-top:0">빙글빙글 도는 빛 속으로 들어가면 <b>찾아 둔 숲속 쉼터</b>로 순식간에 갈 수 있어요.</p>
+      <p class="gnote">찾은 쉼터 ${n}/${RESTS.length}곳${n ? '' : ' · 아직 찾은 쉼터가 없어요. 사냥터 숲길을 따라가다 정자를 찾아보세요!'} · 쉼터에서도 이 포탈로 돌아올 수 있어요.</p>`;
+    o.footEl.innerHTML = `${warpButtons(null)}<button class="btn pri" id="ptOk">닫기</button>`;
+    o.footEl.querySelectorAll('[data-warp]').forEach(b => b.onclick = () => { const r = RESTS.find(q => q.id === b.dataset.warp); sfx('whirl'); warpTo(r.x, r.y + 70, `🌀 ${r.name}로 순간이동!`); });
+    $('#ptOk').onclick = () => UI.close();
+  }});
+}
+function drawPortal(c, x, y, T){
+  c.save(); c.translate(x, y);
+  const pul = .5 + Math.sin(T * 3) * .5, gl = c.createRadialGradient(0, -60, 20, 0, -60, 190); gl.addColorStop(0, `rgba(160,220,255,${.35 + pul * .2})`); gl.addColorStop(1, 'rgba(160,120,255,0)'); c.beginPath(); ell(c, 0, -60, 190, 150); c.fillStyle = gl; c.fill();
+  c.scale(1.3, 1.3);
+  // 바닥 돌판
+  c.beginPath(); ell(c, 0, 0, 92, 30); c.fillStyle = '#b9b2a6'; c.fill(); c.lineWidth = 3; c.strokeStyle = OL; c.stroke();
+  c.beginPath(); ell(c, 0, -3, 76, 23); c.fillStyle = '#d8d2c6'; c.fill();
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; c.beginPath(); c.arc(Math.cos(a) * 84, Math.sin(a) * 27, 4, 0, 7); c.fillStyle = `hsl(${(T * 80 + i * 45) % 360},90%,62%)`; c.fill(); }
+  // 돌 기둥 두 개
+  for (const sx of [-70, 70]) { pc(c, cc => rr(cc, sx - 11, -130, 22, 130, 6), '#c9c2b6', '#9a9386', 3, 2); pc(c, cc => ell(cc, sx, -136, 13, 9), '#7fd6ff', '#3a9ad8', 2, 2, 2.4); }
+  // 소용돌이 빛
+  const g = c.createRadialGradient(0, -70, 6, 0, -70, 62); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.45, 'rgba(140,210,255,.75)'); g.addColorStop(1, 'rgba(150,90,255,0)');
+  c.beginPath(); ell(c, 0, -70, 56, 66); c.fillStyle = g; c.fill();
+  c.save(); c.translate(0, -70); c.scale(1, 1.15); c.lineCap = 'round';
+  for (let k = 0; k < 4; k++) { c.rotate(Math.PI / 2); c.beginPath(); for (let t = 0; t < 1; t += .05) { const r = 6 + t * 48, a = t * 5 - T * 3; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.lineWidth = 5 - k * .6; c.strokeStyle = k % 2 ? '#b98aff' : '#7fd6ff'; c.stroke(); }
+  c.restore();
+  // 반짝이
+  for (let i = 0; i < 10; i++) { const a = T * 1.5 + i * .63, r = 40 + (i % 3) * 14, yy = -70 + Math.sin(a * 1.3 + i) * 60; c.beginPath(); c.arc(Math.cos(a) * r, yy, 2.5, 0, 7); c.fillStyle = '#ffffff'; c.fill(); }
+  c.restore();
+  drawSign(c, x + 175, y + 20, '🌀 숲속 쉼터로');
 }
 
 // ===== 2026-10-13 기상 이벤트 화면 연출 (태풍·우박·늦서리) =====
@@ -5480,6 +5515,7 @@ function act(t){
   else if (t.kind === 'chief') talkChief();
   else if (t.kind === 'npc') talkNpc(NPCS[t.n]);
   else if (t.kind === 'nongmak') uiNongmak();
+  else if (t.kind === 'portal') uiPortal();
   else if (t.kind === 'forage') pickForage(t.f);
   else if (t.kind === 'rest') uiRest(t.r);
   else if (t.kind === 'shed') uiStore();
