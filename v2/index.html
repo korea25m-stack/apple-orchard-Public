@@ -4432,7 +4432,9 @@ function talkChief(){
     if (AUTO) o.timer = setTimeout(() => UI.modal === o && (have ? give() : UI.close()), POPMS / 2);
     return;
   }
-  if (totalStock() > 0 || G.year >= 2) {
+  // 2026-10-13 이장님 부탁은 3~4주에 한 번만(부탁한 순간 다음 날짜를 기록해요, 저장에도 남아요)
+  if ((totalStock() > 0 || G.year >= 2) && absDay() >= (G.errandNext || 0)) {
+    G.errandNext = absDay() + rint(21, 28);
     G.errand = {...pick(ERRANDS)};
     const o = talk('chief', `마침 잘 왔네, ${HN()}. ${esc(G.errand.txt)} 사례는 ${won(G.errand.pay)} 하겠네.`); chiefQuizBtn(o);
     if (AUTO) o.timer = setTimeout(() => UI.modal === o && UI.close(), POPMS / 2);
@@ -5581,7 +5583,7 @@ function autoTick(dt){
   const i = nearestTask(P, false);
   if (i >= 0 && !(taskFor(i) === 'plant' && G.money < 1500000 + SAPLING && G.year > 1)) { const p = treePos(i); P.tgt = {x:p.x, y:p.y + 46}; P.pend = {kind:'tree', i}; return; }
   if (quizReady('grandma')) return walkTo('grandma');
-  if (!G.errand && G.year >= 2 && Math.random() < .3) return walkTo('chief');
+  if (!G.errand && G.year >= 2 && absDay() >= (G.errandNext || 0) && Math.random() < .3) return walkTo('chief');
   if (totalStock() > 0 && !G.orders.some(o => stockAtLeast(o.g) < o.n && G.week <= o.due)) { auction(Object.keys(G.stock)); return; }
   if (totalStock() > 60) { auction(Object.keys(G.stock)); return; }
   // 할 일이 없으면 잠깐 쉬었다가 다음 주로 (너무 빨리 넘기지 않게)
