@@ -131,6 +131,12 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .ivc[data-eq]{cursor:pointer}.ivc.on{background:#fff3c4;box-shadow:0 0 0 3px #ffd25e}
 .ivc i{font-style:normal;font-size:44px;line-height:1.1}.ivc b{font-family:var(--display);font-size:17px;font-weight:400}.ivc small{font-size:14px;color:var(--muted)}
 .ivn{position:absolute;right:8px;top:6px;font-family:var(--display);font-size:20px;color:#d6372c}
+.ivwrap{display:flex;gap:16px;margin-top:12px;align-items:flex-start}.ivside{flex:1;min-width:0}.ivg.g4{grid-template-columns:repeat(4,1fr)}
+.doll{position:relative;width:330px;height:470px;flex:none;border:2.5px solid var(--ink);border-radius:18px;overflow:hidden;background:#fffaf1}
+.doll canvas{display:block}.dstat{position:absolute;left:0;right:0;bottom:0;padding:10px 6px;text-align:center;font-family:var(--display);font-size:17px;background:#fff3c4;border-top:2.5px solid var(--ink)}
+.dslot{position:absolute;width:68px;height:80px;border:2.5px dashed var(--ink);border-radius:14px;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px}
+.dslot small{font-size:11px;line-height:1.1;text-align:center}.dslot.want{border-color:#2f8a3e;background:#e8f8e0}.dslot.hov{box-shadow:0 0 0 4px #ffd25e;transform:scale(1.06)}
+.ivc.drag{cursor:grab;touch-action:none}.dghost{position:fixed;z-index:9999;pointer-events:none;width:72px;height:72px;filter:drop-shadow(0 6px 8px rgba(0,0,0,.35))}
 .ivt{font-size:13px;background:#ffd25e;border:1.5px solid var(--ink);border-radius:8px;padding:1px 6px}.ivt.off{background:#eee}
 .hpg{display:grid;grid-template-columns:1fr 1fr;gap:18px}.hpc h3{font-family:var(--display);font-weight:400;font-size:24px;margin:0 0 8px}
 .hpr{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
@@ -1035,7 +1041,7 @@ const LOOKS = {
 const shd = (col, t = .28) => mix(col, '#3a1a10', t);
 // dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
 function drawPerson(c, x, y, who, dir, walk, act){
-  if (who === 'haru') return drawHuman(c, x, y, heroSpec(), dir, walk, act, true);
+  if (who === 'haru') return drawHuman(c, x, y, heroGearSpec(), dir, walk, act, true);
   return drawHuman(c, x, y, toSpec(typeof who === 'string' ? LOOKS[who] : who), dir, walk, act, false);
   const L = who === 'haru' ? haruLook() : typeof who === 'string' ? LOOKS[who] : who;
   const kid = L.kid, sc = kid ? .72 : 1;
@@ -1363,7 +1369,16 @@ const HEROES = [
 ];
 const heroSpec = () => HEROES.find(h => h.id === (G && G.hero && G.hero.look)) || HEROES[0];
 const HN = () => (G && G.hero && G.hero.name) || '우주';
-function wjTrim(){ return {cloth:null, denim:'#2c5596', leather:'#8a5a3a', guard:'#f08a2a'}[ensureGear().armor] || null; }
+function wjTrim(){ return {cloth:null, denim:null, leather:'#5a3a22', guard:'#e8f0f4', tarmor:'#3a2a20'}[ensureGear().armor] || null; }
+// 2026-10-13 장비마다 주인공 모습(스킨)이 바뀌어요: 작업복=겉옷, 신발=신발 색, 모자=머리에 쓰는 것
+const ARMOR_SKIN = {denim:{outer:'overall', oc:'#2c5596', top:'#fbfaf6'}, leather:{outer:'vest', oc:'#8a5a3a'}, guard:{outer:'jacket', oc:'#f08a2a', top:'#fff4c8', bc:'#4a4f5a'},
+  tarmor:{outer:'coat', oc:'#f2922c', top:'#fff8ec', bc:'#3a2a20', tstripe:1}};
+const BOOT_SKIN = {rainboot:'#f2c230', sneaker:'#ffffff', wind:'#4ac8e8', tboots:'#f2922c'};
+function heroGearSpec(){
+  const g = ensureGear(), S = {...heroSpec(), ...(ARMOR_SKIN[g.armor] || {})};
+  if (BOOT_SKIN[g.boots]) S.shoe = BOOT_SKIN[g.boots];
+  return S;
+}
 
 // 예전 주민 모습(look) → 새 모습(spec)
 function toSpec(L){
@@ -1477,6 +1492,12 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
     if (outer === 'apron') cel(c, cc => { cc.moveTo(-6.5, -84); cc.lineTo(6.5, -84); cc.lineTo(waistW + 2, -38); cc.lineTo(-waistW - 2, -38); cc.closePath(); }, oc, shd(oc, .18), 2, 2, 1.6);
     if (outer === 'dress') skirtDraw();
     if (!skirt && outer !== 'coat' && outer !== 'dress' && outer !== 'apron' && outer !== 'overall') { cel(c, cc => rr(cc, -waistW - .5, -62, waistW * 2 + 1, 4.5, 2), shd(S.bc, .15), shd(S.bc, .35), 0, 1, 1.4); }
+  }
+  if (S.tstripe) { // 호랑이 가죽 줄무늬
+    c.save(); c.lineCap = 'round'; c.strokeStyle = INK; c.lineWidth = 1.8;
+    const xs = side ? [-4, 2] : back ? [-9, -3, 3, 9] : [-11, -8, 8, 11];
+    for (const y0 of [-86, -76, -66, -52]) for (const x0 of xs) { c.beginPath(); c.moveTo(x0 - 1.5, y0); c.quadraticCurveTo(x0 + 1.5, y0 + 3, x0 - .5, y0 + 6); c.stroke(); }
+    c.restore();
   }
   if (side) arm(1.5, swing, false);
   else if (!back) { arm(-SW + .5, .1 + swing, false); arm(SW - .5, -.1 - swing, false); }
@@ -1616,7 +1637,14 @@ function hairShine(c, side, hy, H){
 // 모자: 주인공은 장비에 따라(기본 밀짚모자는 머리가 보이게 안 그려요), 주민은 모습대로
 function headwear(c, S, side, back, hy, hero){
   let hat = S.hat, capCol = S.capCol || '#e8423a', wide = S.wide, apple = false;
-  if (hero) { const h = ensureGear().hat; hat = h === 'helmet' ? 'cap' : h === 'wide' || h === 'apple' ? 'straw' : null; capCol = '#ffd23a'; wide = 1; apple = h === 'apple'; }
+  if (hero) { const h = ensureGear().hat; hat = h === 'helmet' ? 'cap' : h === 'wide' || h === 'apple' ? 'straw' : h === 'that' ? 'tiger' : null; capCol = '#ffd23a'; wide = h === 'wide'; apple = h === 'apple'; }
+  if (hat === 'tiger') { // 호랑이 털모자: 주황 + 줄무늬 + 귀
+    for (const ex of [-7, 7]) { cel(c, cc => ell(cc, side ? ex * .6 : ex, hy - 17, 3.6, 3.6), '#f2922c', '#c4661a', 1, 1, 1.4); c.beginPath(); ell(c, side ? ex * .6 : ex, hy - 16.6, 1.6, 1.6); c.fillStyle = '#fff8ec'; c.fill(); }
+    cel(c, cc => { cc.moveTo(-9.5, hy - 5); cc.quadraticCurveTo(-10, hy - 19, 0, hy - 19); cc.quadraticCurveTo(10, hy - 19, 9.5, hy - 5); cc.closePath(); }, '#f2922c', '#c4661a', 1.5, 1.5, 1.6);
+    for (const x0 of [-4, 0, 4]) line(c, [x0 - 1, hy - 18, x0 + 1, hy - 13], 1.4, INK);
+    cel(c, cc => rr(cc, -10, hy - 7.5, 20, 3.4, 1.4), '#fff8ec', '#e0d4c0', 0, 1, 1.2);
+    return;
+  }
   if (hat === 'cap') {
     cel(c, cc => { cc.moveTo(-9, hy - 5); cc.quadraticCurveTo(-9.5, hy - 17.5, 0, hy - 17.5); cc.quadraticCurveTo(9.5, hy - 17.5, 9, hy - 5); cc.closePath(); }, capCol, shd(capCol, .35), 1.5, 1.5, 1.6);
     if (!back) cel(c, cc => side ? ell(cc, 9, hy - 5.5, 5.5, 1.6) : ell(cc, 0, hy - 4.8, 9.5, 2), capCol, shd(capCol, .35), 1, 1, 1.4);
@@ -1632,7 +1660,8 @@ function headwear(c, S, side, back, hy, hero){
 function wjPortraitLook(){
   const S = heroSpec(), h = ensureGear().hat;
   const hsP = {swept:'swept', parted:'swept', spiky:'spiky', wavy:'short', short:'short', long:'long', wave:'long', pony:'pony', bob:'bob', bun:'bun'}[S.hs];
-  return {skin:S.skin, hair:S.hair, hs:hsP, eye:S.eye, girl:S.fem, outfit:'jacket', o2:S.oc, top:S.top, hat:h === 'wide' || h === 'apple' ? 'straw' : h === 'helmet' ? 'cap' : null, capCol:'#ffd23a'};
+  const A = ARMOR_SKIN[ensureGear().armor] || {};
+  return {skin:S.skin, hair:S.hair, hs:hsP, eye:S.eye, girl:S.fem, outfit:'jacket', o2:A.oc || S.oc, top:A.top || S.top, hat:h === 'wide' || h === 'apple' ? 'straw' : h === 'helmet' ? 'cap' : h === 'that' ? 'cap' : null, capCol:h === 'that' ? '#f2922c' : '#ffd23a'};
 }
 
 // ===== 과수원 세상 =====
@@ -4435,22 +4464,60 @@ function uiGear(){
 }
 
 // ----- 인벤토리 (I 키) : 전리품·장비 한눈에 -----
+// 2026-10-13 가방: 왼쪽에 주인공이 보이고, 오른쪽 장비를 끌어다 칸(또는 주인공)에 놓으면 껴요. 눌러도 껴요
+const SLOT_POS = {hat:{x:250, y:40}, weapon:{x:12, y:170}, armor:{x:250, y:170}, boots:{x:250, y:300}};
+function drawDoll(cv){
+  const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
+  const g = c.createRadialGradient(160, 330, 20, 160, 300, 220); g.addColorStop(0, '#fff3c4'); g.addColorStop(1, '#fffaf1');
+  c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
+  c.save(); c.translate(160, 395); c.scale(2.7, 2.7);
+  drawPerson(c, 0, 0, 'haru', 0, 0, 0);
+  c.save(); c.translate(-16, -48); drawWeapon(c, ensureGear().weapon, -.35); c.restore();
+  c.restore();
+}
+function equipGear(s, id){ if (!(id in G.gear.own) || G.gear[s] === id) return false; G.gear[s] = id; sfx('good'); toast(`🎒 ${jo(gearItem(s, id).name, '을', '를')} 꼈어요!`, 'good'); updateHUD(true); return true; }
 function uiInv(){
   ensureGear();
-  UI.open({ic:'🎒', title:HN() + '의 가방', w:1180, inv:1, render(o){
-    const g = G.gear, have = LOOT_KEYS.filter(k => G.bag[k] > 0);
+  UI.open({ic:'🎒', title:HN() + '의 가방', w:1240, inv:1, render(o){
+    const g = G.gear, f = farmer(), have = LOOT_KEYS.filter(k => G.bag[k] > 0);
     const total = have.reduce((a, k) => a + lootPrice(k) * G.bag[k], 0);
     const loot = have.length ? have.map(k => { const L = LOOT[k]; return `<div class="ivc" title="${esc(L.desc)}"><i>${L.ic}</i><b>${L.name}</b><span class="ivn">×${G.bag[k]}</span><small>오늘 ${won(lootPrice(k))}</small></div>`; }).join('')
-      : '<div class="gnote">아직 전리품이 없어요. 과수원 동쪽·남쪽 사냥터에서 산짐승을 쫓거나 반짝이는 자리를 캐 보세요! 🌲</div>';
+      : '<div class="gnote">아직 전리품이 없어요. 사냥터에서 산짐승을 쫓거나 반짝이는 자리를 캐 보세요! 🌲</div>';
     const gear = SLOTS.flatMap(s => GEAR[s].items.filter(it => it.id in g.own).map(it => {
       const lv = g.own[it.id] || 0, on = g[s] === it.id;
-      return `<div class="ivc ${on ? 'on' : ''}" data-eq="${s}|${it.id}">${gearImg(it.id, 64)}<b>${it.name}${lv ? ` +${lv}` : ''}</b><small>${GEAR[s].unit} ${itemStat(s, it.id, lv)}</small>${on ? '<span class="ivt">끼는 중</span>' : '<span class="ivt off">눌러서 끼기</span>'}${gearSellBtns(s, it)}</div>`;
+      return `<div class="ivc drag ${on ? 'on' : ''}" data-eq="${s}|${it.id}">${gearImg(it.id, 56)}<b>${it.name}${lv ? ` +${lv}` : ''}</b><small>${GEAR[s].ic} ${GEAR[s].unit} ${itemStat(s, it.id, lv)}</small>${on ? '<span class="ivt">끼는 중</span>' : '<span class="ivt off">끌어다 끼기</span>'}${gearSellBtns(s, it)}</div>`;
     })).join('');
-    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${farmer().lv}</b><span>💰 ${won(G.money)}</span><span>💎 강화석 ${g.stones || 0}개</span><span>🧺 전리품 ${bagCount()}개 · 팔면 약 ${won(total)}</span></div>
-      <h3 class="ivh">🧺 전리품</h3><div class="ivg">${loot}</div>
-      <h3 class="ivh">🛠️ 장비 <small>눌러서 바꿔 끼기</small></h3><div class="ivg">${gear}</div>`;
+    const slots = SLOTS.map(s => { const id = g[s], lv = g.own[id] || 0, P2 = SLOT_POS[s];
+      return `<div class="dslot" data-slot="${s}" style="left:${P2.x}px;top:${P2.y}px" title="${GEAR[s].name}">${gearImg(id, 52)}<small>${GEAR[s].name}${lv ? ` +${lv}` : ''}</small></div>`; }).join('');
+    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${f.lv}</b><span>💰 ${won(G.money)}</span><span>💎 강화석 ${g.stones || 0}개</span><span>🧺 전리품 ${bagCount()}개 · 팔면 약 ${won(total)}</span></div>
+      <div class="ivwrap"><div class="doll" id="doll"><canvas id="dollCv" width="330" height="420"></canvas>${slots}
+        <div class="dstat">⚔️ 공격 <b>${f.atk}</b> · 🛡️ 방어 <b>${f.def}</b> · 👢 +${f.spd}% · ❤️ ${f.hp}</div></div>
+      <div class="ivside"><h3 class="ivh" style="margin-top:4px">🛠️ 장비 <small>끌어서 왼쪽 칸에 놓거나 눌러서 껴요</small></h3><div class="ivg g4">${gear}</div>
+      <h3 class="ivh">🧺 전리품</h3><div class="ivg g4">${loot}</div></div></div>`;
+    drawDoll($('#dollCv'));
     bindSellBtns(o.body, o);
-    o.body.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.eq.split('|'); if (G.gear[s] !== id) { G.gear[s] = id; toast(`🎒 ${jo(gearItem(s, id).name, '을', '를')} 꼈어요!`, 'good'); } o.render(o); });
+    // 끌어다 놓기 (마우스·손가락 모두)
+    o.body.querySelectorAll('.ivc[data-eq]').forEach(card => card.onpointerdown = e => {
+      if (e.target.closest('button')) return;
+      const [s, id] = card.dataset.eq.split('|'), x0 = e.clientX, y0 = e.clientY;
+      let ghost = null;
+      const move = ev => {
+        if (!ghost && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) {
+          ghost = document.createElement('div'); ghost.className = 'dghost'; ghost.innerHTML = gearImg(id, 64); document.body.appendChild(ghost);
+          o.body.querySelectorAll(`.dslot[data-slot="${s}"]`).forEach(d => d.classList.add('want'));
+        }
+        if (ghost) { ghost.style.left = ev.clientX - 36 + 'px'; ghost.style.top = ev.clientY - 36 + 'px'; const t = document.elementFromPoint(ev.clientX, ev.clientY); o.body.querySelectorAll('.dslot').forEach(d => d.classList.toggle('hov', !!t && (t.closest('.dslot') === d || (t.closest('#doll') && d.dataset.slot === s)))); }
+      };
+      const up = ev => {
+        removeEventListener('pointermove', move); removeEventListener('pointerup', up);
+        if (ghost) { ghost.remove(); const t = document.elementFromPoint(ev.clientX, ev.clientY), sl = t && t.closest('.dslot');
+          if ((sl && sl.dataset.slot === s) || (!sl && t && t.closest('#doll'))) equipGear(s, id);
+          else if (sl) toast(`${GEAR[s].name} 칸이 아니에요`, 'bad'); }
+        else equipGear(s, id);
+        o.render(o);
+      };
+      addEventListener('pointermove', move); addEventListener('pointerup', up);
+    });
     o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">I 키로 열고 닫아요 · 전리품은 금비상회에서 팔아요</span><button class="btn" id="ivGear">🔨 장비 사기·강화</button><button class="btn pri" id="ivOk">닫기</button>`;
     $('#ivGear').onclick = () => { UI.close(); setTimeout(uiGear, 160); };
     $('#ivOk').onclick = () => UI.close();
