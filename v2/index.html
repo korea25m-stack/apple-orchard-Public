@@ -1637,15 +1637,15 @@ function wjPortraitLook(){
 
 // ===== 과수원 세상 =====
 const SPOT = {
-  hanok:{x:520, y:820}, shed:{x:780, y:1060}, grandma:{x:395, y:1440}, chief:{x:300, y:1440},
+  hanok:{x:-450, y:900}, shed:{x:510, y:830} /* 2026-10-13 저장하는 한옥은 왼쪽 빈 터로, 사과 창고가 한옥 자리로 크게 */, grandma:{x:395, y:1440}, chief:{x:300, y:1440},
   sarang:{x:170, y:820}, cold:{x:200, y:1190}, factory:{x:430, y:1160}, wondumak:{x:2340, y:780},
   hives:[[2300, 1040], [2350, 1075], [2300, 1110]], drone:{x:900, y:830},
   pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
-  rabbit:{x:2440, y:1360}, chicken:{x:560, y:1720}, cat:{x:350, y:858}, dog:{x:690, y:980},
+  rabbit:{x:2440, y:1360}, chicken:{x:560, y:1720}, cat:{x:250, y:880}, dog:{x:690, y:980},
   jangdok:{x:110, y:960}, sotdae:{x:110, y:1600}, nongmak:{x:800, y:1400} // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
 };
 const ROAD = [[-1000, 1250], [-300, 1270], [300, 1440], [650, 1250], [905, 1175], [930, 1150]];
-const YARD = {x:520, y:925, rx:270, ry:85};
+const YARD = {x:520, y:925, rx:270, ry:85}, HYARD = {x:-450, y:1000, rx:230, ry:72};
 
 let P = {x:930, y:1000, dir:0, walk:0, act:0, tgt:null, spd:270};
 let cam = {x:930, y:900, z:.9, ox:0, oy:0}; // 시점 고정 (2026-10-11 조금 더 멀리)
@@ -1687,7 +1687,7 @@ function buildFeats(){
     feats.flw.push([x, y, Math.floor(R() * 4)]);
   }
 }
-function inYard(x, y){ return ((x - YARD.x) / (YARD.rx + 30)) ** 2 + ((y - YARD.y) / (YARD.ry + 30)) ** 2 < 1 || (x > 300 && x < 740 && y > 560 && y < 860); }
+function inYard(x, y){ return ((x - YARD.x) / (YARD.rx + 30)) ** 2 + ((y - YARD.y) / (YARD.ry + 30)) ** 2 < 1 || ((x - HYARD.x) / (HYARD.rx + 30)) ** 2 + ((y - HYARD.y) / (HYARD.ry + 30)) ** 2 < 1 || (x > 300 && x < 760 && y > 400 && y < 860) || (x > -680 && x < -220 && y > 600 && y < 940); }
 function checkGround(){
   const s = groundSig();
   if (s !== gsig) { gsig = s; tiles.clear(); if (!feats || feats.rows !== G.rows) { buildFeats(); feats.rows = G.rows; } } // 줄이 늘면 풀·꽃 자리도 다시
@@ -1717,8 +1717,11 @@ function drawGround(c, x0, y0, w, h){
   road([[650, 1250], [560, 1000]], 84, win ? '#d8dfe6' : '#c99d62'); road([[650, 1250], [560, 1000]], 68, win ? '#f2f5f8' : '#ecd29a');
   drawVillageGround(c, win);
   drawHuntGround(c, x0, y0, w, h, win);
-  c.beginPath(); ell(c, YARD.x, YARD.y, YARD.rx + 8, YARD.ry + 8); c.fillStyle = win ? '#d8dfe6' : '#c99d62'; c.fill();
-  c.beginPath(); ell(c, YARD.x, YARD.y, YARD.rx, YARD.ry); c.fillStyle = win ? '#f2f5f8' : '#ecd29a'; c.fill();
+  road([[-450, 1235], [-450, 1010]], 84, win ? '#d8dfe6' : '#c99d62'); road([[-450, 1235], [-450, 1010]], 68, win ? '#f2f5f8' : '#ecd29a');
+  for (const Y of [YARD, HYARD]) {
+    c.beginPath(); ell(c, Y.x, Y.y, Y.rx + 8, Y.ry + 8); c.fillStyle = win ? '#d8dfe6' : '#c99d62'; c.fill();
+    c.beginPath(); ell(c, Y.x, Y.y, Y.rx, Y.ry); c.fillStyle = win ? '#f2f5f8' : '#ecd29a'; c.fill();
+  }
   // 자갈 점
   const R = srand(77);
   for (let i = 0; i < 160; i++) { const a = R() * 6.28, d = Math.sqrt(R()); const x = YARD.x + Math.cos(a) * d * YARD.rx * .92, y = YARD.y + Math.sin(a) * d * YARD.ry * .9; c.beginPath(); ell(c, x, y, 3, 2); c.fillStyle = win ? '#dfe5ea' : '#d8b97c'; c.fill(); }
@@ -1803,10 +1806,10 @@ function drawHanok(c, x, y, s = 1){
 }
 // 2026-10-13 사과 창고 업그레이드: 단계마다 커지고 고급스러워져요. 옆에 저장 상자 수 전광판
 const SHED_LV = [
-  {name:'나무 창고', s:1, wall:'#c98a52', wsh:'#93603a', roof:'#4fb8a8', rsh:'#2e8478'},
-  {name:'벽돌 창고', s:1.15, wall:'#c0563e', wsh:'#8e3a28', roof:'#3d6fb8', rsh:'#284d86', price:5000000, mult:1.03, desc:'건물이 커지고 경매값 +3%'},
-  {name:'큰 사과 창고', s:1.3, wall:'#f4ecdc', wsh:'#cfc2a6', roof:'#c23b30', rsh:'#8e2620', price:10000000, mult:1.06, desc:'경매·소매값 +6%, 소매 주문이 더 자주 들어와요'},
-  {name:'황금 사과 전시관', s:1.45, wall:'#fff7e6', wsh:'#e2cfa4', roof:'#3a2a20', rsh:'#1e140e', price:15000000, mult:1.1, desc:'경매·소매값 +10%, 소매 주문 최대 3개, 평판 +5'}
+  {name:'나무 창고', s:1.9, wall:'#c98a52', wsh:'#93603a', roof:'#4fb8a8', rsh:'#2e8478'},
+  {name:'벽돌 창고', s:2.1, wall:'#c0563e', wsh:'#8e3a28', roof:'#3d6fb8', rsh:'#284d86', price:5000000, mult:1.03, desc:'건물이 커지고 경매값 +3%'},
+  {name:'큰 사과 창고', s:2.3, wall:'#f4ecdc', wsh:'#cfc2a6', roof:'#c23b30', rsh:'#8e2620', price:10000000, mult:1.06, desc:'경매·소매값 +6%, 소매 주문이 더 자주 들어와요'},
+  {name:'황금 사과 전시관', s:2.5, wall:'#fff7e6', wsh:'#e2cfa4', roof:'#3a2a20', rsh:'#1e140e', price:15000000, mult:1.1, desc:'경매·소매값 +10%, 소매 주문 최대 3개, 평판 +5'}
 ];
 function shedLv(){ return clamp(G.shedLv || 0, 0, 3); }
 function shedMult(){ return SHED_LV[shedLv()].mult || 1; }
@@ -1821,8 +1824,10 @@ function upgradeShed(){
 function drawShed(c, x, y){
   const lv = shedLv(), L = SHED_LV[lv];
   c.save(); c.translate(x, y); c.scale(L.s, L.s);
-  shadow(c, 0, 4, 90, 18);
-  cel(c, cc => rr(cc, -70, -110, 140, 110, 4), L.wall, L.wsh, 6, 6, 3);
+  shadow(c, 0, 6, 100, 20);
+  cel(c, cc => rr(cc, -80, -8, 160, 14, 3), '#d4d0c8', '#a8a49c', 2, 2, 2.4); // 돌 기단
+  cel(c, cc => rr(cc, -26, 2, 52, 8, 2), '#c4c0b8', '#98948c', 1, 1, 2);
+  cel(c, cc => rr(cc, -70, -110, 140, 104, 4), L.wall, L.wsh, 6, 6, 3);
   if (lv === 0) { c.strokeStyle = L.wsh; c.lineWidth = 2; for (let i = -50; i < 70; i += 20) { c.beginPath(); c.moveTo(i, -100); c.lineTo(i, 0); c.stroke(); } }
   if (lv === 1) { c.strokeStyle = 'rgba(255,240,220,.45)'; c.lineWidth = 1.5; for (let r = 0; r < 10; r++) { const yy = -104 + r * 11; c.beginPath(); c.moveTo(-68, yy); c.lineTo(68, yy); c.stroke(); for (let i = -68 + (r % 2) * 11; i < 68; i += 22) { c.beginPath(); c.moveTo(i, yy); c.lineTo(i, yy + 11); c.stroke(); } } }
   if (lv >= 2) { // 흰 벽 + 나무 기둥
@@ -1857,12 +1862,12 @@ function drawShed(c, x, y){
   const piles = [[52, -2], [76, -2], [64, -22], [-60, -2], [-84, -2], [-72, -22], [88, -22], [76, -42]].slice(0, 3 + lv * 2);
   for (const [bx, by] of piles) { cel(c, cc => rr(cc, bx - 11, by - 18, 22, 18, 2), '#e3b26a', '#b9844a', 2, 2, 2); c.beginPath(); c.arc(bx, by - 18, 5, Math.PI, 0); c.fillStyle = '#e8423a'; c.fill(); }
   c.restore();
-  drawStockBoard(c, x - 70 * L.s - 62, y + 6);
+  drawStockBoard(c, x + 70 * L.s + 58, y + 6);
 }
 // 전광판: 지금 창고에 있는 사과 상자 수
 function drawStockBoard(c, x, y){
   const n = totalStock(), lv = shedLv();
-  c.save(); c.translate(x, y);
+  c.save(); c.translate(x, y); c.scale(1.25, 1.25);
   shadow(c, 0, 2, 30, 8);
   for (const px of [-26, 26]) cel(c, cc => rr(cc, px - 4, -70, 8, 70, 2), '#8a8e96', '#5a5e66', 1, 1, 2);
   cel(c, cc => rr(cc, -50, -134, 100, 70, 8), '#2a2420', '#14100c', 2, 2, 3);
@@ -2010,7 +2015,7 @@ function drawDrone(c, x, y, t){
 function solids(){
   const s = [
     {x:SPOT.hanok.x - 200, y:SPOT.hanok.y - 175, w:400, h:175},
-    {x:SPOT.shed.x - 72 * shedS(), y:SPOT.shed.y - 70, w:144 * shedS(), h:70}
+    {x:SPOT.shed.x - 72 * shedS(), y:SPOT.shed.y - 90, w:144 * shedS(), h:90}
   ];
   if (G.b.sarang) s.push({x:SPOT.sarang.x - 125, y:SPOT.sarang.y - 110, w:250, h:110});
   if (G.b.cold) s.push({x:SPOT.cold.x - 92, y:SPOT.cold.y - 70, w:184, h:70});
@@ -5168,7 +5173,7 @@ function clickWorld(w){
   }
   for (const k of ['grandma', 'chief']) { const s = SPOT[k]; if ((s.x - w.x) ** 2 + (s.y - 40 - w.y) ** 2 < 70 * 70) best = {kind:k, x:s.x + 60, y:s.y + 30}; }
   for (const n of NPCS) if ((n.x - w.x) ** 2 + (n.y - 45 - w.y) ** 2 < 55 * 55) best = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20};
-  if ((Math.abs(w.x - SPOT.shed.x) < 80 * shedS() && w.y < SPOT.shed.y + 5 && w.y > SPOT.shed.y - 160 * shedS()) || (Math.abs(w.x - SPOT.shed.x + 70 * shedS() + 62) < 50 && w.y < SPOT.shed.y + 5 && w.y > SPOT.shed.y - 130)) best = {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 40};
+  if ((Math.abs(w.x - SPOT.shed.x) < 80 * shedS() && w.y < SPOT.shed.y + 5 && w.y > SPOT.shed.y - 160 * shedS()) || (Math.abs(w.x - SPOT.shed.x - 70 * shedS() - 58) < 62 && w.y < SPOT.shed.y + 10 && w.y > SPOT.shed.y - 170)) best = {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 40};
   for (const m of MONS) if (m.hp > 0 && (m.x - w.x) ** 2 + (m.y - 40 - w.y) ** 2 < 90 * 90) { if (Math.hypot(m.x - P.x, m.y - P.y) < 170) { P.face = m.x < P.x ? -1 : 1; heroAttack(); P.tgt = null; } else { P.tgt = {x:m.x, y:m.y}; P.pendMon = m; } P.pend = null; return; }
   P.pendMon = null;
   if (best) { P.tgt = {x:best.x, y:best.y}; P.pend = best.kind === 'tree' && !taskFor(best.i) && !G.trees[best.i] ? null : best; }
