@@ -120,6 +120,7 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .opt{border:2.5px solid var(--ink);border-radius:16px;padding:12px 14px;background:#fff;display:flex;flex-direction:column;gap:6px;text-align:left;font-family:var(--body);font-size:17px;line-height:1.4}
 .opt .t{font-family:var(--display);font-size:24px;display:flex;align-items:center;gap:8px}
 .opt .p{font-family:var(--display);font-size:20px;color:#b2332b}
+.rowpull{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.rp{display:flex;align-items:center;gap:10px;border:2px solid var(--ink);border-radius:12px;padding:6px 10px;background:#fff;font-size:16px}.rp>span{flex:1;display:flex;align-items:center;gap:4px;flex-wrap:wrap}.rp .dot{display:inline-block;flex:none;width:12px;height:12px;border-radius:50%;border:1.5px solid var(--ink)}.btn.danger{background:#ff6b57;color:#fff}
 .opt.sel{background:#fff3c4;box-shadow:0 0 0 4px var(--sun)}
 .opt.lock{opacity:.5}
 .opt.have{background:#e9fbe9}
@@ -4122,8 +4123,20 @@ function uiPlant(){
         return `<button class="opt ${G.selVar === v ? 'sel' : ''} ${lk ? 'lock' : ''}" data-v="${v}" ${lk ? 'disabled' : ''}>
           <span class="t"><span class="dot" style="background:${V.col}"></span>${V.name}</span>
           <span>${esc(V.desc)}</span><span class="sub" style="color:var(--muted)">수확 ${V.hv[0]}~${V.hv[1]}주 · 값 ×${V.mult}</span>
-          ${lk ? `<span class="p">⭐ 평판 ${V.rep}이면 열려요</span>` : ''}</button>`; }).join('')}</div>`;
+          ${lk ? `<span class="p">⭐ 평판 ${V.rep}이면 열려요</span>` : ''}</button>`; }).join('')}</div>
+      <h3 style="margin:16px 0 6px">🪓 한 줄 뽑기 <small style="font-weight:normal;color:var(--muted)">다른 품종으로 바꾸고 싶은 줄을 뽑아요. 뽑기는 무료, 뽑은 자리는 빈 땅이 되고 새로 심으면 나무 나이는 처음부터예요.</small></h3>
+      <div class="rowpull">${Array.from({length:G.rows}, (_, r) => { const ts = G.trees.slice(r * PER_ROW, r * PER_ROW + PER_ROW).filter(t => t);
+        const cnt = {}; ts.forEach(t => cnt[t.v] = (cnt[t.v] || 0) + 1);
+        const desc = ts.length ? Object.keys(cnt).map(v => `<span class="dot" style="background:${VARS[v].col}"></span>${VARS[v].name} ${cnt[v]}`).join(' · ') : '빈 줄';
+        return `<div class="rp"><b>${r + 1}줄</b><span>${desc}</span><button class="btn" data-pull="${r}" ${ts.length ? '' : 'disabled'}>🪓 한 줄 뽑기</button></div>`; }).join('')}</div>`;
     o.body.querySelectorAll('.opt').forEach(b => b.onclick = () => { G.selVar = b.dataset.v; o.render(o); });
+    // 2026-10-13 한 줄 뽑기: 한 번 누르면 확인, 3초 안에 다시 누르면 뽑아요
+    o.body.querySelectorAll('[data-pull]').forEach(b => b.onclick = () => {
+      const r = +b.dataset.pull;
+      if (!b.dataset.ok) { b.dataset.ok = 1; b.textContent = '⚠️ 정말 뽑을까요? 한 번 더'; b.classList.add('danger'); setTimeout(() => { if (b.isConnected) { delete b.dataset.ok; b.textContent = '🪓 한 줄 뽑기'; b.classList.remove('danger'); } }, 3000); return; }
+      let n = 0; for (let i = r * PER_ROW; i < r * PER_ROW + PER_ROW; i++) if (G.trees[i]) { G.trees[i] = null; n++; }
+      treeCache.clear(); todoSig = ''; sfx('snip'); toast(`🪓 ${r + 1}줄 나무 ${n}그루를 뽑았어요. ${TASKS.plant.ok(G.week) ? '이제 새 품종을 심어요!' : '봄(10~16주)에 새 품종을 심어요.'}`, 'good'); updateHUD(true); o.render(o);
+    });
     o.footEl.innerHTML = `<span style="margin-right:auto;align-self:center">빈 자리 ${empty}곳</span>
       <button class="btn go" id="plAll" ${ok && empty ? '' : 'disabled'}>빈 자리 모두 심기 (${won(SAPLING * empty)})</button>
       <button class="btn pri" id="plOk">이 품종으로 직접 심기</button>`;
