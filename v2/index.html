@@ -338,7 +338,7 @@ const BUILD = {
   cold:    {name:'저온저장고', ic:'❄️', price:15000000, tab:'b', desc:'사과를 싱싱하게 보관해서 경매값이 10% 올라요(상자당 최고 10만원).'},
   factory: {name:'사과 가공실', ic:'🫙', price:8000000, tab:'b', desc:'하 등급은 사과즙(상자당 5만원), 보통 등급은 잼(6만원)으로 만들어 팔 수 있어요.'},
   sarang:  {name:'한옥 사랑채', ic:'🏯', price:20000000, tab:'b', desc:'인부가 묵을 방이 생겨서 인부 일당이 10만원으로 내려가요.'},
-  fence:   {name:'전기 울타리', ic:'⚡', price:6000000, tab:'d', desc:'멧돼지·고라니가 내려오는 일이 1/3로 줄어요.'},
+  fence:   {name:'전기 울타리', ic:'⚡', price:6000000, tab:'d', desc:'멧돼지·고라니가 과수원에 아예 못 내려와요.'},
   frostfan:{name:'방상팬', ic:'🌀', price:4000000, tab:'d', desc:'봄 늦서리 때 바람을 돌려서 꽃이 어는 걸 막아요.'},
   hailnet: {name:'우박망', ic:'🕸️', price:6000000, tab:'d', desc:'우박을 막고 태풍 때 떨어지는 사과를 반으로 줄여요.'},
   drone:   {name:'방제 드론', ic:'🛸', price:5000000, tab:'d', desc:'바람이 세게 불어도 방제 효과가 줄지 않아요.'}
@@ -734,7 +734,7 @@ function endDay(){
   genWeather();
   // 멧돼지·고라니 (4~11월)
   if (G.week >= 14 && G.week <= 46 && G.trees.some(t => t)) {
-    if (Math.random() < .04 * (G.b.fence ? 1 / 3 : 1)) emit('raid', {kind: Math.random() < .5 ? 'boar' : 'deer'});
+    if (!G.b.fence && Math.random() < .04) emit('raid', {kind: Math.random() < .5 ? 'boar' : 'deer'});
   }
   emit('day');
 }
@@ -3173,6 +3173,7 @@ function updateMon(m, dt){
   m.cc -= dt * (P.hp < P.max * .3 ? .5 : 1); // 우주가 힘들면 덜 덤벼요
   const ox = m.x, oy = m.y;
   const moveTo = (tx, ty, s) => { const dx = tx - m.x, dy = ty - m.y, d = Math.hypot(dx, dy) || 1; const st = Math.min(d, s * dt); m.x += dx / d * st; m.y += dy / d * st; if (Math.abs(dx) > 4) m.flip = dx < 0; return d; };
+  if (m.raid && G.b.fence && m.st !== 'leave') { m.st = 'leave'; m.eng = false; } // 2026-10-13 전기 울타리가 있으면 습격 산짐승은 돌아가요
   const canSee = tig ? inDen(P.x, P.y, 60) : (m.raid || inHunt(P.x, P.y));
   // 2026-10-13 ★1·★2(tier 0·1)는 비선공: 먼저 때려야(m.eng) 덤벼요
   if ((m.st === 'wander' || m.st === 'raid' || m.st === 'eat') && canSee && (m.raid || tig || m.tier >= 2 || m.eng) && (tig || pd < (m.raid ? 430 : 360))) { m.st = 'chase'; m.eng = true; m.eat = 0; }
@@ -4426,7 +4427,7 @@ function talkChief(){
     return;
   }
   const tips = [
-    '산에서 멧돼지랑 고라니가 내려와서 사과를 먹는다네. 전기 울타리를 치면 훨씬 덜 오지.',
+    '산에서 멧돼지랑 고라니가 내려와서 사과를 먹는다네. 전기 울타리를 치면 아예 못 들어온다네.',
     '비가 며칠 오면 병 위험이 올라간다네. 왼쪽 위 날씨판을 잘 보게.',
     '사과는 심은 이듬해부터 열린다네. 첫해는 나무를 잘 키우는 게 일이지.',
     '꽃솎기, 열매솎기를 다 해야 특 등급 사과가 나온다네.'
