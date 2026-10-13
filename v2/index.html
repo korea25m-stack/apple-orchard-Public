@@ -1295,7 +1295,7 @@ function drawSS(c, x, y, ang){
 }
 
 // ----- 얼굴 초상화 (대화창용, 오리지널 캐릭터) -----
-function drawPortrait(cv, who){
+function drawPortraitOld(cv, who){
   const c = cv.getContext('2d'), w = cv.width;
   const L = who === 'haru' ? wjPortraitLook() : typeof who === 'string' ? LOOKS[who] : who;
   c.clearRect(0, 0, w, w); c.save(); c.scale(w / 240, w / 240);
@@ -1899,6 +1899,18 @@ function chibiHat(c, S, side, back, hero){
     pl(c, [-24, y - 13, -12, y - 11.5], 1.4, '#cfa640'); pl(c, [12, y - 11.5, 24, y - 13], 1.4, '#cfa640');
     if (apple) drawApple(c, 9, y - 34, 5.5, '#ec3b30', '#a51d16');
   } else if (hat === 'band') pc(c, cc => rr(cc, -23.5, y - 13, 47, 7, 3), '#ffffff', '#cfd8e0', 1, 1.5, 2.4);
+}
+// 대화창·퀴즈·경매 얼굴 (2026-10-13 맵 캐릭터와 같은 새 그림체로 가슴 위만 크게)
+function drawPortrait(cv, who){
+  const c = cv.getContext('2d'), w = cv.width, hero = who === 'haru';
+  const S = hero ? heroGearSpec() : toSpec(typeof who === 'string' ? LOOKS[who] : who);
+  c.clearRect(0, 0, w, w); c.save(); c.scale(w / 240, w / 240);
+  const bg = c.createLinearGradient(0, 0, 0, 240); bg.addColorStop(0, '#bfe6ff'); bg.addColorStop(1, '#fff2c9');
+  c.fillStyle = bg; c.fillRect(0, 0, 240, 240);
+  const F = 3.3, s = F / CHAR_K / (S.kid ? .78 : 1);
+  c.translate(120, 240 + 52 * F); c.scale(s, s);
+  drawHuman(c, 0, 0, S, 0, 0, 0, hero);
+  c.restore();
 }
 
 // ===== 과수원 세상 =====
