@@ -2638,17 +2638,30 @@ function inCombat(){ return MONS.some(m => !m.dead && m.eng && Math.hypot(m.x - 
 function heroAttack(){
   ensureHero();
   if (P.acd > 0 || P.blk || ssAnim) return;
-  const f = farmer(); P.acd = .42; P.asw = .25; sfx('swing');
+  const f = farmer(), aoe = weaponUp() >= AOE_LV;
   const reach = 125 * f.reach + 40;
+  if (aoe) { P.acd = .46; P.spin = SPIN_T; P.asw = 0; spinFx(reach); }
+  else { P.acd = .42; P.asw = .25; sfx('swing'); }
   let best = null, bd = 1e9;
   for (const m of MONS) { if (m.dead) continue; const d = Math.hypot(m.x - P.x, (m.y - P.y) * 1.2); if (d < reach && d < bd) { bd = d; best = m; } }
   if (!best) return;
   // 강화 +5부터는 휘두르면 닿는 산짐승이 모두 맞아요(옆 짐승은 70%)
-  if (weaponUp() >= AOE_LV) for (const o of MONS) if (o !== best && !o.dead && Math.hypot(o.x - P.x, (o.y - P.y) * 1.2) < reach) hitMon(o, Math.round((f.atk + rint(0, 4)) * .7), f);
+  if (aoe) for (const o of MONS) if (o !== best && !o.dead && Math.hypot(o.x - P.x, (o.y - P.y) * 1.2) < reach) hitMon(o, Math.round((f.atk + rint(0, 4)) * .7), f);
   hitMon(best, f.atk + rint(0, 4), f, true);
 }
 // ----- 전투 손맛 (2026-10-13): 멈칫(히트스톱)·화면 흔들림·번쩍·불꽃 -----
-const FX = {stop:0, shake:0, hurt:0, parts:[]};
+const FX = {stop:0, shake:0, hurt:0, parts:[], rings:[]};
+// 2026-10-13 강화 +5 이상: 한 바퀴 회전 베기 + 충격파 링 + 빛 (강화 단계마다 색이 바뀌어요)
+const SPIN_T = .4;
+function spinCol(){ const lv = weaponUp(); return lv >= 10 ? ['#ff5a4a', '#ffd23a'] : lv >= 8 ? ['#6fc3ff', '#e8f6ff'] : ['#ffd23a', '#fffaf1']; }
+function spinFx(reach){
+  const [a, b] = spinCol();
+  sfx('whirl'); setTimeout(() => sfx('quake'), 150);
+  FX.rings.push({x:P.x, y:P.y - 20, t:0, life:.55, r:reach * 1.15, c:a, w:16});
+  FX.rings.push({x:P.x, y:P.y - 20, t:-.12, life:.5, r:reach * .8, c:b, w:9});
+  FX.shake = Math.max(FX.shake, .35);
+  setTimeout(() => { for (let k = 0; k < 10; k++) { const an = k / 10 * 6.283; burst(P.x + Math.cos(an) * reach * .8, P.y - 30 + Math.sin(an) * reach * .55, 2, [a, b], 260, .4); } }, 140);
+}
 function burst(x, y, n, cols, sp, life){
   for (let k = 0; k < n; k++) { const a = rnd(0, 6.283), v = rnd(.35, 1) * sp; FX.parts.push({x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v * .7 - sp * .25, t:life * rnd(.6, 1), t0:life, c:pick(cols), r:rnd(4, 9)}); }
   if (FX.parts.length > 260) FX.parts.splice(0, FX.parts.length - 260);
@@ -2657,8 +2670,19 @@ function updateFx(dt){
   FX.shake = Math.max(0, FX.shake - dt * 2.4); FX.hurt = Math.max(0, FX.hurt - dt * 1.6);
   for (const p of FX.parts) { p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; p.vx *= 1 - dt * 2; }
   for (let i = FX.parts.length - 1; i >= 0; i--) if (FX.parts[i].t <= 0) FX.parts.splice(i, 1);
+  for (const r of FX.rings) r.t += dt;
+  FX.rings = FX.rings.filter(r => r.t < r.life);
 }
 function drawFx(c){
+  for (const r of FX.rings) {
+    if (r.t < 0) continue;
+    const k = r.t / r.life, e = 1 - (1 - k) * (1 - k), rad = 30 + r.r * e;
+    c.save(); c.globalAlpha = (1 - k) * .9;
+    c.beginPath(); c.ellipse(r.x, r.y, rad, rad * .55, 0, 0, 6.283);
+    c.lineWidth = r.w * (1 - k) + 2; c.strokeStyle = r.c; c.shadowColor = r.c; c.shadowBlur = 18; c.stroke();
+    c.lineWidth = 2; c.shadowBlur = 0; c.strokeStyle = INK; c.globalAlpha *= .35; c.stroke();
+    c.restore();
+  }
   for (const p of FX.parts) {
     const a = clamp(p.t / p.t0, 0, 1); c.globalAlpha = a;
     c.save(); c.translate(p.x, p.y); c.rotate(p.t * 9);
@@ -2901,7 +2925,7 @@ let zoneShow = {z:-2, t:0};
 function updateHunt(dt){
   ensureHero();
   if (!UI.free()) return;
-  for (const k of ['inv', 'acd', 'asw', 'gong']) if (P[k] > 0) P[k] -= dt;
+  for (const k of ['inv', 'acd', 'asw', 'gong', 'spin']) if (P[k] > 0) P[k] -= dt;
   P.hurtT += dt;
   if (P.hurtT > 4 && P.hp < P.max) P.hp = Math.min(P.max, P.hp + dt * 8);
   // 막기: 최대 2초 유지, 끝나면 5초 쉬어야 다시 막을 수 있어요
@@ -2932,12 +2956,39 @@ function updateHunt(dt){
 }
 
 // ----- 그리기 -----
+// 회전 베기: 발밑 빛 원판(뒤) + 따라오는 빛 궤적(앞)
+function drawSpinGlow(c, sk, back){
+  const [a, b] = spinCol(), R = 125 * farmer().reach + 40;
+  c.save();
+  if (back) {
+    const g = c.createRadialGradient(P.x, P.y, 10, P.x, P.y, R);
+    g.addColorStop(0, b); g.addColorStop(.6, a); g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.globalAlpha = .45 * Math.sin(sk * Math.PI); c.fillStyle = g;
+    c.beginPath(); c.ellipse(P.x, P.y, R, R * .5, 0, 0, 6.283); c.fill();
+  } else {
+    const end = P.face * (-1.6 + sk * 6.283 * 1.1), len = 2.6;
+    c.lineCap = 'round'; c.shadowColor = a; c.shadowBlur = 16;
+    for (let i = 0; i < 3; i++) {
+      c.beginPath(); c.globalAlpha = (1 - sk * .6) * (.85 - i * .25);
+      const r1 = R * (.62 + i * .17);
+      c.ellipse(P.x, P.y - 40, r1, r1 * .5, 0, P.face > 0 ? end - len : end, P.face > 0 ? end : end + len);
+      c.lineWidth = 14 - i * 4; c.strokeStyle = i === 1 ? b : a; c.stroke();
+    }
+  }
+  c.restore();
+}
 function drawHero(c){
   ensureHero();
   if (P.inv > 0 && Math.floor(P.inv * 12) % 2) c.globalAlpha *= .55;
-  drawPerson(c, P.x, P.y, 'haru', P.dir, P.walk, P.asw > 0 ? P.asw * 20 : P.sw > 0 ? P.sw * 9 : 0);
-  const armed = P.asw > 0 || inCombat() || inHunt(P.x, P.y);
-  if (armed) {
+  const spinning = P.spin > 0, sk = spinning ? 1 - P.spin / SPIN_T : 0;
+  if (spinning) drawSpinGlow(c, sk, true);
+  drawPerson(c, P.x, P.y, 'haru', spinning ? [0, 3, 1, 2][Math.floor(sk * 4) % 4] : P.dir, P.walk, spinning ? 4 : P.asw > 0 ? P.asw * 20 : P.sw > 0 ? P.sw * 9 : 0);
+  const armed = P.asw > 0 || spinning || inCombat() || inHunt(P.x, P.y);
+  if (spinning) {
+    const an = P.face * (-1.6 + sk * 6.283 * 1.1), rr0 = 30;
+    c.save(); c.translate(P.x + Math.cos(an) * rr0, P.y - 46 + Math.sin(an) * rr0 * .5); drawWeapon(c, ensureGear().weapon, an + 1.57); c.restore();
+    drawSpinGlow(c, sk, false);
+  } else if (armed) {
     c.save(); c.translate(P.x + (P.dir === 2 ? -10 : P.dir === 3 ? 10 : P.face * 13), P.y - 46);
     const sw = P.asw > 0 ? 1 - P.asw / .25 : 0;
     drawWeapon(c, ensureGear().weapon, P.face * (P.asw > 0 ? -1.4 + sw * 3 : .5));
@@ -4385,6 +4436,9 @@ function sfx(k){
     case 'bad': tone('triangle', NOTE(64), t, .16, .3, o); tone('triangle', NOTE(60), t + .14, .26, .3, o); break;
     case 'fanfare': [72, 76, 79, 84].forEach((n, i) => tone('square', NOTE(n), t + i * .1, i === 3 ? .45 : .14, .14, o)); break;
     // 2026-10-13 전투 손맛: 휙(바람) → 퍽(묵직한 저음 + 짧은 타격음)
+    // 2026-10-13 회전 베기: 길게 휘몰아치는 바람 + 묵직한 쿵
+    case 'whirl': noiseF(t, .38, .45, o, 'bandpass', 400, 3200, 3); tone('sawtooth', 220, t, .3, .12, o, 660); break;
+    case 'quake': tone('sine', 90, t, .42, .8, o, 32); noiseF(t, .3, .5, o, 'lowpass', 900, 80); break;
     case 'swing': noiseF(t, .18, .32, o, 'bandpass', 600, 2600, 2.5); break;
     case 'hit': tone('sine', 150, t, .16, .55, o, 45); noiseF(t, .06, .45, o, 'lowpass', 2400, 300); tone('square', 520, t, .035, .12, o, 200); break;
     case 'crit': tone('sine', 120, t, .26, .7, o, 35); noiseF(t, .1, .55, o, 'lowpass', 3200, 200); tone('triangle', 1760, t + .02, .22, .22, o, 1320); tone('triangle', 2640, t + .05, .18, .12, o); break;
