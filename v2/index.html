@@ -92,7 +92,8 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 @keyframes glow{50%{filter:brightness(1.18)}}
 #helpBtn{left:20px;bottom:18px;padding:10px 16px;font-size:20px}
 #help{left:20px;bottom:80px;padding:14px 18px;font-size:17px;line-height:1.7;width:330px}
-#help b{font-family:var(--display);font-weight:400;display:inline-block;min-width:96px}
+#help b{font-family:var(--display);font-weight:400;display:inline-block;min-width:96px;margin-right:6px}
+.kbt{width:100%;border-collapse:collapse;font-size:18px}.kbt td,.kbt th{padding:6px 8px;border-bottom:1.5px dashed #e3d8c4;text-align:left}.kbt .kbb{min-width:250px;font-size:17px;padding:6px 10px}
 
 #toasts{position:absolute;left:50%;top:96px;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
 .toast{background:var(--paper);border:3px solid var(--ink);border-radius:16px;padding:10px 20px;font-size:21px;font-family:var(--display);box-shadow:0 5px 0 var(--ink);animation:tin .25s;max-width:820px;text-align:center}
@@ -2904,7 +2905,7 @@ function updateHunt(dt){
   P.hurtT += dt;
   if (P.hurtT > 4 && P.hp < P.max) P.hp = Math.min(P.max, P.hp + dt * 8);
   // 막기: 최대 2초 유지, 끝나면 5초 쉬어야 다시 막을 수 있어요
-  const wantBlk = !!((keys.KeyF || keys.KeyK || P.touchBlock) && inCombat());
+  const wantBlk = !!((actDown('block') || P.touchBlock) && inCombat()); // 2026-10-13 기본: 오른쪽 클릭·F
   if (P.blkCd > 0) P.blkCd -= dt;
   if (P.blk && (!wantBlk || P.blkT >= BLOCK_MAX)) { if (P.blkT >= BLOCK_MAX) floats.push({x:P.x, y:P.y - 150, s:'🛡️ 막기 끝! 5초 쉬어요', t:1.2, c:'#2f6fb8'}); P.blk = false; P.blkCd = BLOCK_CD; P.blkHold = wantBlk; }
   else if (!P.blk && wantBlk && !(P.blkCd > 0) && !P.blkHold) P.blk = true;
@@ -3897,11 +3898,94 @@ function bindUI(){
   document.querySelectorAll('.sp[data-sp]').forEach(b => b.onclick = () => { speed = +b.dataset.sp; updateHUD(true); });
   $('#sndBtn').onclick = () => { if (UI.free()) uiSound(); }; sndBtn();
   $('#helpBtn').onclick = () => { const h = $('#help'); h.hidden = !h.hidden; store.set('haru-help', h.hidden ? '0' : '1'); };
-  $('#help').hidden = store.get('haru-help', '1') !== '1';
+  $('#help').hidden = store.get('haru-help', '1') !== '1'; renderHelp();
   const fold = store.get('haru-todo', '0') === '1';
   $('#todo').classList.toggle('fold', fold); $('#todoArrow').textContent = fold ? '▸' : '▾';
   $('#todoH').onclick = () => { const f = !$('#todo').classList.contains('fold'); $('#todo').classList.toggle('fold', f); $('#todoArrow').textContent = f ? '▸' : '▾'; store.set('haru-todo', f ? '1' : '0'); };
 }
+
+// ===== 키 설정 (2026-10-13): 기본은 마우스 왼쪽 = 공격, 오른쪽 = 막기. 플레이어가 직접 바꿀 수 있어요 =====
+const KEY_ACTS = [
+  ['attack', '⚔️ 공격 (휘두르기)'], ['block', '🛡️ 막기 (누르고 있기)'], ['interact', '✋ 일하기·말 걸기'],
+  ['gong', '🥁 꽹과리'], ['bag', '🎒 가방'], ['pause', '⏸ 멈춤 / 계속'],
+  ['up', '⬆️ 위로 걷기'], ['down', '⬇️ 아래로 걷기'], ['left', '⬅️ 왼쪽으로 걷기'], ['right', '➡️ 오른쪽으로 걷기']
+];
+const KEY_DEF = {attack:['Mouse0', 'Space'], block:['Mouse2', 'KeyF'], interact:['KeyF', ''], gong:['KeyQ', ''], bag:['KeyI', ''], pause:['KeyP', ''],
+  up:['KeyW', ''], down:['KeyS', ''], left:['KeyA', ''], right:['KeyD', '']};
+let KB = JSON.parse(JSON.stringify(KEY_DEF));
+(function loadKeys(){ try { const s = JSON.parse(store.get('haru-keys', 'null')); if (s) for (const k in KEY_DEF) if (Array.isArray(s[k])) KB[k] = [s[k][0] || '', s[k][1] || '']; } catch (e) {} })();
+const saveKeys = () => store.set('haru-keys', JSON.stringify(KB));
+const MB = {};                                   // 눌린 마우스 버튼 (Mouse0·Mouse1·Mouse2)
+const bound = (act, code) => !!code && KB[act].includes(code);
+const actsOf = code => KEY_ACTS.map(a => a[0]).filter(a => bound(a, code));
+const actDown = act => KB[act].some(c => c && (c.startsWith('Mouse') ? MB[c] : keys[c]));
+function keyName(c){
+  if (!c) return '—';
+  const M = {Mouse0:'🖱️ 왼쪽 클릭', Mouse1:'🖱️ 가운데 클릭', Mouse2:'🖱️ 오른쪽 클릭', Space:'Space', Enter:'Enter', ShiftLeft:'왼쪽 Shift', ShiftRight:'오른쪽 Shift',
+    ControlLeft:'왼쪽 Ctrl', ControlRight:'오른쪽 Ctrl', AltLeft:'왼쪽 Alt', AltRight:'오른쪽 Alt', Tab:'Tab', ArrowUp:'↑', ArrowDown:'↓', ArrowLeft:'←', ArrowRight:'→'};
+  if (M[c]) return M[c];
+  if (c.startsWith('Key')) return c.slice(3);
+  if (c.startsWith('Digit')) return c.slice(5);
+  if (c.startsWith('Numpad')) return '숫자패드 ' + c.slice(6);
+  return c;
+}
+// 사냥터에 있거나 산짐승이 근처·과수원에 있으면 '싸우는 중'으로 봐요 (왼쪽 클릭이 공격이 돼요)
+function fightMode(){ return inHunt(P.x, P.y) || MONS.some(m => !m.dead && (m.raid || Math.hypot(m.x - P.x, m.y - P.y) < 700)); }
+// 키·마우스 버튼 하나가 눌렸을 때 (한 번만 하는 동작)
+function pressAct(act, ev){
+  if (act === 'attack') { if (UI.free()) { if (ev && ev.wx != null && Math.abs(ev.wx - P.x) > 8) P.face = ev.wx < P.x ? -1 : 1; heroAttack(); } return true; }
+  if (act === 'interact') { if (UI.modal && $('#nmSleep')) { $('#nmSleep').click(); return true; } if (!inCombat()) pressF(); return true; }
+  if (act === 'gong') { if (UI.free()) heroGong(); return true; }
+  if (act === 'bag') { if (UI.modal && UI.modal.inv) UI.close(); else if (UI.free()) uiInv(); return true; }
+  if (act === 'pause') { if (UI.free()) { speed = speed ? 0 : 1; updateHUD(true); } return true; }
+  return false;
+}
+// 조작법 칸 글자를 키 설정에 맞춰 다시 써요
+function renderHelp(){
+  const h = $('#help'); if (!h) return;
+  const k = a => KB[a].filter(Boolean).map(keyName).join(' / ') || '없음';
+  h.innerHTML = `<div><b>${esc([k('up'), k('left'), k('down'), k('right')].join(''))}·방향키</b>걷기</div>
+    <div><b>${esc(k('attack'))}</b>휘두르기 공격 (사냥터·산짐승 근처에서. 한 마리, 도구 +5부터 여러 마리)</div>
+    <div><b>${esc(k('block'))}</b>막기 (누르고 있기, 최대 2초·쉬는 시간 5초)</div>
+    <div><b>${esc(k('interact'))}</b>일하기·말 걸기·농막에서 자기</div>
+    <div><b>마우스 클릭</b>평소엔 그 자리로 걷기·일하기</div>
+    <div><b>마우스 드래그</b>화면 둘러보기</div>
+    <div><b>${esc(k('bag'))}</b>가방 (전리품·장비)</div>
+    <div><b>${esc(k('gong'))}</b>꽹과리 (산짐승 깜짝)</div>
+    <div><b>${esc(k('pause'))}</b>멈춤 / 계속</div>
+    <div style="margin-top:8px"><button class="btn pri" id="keyBtn" style="font-size:17px;padding:6px 14px">⌨️ 키 설정 바꾸기</button></div>`;
+  $('#keyBtn').onclick = () => uiKeys();
+}
+// 키 설정 창
+let keyWait = null;
+function uiKeys(){
+  UI.open({ic:'⌨️', title:'키 설정', w:1000, render(o){
+    const row = ([a, name]) => `<tr><td>${name}</td>${[0, 1].map(i => `<td><button class="btn kbb ${keyWait && keyWait.a === a && keyWait.i === i ? 'pri' : ''}" data-k="${a}|${i}">${keyWait && keyWait.a === a && keyWait.i === i ? '키나 마우스 버튼을 누르세요…' : esc(keyName(KB[a][i]))}</button></td>`).join('')}</tr>`;
+    o.body.innerHTML = `<p class="gnote" style="margin-top:0">바꿀 칸을 누른 다음, 쓰고 싶은 키나 마우스 버튼을 누르세요. <b>Esc</b>는 취소, <b>Delete</b>나 <b>Backspace</b>는 비우기예요. 방향키(↑↓←→)는 늘 걷기로 써요.</p>
+      <table class="kbt"><tr><th>하는 일</th><th>첫째 키</th><th>둘째 키</th></tr>${KEY_ACTS.map(row).join('')}</table>
+      <p class="gnote">💡 왼쪽 클릭이 공격이어도, 집·과수원처럼 산짐승이 없는 곳에선 그 자리로 걷기·일하기가 돼요. 같은 키를 두 가지 일에 쓰면 둘 다 해요(예: F는 싸울 땐 막기, 평소엔 일하기).</p>`;
+    o.body.querySelectorAll('[data-k]').forEach(b => b.addEventListener('mousedown', e => {
+      if (keyWait) return; // 기다리는 중엔 이 클릭이 바로 새 키가 돼요
+      e.preventDefault(); e.stopPropagation(); const [a, i] = b.dataset.k.split('|'); keyWait = {a, i:+i, o}; setTimeout(() => o.render(o), 0);
+    }));
+    o.body.oncontextmenu = e => e.preventDefault();
+    o.footEl.innerHTML = `<button class="btn" id="kbReset">처음 설정으로</button><button class="btn pri" id="kbOk">다 됐어요</button>`;
+    $('#kbReset').onclick = () => { KB = JSON.parse(JSON.stringify(KEY_DEF)); keyWait = null; saveKeys(); renderHelp(); o.render(o); toast('⌨️ 처음 키 설정으로 돌렸어요.'); };
+    $('#kbOk').onclick = () => { keyWait = null; UI.close(); };
+  }, onClose(){ keyWait = null; }});
+}
+function setKey(code){
+  const w = keyWait; if (!w) return false;
+  keyWait = null;
+  if (code === 'Escape') { w.o.render(w.o); return true; }
+  KB[w.a][w.i] = code === 'Delete' || code === 'Backspace' ? '' : code;
+  saveKeys(); renderHelp(); w.o.render(w.o);
+  toast(`⌨️ ${KEY_ACTS.find(x => x[0] === w.a)[1]} → ${keyName(KB[w.a][w.i])}`);
+  return true;
+}
+// 키 설정 창에서 새 키 기다릴 때: 마우스 버튼도 받아요
+addEventListener('mousedown', e => { if (keyWait && UI.modal === keyWait.o) { e.preventDefault(); e.stopPropagation(); setKey('Mouse' + e.button); } }, true);
+addEventListener('contextmenu', e => { if (keyWait || e.target.closest && e.target.closest('#stage')) e.preventDefault(); });
 
 // ===== 우주의 장비·능력치 =====
 const GEAR = {
@@ -4358,16 +4442,16 @@ function updateDrive(dt){
   else if (M.phase === 'run') {
     M.run += dt;
     let s = 0;
-    if (keys.KeyA || keys.ArrowLeft || M.touchL) s -= 1;
-    if (keys.KeyD || keys.ArrowRight || M.touchR) s += 1;
+    if (actDown('left') || keys.ArrowLeft || M.touchL) s -= 1;
+    if (actDown('right') || keys.ArrowRight || M.touchR) s += 1;
     if (joy.on) s = clamp(joy.x * 1.5, -1, 1);
     if (M.ai) s = driveAI();
     M.steer += (s - M.steer) * Math.min(1, dt * 12);
     M.x = clamp(M.x + M.steer * 2.1 * dt, -1, 1);
     // 기본 속도는 살짝 느리게. 앞(W·↑)은 조금 빠르게, 뒤(S·↓)는 조금 느리게
     let th = 0;
-    if (keys.KeyW || keys.ArrowUp || M.touchU) th += 1;
-    if (keys.KeyS || keys.ArrowDown || M.touchD) th -= 1;
+    if (actDown('up') || keys.ArrowUp || M.touchU) th += 1;
+    if (actDown('down') || keys.ArrowDown || M.touchD) th -= 1;
     if (joy.on && Math.abs(joy.y) > .35) th = -Math.sign(joy.y);
     M.th += (th - M.th) * Math.min(1, dt * 5);
     const v = (440 + Math.min(220, M.run * 8)) * (1 + M.th * .3) * (M.slow > 0 ? .45 : 1);
@@ -4639,8 +4723,8 @@ function update(dt){
   // 하루 이동
   let mx = 0, my = 0;
   if (UI.free() && !ssAnim) {
-    if (keys.KeyW || keys.ArrowUp) my -= 1; if (keys.KeyS || keys.ArrowDown) my += 1;
-    if (keys.KeyA || keys.ArrowLeft) mx -= 1; if (keys.KeyD || keys.ArrowRight) mx += 1;
+    if (actDown('up') || keys.ArrowUp) my -= 1; if (actDown('down') || keys.ArrowDown) my += 1;
+    if (actDown('left') || keys.ArrowLeft) mx -= 1; if (actDown('right') || keys.ArrowRight) mx += 1;
     if (joy.on) { mx = joy.x; my = joy.y; }
     if (mx || my) { P.tgt = null; P.pend = null; }
     else if (P.tgt) {
@@ -4744,24 +4828,42 @@ function stagePt(e){ const r = $('#stage').getBoundingClientRect(), s = r.width 
 function toWorld(p){ return {x:cam.x + (p.x - W / 2) / cam.z, y:cam.y + (p.y - H / 2) / cam.z}; }
 addEventListener('keydown', e => {
   if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (keyWait) { e.preventDefault(); setKey(e.code); return; } // 키 설정 창에서 새 키 받는 중
   keys[e.code] = true;
-  // 농막 안에서는 F = 자고 일어나기 (2026-10-13)
-  if (e.code === 'KeyF' && !e.repeat && UI.modal && $('#nmSleep')) { e.preventDefault(); $('#nmSleep').click(); return; }
-  if (e.code === 'KeyF' && !e.repeat && !inCombat()) pressF();
-  if (e.code === 'Space' || e.code === 'KeyJ') { e.preventDefault(); if (UI.free()) heroAttack(); }
-  if (e.code === 'KeyQ' && UI.free()) heroGong();
-  if (e.code === 'KeyI' && !e.repeat) { if (UI.modal && UI.modal.inv) UI.close(); else if (UI.free()) uiInv(); }
-  if (e.code === 'KeyP') { if (UI.free()) { speed = speed ? 0 : 1; updateHUD(true); } }
+  // 2026-10-13 키 설정(KB)에 따라: 공격·일하기(농막에선 자기)·꽹과리·가방·멈춤
+  const acts = actsOf(e.code);
+  if (acts.length && (e.code === 'Space' || e.code === 'Tab')) e.preventDefault();
+  if (!e.repeat) for (const a of acts) pressAct(a);
+  else if (acts.includes('attack')) pressAct('attack');
   if (e.code === 'Escape' && UI.modal && !UI.modal.noX) UI.close();
   if (e.code.startsWith('Arrow')) e.preventDefault();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; for (const k in MB) MB[k] = false; });
+addEventListener('pointerup', e => { if (e.pointerType === 'mouse') MB['Mouse' + e.button] = false; });
 
 const ptrs = new Map(); let drag = null, pinch = null;
+// 마우스 버튼 눌림: 키 설정에 따라 공격·막기 등. true면 걷기·드래그로 쓰지 않아요
+function mouseBtnDown(btn, p){
+  const code = 'Mouse' + btn; MB[code] = true;
+  const w = toWorld(p), acts = actsOf(code).filter(a => !['block', 'up', 'down', 'left', 'right'].includes(a));
+  if (btn !== 0) { for (const a of acts) pressAct(a, {wx:w.x}); return true; }
+  if (acts.includes('attack') && fightMode() && UI.free()) { for (const a of acts) pressAct(a, {wx:w.x}); return true; }
+  for (const a of acts) if (a !== 'attack') pressAct(a);
+  return false;
+}
+// 다른 버튼을 누른 채로 또 누르면 pointerdown이 안 와요 → pointermove로 알아채요
+cv.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse' || e.button < 0) return;
+  const mask = [1, 4, 2, 8, 16][e.button] || 0, code = 'Mouse' + e.button;
+  if (e.buttons & mask) { if (!MB[code]) mouseBtnDown(e.button, stagePt(e)); } else MB[code] = false;
+});
 cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId);
-  const p = stagePt(e); ptrs.set(e.pointerId, p);
+  const p = stagePt(e);
+  // 2026-10-13 마우스 버튼도 키 설정대로 (기본: 왼쪽 = 공격, 오른쪽 = 막기)
+  if (e.pointerType === 'mouse' && mouseBtnDown(e.button, p)) { e.preventDefault(); return; }
+  ptrs.set(e.pointerId, p);
   if (ptrs.size === 1) drag = {x:p.x, y:p.y, sx:p.x, sy:p.y, moved:false};
 });
 cv.addEventListener('pointermove', e => {
@@ -4774,6 +4876,8 @@ cv.addEventListener('pointermove', e => {
   }
 });
 const endPtr = e => {
+  if (e.pointerType === 'mouse') MB['Mouse' + e.button] = false;
+  if (!ptrs.has(e.pointerId)) return;
   ptrs.delete(e.pointerId);
   if (ptrs.size < 2) pinch = null;
   if (drag && !drag.moved && e.type === 'pointerup' && UI.free()) clickWorld(toWorld(stagePt(e)));
