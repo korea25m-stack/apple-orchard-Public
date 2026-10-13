@@ -815,7 +815,7 @@ function totalStock(){ let n = 0; for (const k in G.stock) n += G.stock[k]; retu
 // 경매 가격
 function auctionPlan(key){
   const [v, gk] = key.split('|');
-  let base = gByK(gk).base * VARS[v].mult * (G.b.cold ? 1.1 : 1);
+  let base = gByK(gk).base * VARS[v].mult * (G.b.cold ? 1.1 : 1) * shedMult();
   const bids = BIDDERS.map(n => ({n, p:Math.round(clamp(base * rnd(.84, 1.07), 3, 10) * 10) / 10}));
   const big = Math.random() < .1;
   if (big) bids[rint(0, 9)] = {n:'큰손 상인', p:10, big:true};
@@ -1801,18 +1801,81 @@ function drawHanok(c, x, y, s = 1){
   for (const sx of [-1, 1]) cel(c, cc => { cc.moveTo(sx * 176, -258); cc.quadraticCurveTo(sx * 192, -270, sx * 196, -284); cc.lineTo(sx * 184, -250); cc.closePath(); }, '#e9e4dc', '#b9b2a6', 1, 1, 2.6);
   c.restore();
 }
+// 2026-10-13 사과 창고 업그레이드: 단계마다 커지고 고급스러워져요. 옆에 저장 상자 수 전광판
+const SHED_LV = [
+  {name:'나무 창고', s:1, wall:'#c98a52', wsh:'#93603a', roof:'#4fb8a8', rsh:'#2e8478'},
+  {name:'벽돌 창고', s:1.15, wall:'#c0563e', wsh:'#8e3a28', roof:'#3d6fb8', rsh:'#284d86', price:5000000, mult:1.03, desc:'건물이 커지고 경매값 +3%'},
+  {name:'큰 사과 창고', s:1.3, wall:'#f4ecdc', wsh:'#cfc2a6', roof:'#c23b30', rsh:'#8e2620', price:10000000, mult:1.06, desc:'경매·소매값 +6%, 소매 주문이 더 자주 들어와요'},
+  {name:'황금 사과 전시관', s:1.45, wall:'#fff7e6', wsh:'#e2cfa4', roof:'#3a2a20', rsh:'#1e140e', price:15000000, mult:1.1, desc:'경매·소매값 +10%, 소매 주문 최대 3개, 평판 +5'}
+];
+function shedLv(){ return clamp(G.shedLv || 0, 0, 3); }
+function shedMult(){ return SHED_LV[shedLv()].mult || 1; }
+function shedS(){ return SHED_LV[shedLv()].s; }
+function upgradeShed(){
+  const lv = shedLv(), nx = SHED_LV[lv + 1]; if (!nx || G.money < nx.price) return false;
+  G.money -= nx.price; G.shedLv = lv + 1; if (G.shedLv === 3) G.rep += 5;
+  sfx('fanfare'); toast(`🏗️ 사과 창고가 <${nx.name}>(으)로 커졌어요!`, 'gold');
+  burst(SPOT.shed.x, SPOT.shed.y - 100, 24, ['#ffd23a', '#fffaf1', '#ff6b57'], 520, .7);
+  return true;
+}
 function drawShed(c, x, y){
-  c.save(); c.translate(x, y);
+  const lv = shedLv(), L = SHED_LV[lv];
+  c.save(); c.translate(x, y); c.scale(L.s, L.s);
   shadow(c, 0, 4, 90, 18);
-  cel(c, cc => rr(cc, -70, -110, 140, 110, 4), '#c98a52', '#93603a', 6, 6, 3);
-  c.strokeStyle = '#93603a'; c.lineWidth = 2; for (let i = -50; i < 70; i += 20) { c.beginPath(); c.moveTo(i, -100); c.lineTo(i, 0); c.stroke(); }
-  cel(c, cc => rr(cc, -30, -70, 60, 70, 3), '#8e5a34', '#6a3f22', 3, 3, 2.6);
-  line(c, [-30, -70, 30, 0], 2.5, '#6a3f22'); line(c, [30, -70, -30, 0], 2.5, '#6a3f22');
-  cel(c, cc => { cc.moveTo(-88, -100); cc.lineTo(0, -160); cc.lineTo(88, -100); cc.lineTo(80, -92); cc.lineTo(-80, -92); cc.closePath(); }, '#4fb8a8', '#2e8478', 5, 5, 3);
-  cel(c, cc => rr(cc, -34, -134, 68, 24, 6), '#fffaf1', '#e5dccb', 2, 2, 2.4);
-  c.font = '18px Jua'; c.fillStyle = INK; c.textAlign = 'center'; c.fillText('사과 창고', 0, -116);
-  // 사과 상자
-  for (const [bx, by] of [[52, -2], [76, -2], [64, -22]]) { cel(c, cc => rr(cc, bx - 11, by - 18, 22, 18, 2), '#e3b26a', '#b9844a', 2, 2, 2); c.beginPath(); c.arc(bx, by - 18, 5, Math.PI, 0); c.fillStyle = '#e8423a'; c.fill(); }
+  cel(c, cc => rr(cc, -70, -110, 140, 110, 4), L.wall, L.wsh, 6, 6, 3);
+  if (lv === 0) { c.strokeStyle = L.wsh; c.lineWidth = 2; for (let i = -50; i < 70; i += 20) { c.beginPath(); c.moveTo(i, -100); c.lineTo(i, 0); c.stroke(); } }
+  if (lv === 1) { c.strokeStyle = 'rgba(255,240,220,.45)'; c.lineWidth = 1.5; for (let r = 0; r < 10; r++) { const yy = -104 + r * 11; c.beginPath(); c.moveTo(-68, yy); c.lineTo(68, yy); c.stroke(); for (let i = -68 + (r % 2) * 11; i < 68; i += 22) { c.beginPath(); c.moveTo(i, yy); c.lineTo(i, yy + 11); c.stroke(); } } }
+  if (lv >= 2) { // 흰 벽 + 나무 기둥
+    const beam = lv === 3 ? '#6a3f22' : '#8e5a34';
+    for (const bx of [-70, -36, 36, 70]) cel(c, cc => rr(cc, bx - 5, -110, 10, 110, 2), beam, '#4a2a16', 1, 1, 2);
+    cel(c, cc => rr(cc, -70, -60, 140, 8, 2), beam, '#4a2a16', 1, 1, 2);
+  }
+  if (lv >= 1) for (const wx of [-50, 50]) { cel(c, cc => rr(cc, wx - 11, -94, 22, 20, 3), '#bfe4ff', '#8ab4d8', 2, 2, 2.4); line(c, [wx, -94, wx, -74], 1.6, INK); line(c, [wx - 11, -84, wx + 11, -84], 1.6, INK);
+    if (lv >= 2) { c.save(); c.globalAlpha = .5 + .3 * Math.sin(T * 2 + wx); c.fillStyle = '#ffe9a0'; c.fillRect(wx - 9, -92, 18, 16); c.restore(); } }
+  // 문
+  const dw = lv >= 2 ? 42 : 30, door = lv === 3 ? '#a8241c' : '#8e5a34';
+  cel(c, cc => rr(cc, -dw, -70, dw * 2, 70, 3), door, '#5a2a18', 3, 3, 2.6);
+  if (lv < 2) { line(c, [-dw, -70, dw, 0], 2.5, '#6a3f22'); line(c, [dw, -70, -dw, 0], 2.5, '#6a3f22'); }
+  else { line(c, [0, -70, 0, 0], 2.5, INK); for (const sx of [-1, 1]) { c.beginPath(); ell(c, sx * 7, -36, 3, 3); c.fillStyle = '#ffd23a'; c.fill(); } }
+  // 지붕
+  cel(c, cc => { cc.moveTo(-88, -100); cc.lineTo(0, -160); cc.lineTo(88, -100); cc.lineTo(80, -92); cc.lineTo(-80, -92); cc.closePath(); }, L.roof, L.rsh, 5, 5, 3);
+  if (lv === 3) { // 금빛 처마 + 황금 사과 장식
+    line(c, [-88, -100, 0, -160, 88, -100], 4, '#ffd23a');
+    for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(sx * 88, -100); c.quadraticCurveTo(sx * 100, -102, sx * 104, -114); c.lineWidth = 5; c.strokeStyle = '#ffd23a'; c.lineCap = 'round'; c.stroke(); }
+    c.save(); c.shadowColor = '#ffd23a'; c.shadowBlur = 14 + 6 * Math.sin(T * 3); drawApple(c, 0, -174, 13, '#ffd23a', '#d4a020'); c.restore();
+    for (const sx of [-1, 1]) { // 청사초롱
+      const lx = sx * 82, ly = -82; line(c, [lx, -96, lx, ly - 12], 1.6, INK);
+      cel(c, cc => rr(cc, lx - 7, ly - 12, 14, 22, 5), '#d6372c', '#a8241c', 1, 1, 2); cel(c, cc => rr(cc, lx - 7, ly - 2, 14, 6, 2), '#2f6fb8', '#244f86', 1, 1, 1.6);
+    }
+  }
+  if (lv === 2) { line(c, [0, -160, 0, -190], 2.4, INK); cel(c, cc => { cc.moveTo(0, -190); cc.lineTo(24, -183); cc.lineTo(0, -176); cc.closePath(); }, '#ff6b57', '#c23b30', 1, 1, 2); }
+  const plate = lv === 3 ? ['#3a2a20', '#1e140e', '#ffd23a'] : ['#fffaf1', '#e5dccb', INK];
+  const nm = lv ? L.name : '사과 창고'; c.font = (lv >= 3 ? '15px' : '17px') + ' Jua'; const pw = c.measureText(nm).width / 2 + 10;
+  cel(c, cc => rr(cc, -pw, -134, pw * 2, 24, 6), plate[0], plate[1], 2, 2, 2.4);
+  c.fillStyle = plate[2]; c.textAlign = 'center'; c.fillText(nm, 0, -116);
+  // 사과 상자 (단계마다 더 쌓여요)
+  const piles = [[52, -2], [76, -2], [64, -22], [-60, -2], [-84, -2], [-72, -22], [88, -22], [76, -42]].slice(0, 3 + lv * 2);
+  for (const [bx, by] of piles) { cel(c, cc => rr(cc, bx - 11, by - 18, 22, 18, 2), '#e3b26a', '#b9844a', 2, 2, 2); c.beginPath(); c.arc(bx, by - 18, 5, Math.PI, 0); c.fillStyle = '#e8423a'; c.fill(); }
+  c.restore();
+  drawStockBoard(c, x - 70 * L.s - 62, y + 6);
+}
+// 전광판: 지금 창고에 있는 사과 상자 수
+function drawStockBoard(c, x, y){
+  const n = totalStock(), lv = shedLv();
+  c.save(); c.translate(x, y);
+  shadow(c, 0, 2, 30, 8);
+  for (const px of [-26, 26]) cel(c, cc => rr(cc, px - 4, -70, 8, 70, 2), '#8a8e96', '#5a5e66', 1, 1, 2);
+  cel(c, cc => rr(cc, -50, -134, 100, 70, 8), '#2a2420', '#14100c', 2, 2, 3);
+  c.beginPath(); rr(c, -44, -128, 88, 58, 5); c.fillStyle = '#0c0a08'; c.fill();
+  // 점 무늬(LED 느낌)
+  c.fillStyle = 'rgba(255,90,40,.10)'; for (let yy = -125; yy < -72; yy += 4) for (let xx = -41; xx < 42; xx += 4) c.fillRect(xx, yy, 2, 2);
+  c.textAlign = 'center';
+  c.font = '11px Jua'; c.fillStyle = '#ffd23a'; c.fillText('🍎 저장 사과', 0, -112);
+  const col = n ? '#ff5a2a' : '#7a4a30';
+  c.shadowColor = col; c.shadowBlur = n ? 10 : 0; c.fillStyle = col;
+  const txt = String(n); c.font = `bold ${txt.length > 4 ? 20 : 26}px "Courier New", monospace`; c.fillText(txt, 0, -86);
+  c.shadowBlur = 0; c.font = '11px Jua'; c.fillStyle = '#ffb13b'; c.fillText('상자', 0, -74);
+  if (lv >= 2) { c.globalAlpha = .6 + .4 * Math.sin(T * 6); c.beginPath(); ell(c, -38, -122, 2.5, 2.5); c.fillStyle = '#5aff7a'; c.fill(); c.globalAlpha = 1; }
   c.restore();
 }
 function drawWondumak(c, x, y){
@@ -1947,7 +2010,7 @@ function drawDrone(c, x, y, t){
 function solids(){
   const s = [
     {x:SPOT.hanok.x - 200, y:SPOT.hanok.y - 175, w:400, h:175},
-    {x:SPOT.shed.x - 72, y:SPOT.shed.y - 70, w:144, h:70}
+    {x:SPOT.shed.x - 72 * shedS(), y:SPOT.shed.y - 70, w:144 * shedS(), h:70}
   ];
   if (G.b.sarang) s.push({x:SPOT.sarang.x - 125, y:SPOT.sarang.y - 110, w:250, h:110});
   if (G.b.cold) s.push({x:SPOT.cold.x - 92, y:SPOT.cold.y - 70, w:184, h:70});
@@ -3670,8 +3733,10 @@ function uiStore(tab){
     const tabs = `<div class="tabs"><button class="tab ${tab === 'stock' ? 'on' : ''}" data-t="stock">🍎 보관 중</button><button class="tab ${tab === 'order' ? 'on' : ''}" data-t="order">📦 주문 ${G.orders.length ? '(' + G.orders.length + ')' : ''}</button><button class="tab ${tab === 'retail' ? 'on' : ''}" data-t="retail">🛍️ 소매 ${(G.retail || []).length ? '(' + G.retail.length + ')' : ''}</button></div>`;
     let body = '';
     if (tab === 'stock') {
-      body = keys.length ? `<table class="tbl"><tr><th>품종</th><th>등급</th><th>상자</th><th>예상 값(상자당)</th><th></th></tr>${keys.map(k => {
-        const [v, gk] = k.split('|'), g = gByK(gk), base = g.base * VARS[v].mult * (G.b.cold ? 1.1 : 1);
+      const sl = shedLv(), nx = SHED_LV[sl + 1];
+      body = `<div class="opt" style="margin-bottom:10px"><span class="t">🏗️ ${SHED_LV[sl].name} <small>(${sl + 1}/4단계)</small></span><span>${nx ? `다음: <b>${nx.name}</b> · ${nx.desc}` : '최고 단계예요! ✨'}</span>${nx ? `<span class="p">${won(nx.price)}</span><button class="btn y" id="shedUp" ${G.money >= nx.price ? '' : 'disabled'}>키우기</button>` : ''}</div>`;
+      body += keys.length ? `<table class="tbl"><tr><th>품종</th><th>등급</th><th>상자</th><th>예상 값(상자당)</th><th></th></tr>${keys.map(k => {
+        const [v, gk] = k.split('|'), g = gByK(gk), base = g.base * VARS[v].mult * (G.b.cold ? 1.1 : 1) * shedMult();
         const canP = G.b.factory && (gk === 'B' || gk === 'C');
         return `<tr><td><span class="dot" style="background:${VARS[v].col}"></span>${VARS[v].name}</td><td><b style="color:${g.col}">${g.name}</b></td><td>${G.stock[k]}</td>
           <td>${clamp(base * .84, 3, 10).toFixed(1)}~${clamp(base * 1.07, 3, 10).toFixed(1)}만원</td>
@@ -3688,6 +3753,7 @@ function uiStore(tab){
         : `<p>들어온 주문이 없어요. 2년차부터 여름·가을에 주문이 들어와요.</p>`;
     }
     o.body.innerHTML = tabs + body;
+    const su = $('#shedUp'); if (su) su.onclick = () => { if (upgradeShed()) o.render(o); };
     o.body.querySelectorAll('.tab').forEach(b => b.onclick = () => { tab = b.dataset.t; o.render(o); });
     o.body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => { UI.close(); setTimeout(() => uiShip([b.dataset.sell]), 160); });
     o.body.querySelectorAll('[data-proc]').forEach(b => b.onclick = () => { const m = processLot(b.dataset.proc); toast(`🫙 가공해서 팔았어요. +${won(m)}`, 'good'); o.render(o); });
@@ -3705,7 +3771,7 @@ function uiShip(keys){
   const cnt = {}; for (const k of keys) cnt[k] = G.stock[k];
   const pctOf = k => Math.round(G.stock[k] * G.ship.pct / 100);
   const pick = k => G.ship.mode === 'pct' ? pctOf(k) : cnt[k];
-  const est = k => { const [v, gk] = k.split('|'); return clamp(gByK(gk).base * VARS[v].mult * (G.b.cold ? 1.1 : 1), 3, 10) * 10000; };
+  const est = k => { const [v, gk] = k.split('|'); return clamp(gByK(gk).base * VARS[v].mult * (G.b.cold ? 1.1 : 1) * shedMult(), 3, 10) * 10000; };
   UI.open({ic:'🚚', title:'경매 출하', w:1000, render(o){
     const pct = G.ship.mode === 'pct';
     const tot = keys.reduce((s, k) => s + pick(k), 0), all = keys.reduce((s, k) => s + G.stock[k], 0), money = keys.reduce((s, k) => s + pick(k) * est(k), 0);
@@ -3974,11 +4040,11 @@ const RETAIL_C = [
   {name:'등산객 가족', ic:'🥾'}, {name:'카페 사장님', ic:'☕'}, {name:'할머니 손주 선물', ic:'🎀'}, {name:'동네 반찬가게', ic:'🍱'}
 ];
 const RETAIL_MAX = 200000, RETAIL_P = .35;
-function retailUnit(gk){ const hi = clamp(gByK(gk).base * 1.07 * (G.b.cold ? 1.1 : 1), 3, 10); return Math.min(RETAIL_MAX, Math.round(hi * 2 * 10) * 1000); }
+function retailUnit(gk){ const hi = clamp(gByK(gk).base * 1.07 * (G.b.cold ? 1.1 : 1) * shedMult(), 3, 10); return Math.min(RETAIL_MAX, Math.round(hi * 2 * 10) * 1000); }
 function retailWeek(){
   if (!G.retail) G.retail = [];
   G.retail = G.retail.filter(o => { if (o.year < G.year || o.due < G.week) { toast(`${o.name} 소매 주문 날짜가 지났어요`, 'bad'); return false; } return true; });
-  if (totalStock() < 2 || G.retail.length >= 2 || Math.random() > RETAIL_P) return;
+  if (totalStock() < 2 || G.retail.length >= (shedLv() >= 3 ? 3 : 2) || Math.random() > RETAIL_P + (shedLv() >= 2 ? .1 : 0)) return;
   const gs = GRADES.map(g => g.k).filter(k => stockAtLeast(k) >= 2);
   if (!gs.length) return;
   const t = pick(RETAIL_C), g = pick(gs);
@@ -5102,7 +5168,7 @@ function clickWorld(w){
   }
   for (const k of ['grandma', 'chief']) { const s = SPOT[k]; if ((s.x - w.x) ** 2 + (s.y - 40 - w.y) ** 2 < 70 * 70) best = {kind:k, x:s.x + 60, y:s.y + 30}; }
   for (const n of NPCS) if ((n.x - w.x) ** 2 + (n.y - 45 - w.y) ** 2 < 55 * 55) best = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20};
-  if (Math.abs(w.x - SPOT.shed.x) < 80 && w.y < SPOT.shed.y + 5 && w.y > SPOT.shed.y - 160) best = {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 40};
+  if ((Math.abs(w.x - SPOT.shed.x) < 80 * shedS() && w.y < SPOT.shed.y + 5 && w.y > SPOT.shed.y - 160 * shedS()) || (Math.abs(w.x - SPOT.shed.x + 70 * shedS() + 62) < 50 && w.y < SPOT.shed.y + 5 && w.y > SPOT.shed.y - 130)) best = {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 40};
   for (const m of MONS) if (m.hp > 0 && (m.x - w.x) ** 2 + (m.y - 40 - w.y) ** 2 < 90 * 90) { if (Math.hypot(m.x - P.x, m.y - P.y) < 170) { P.face = m.x < P.x ? -1 : 1; heroAttack(); P.tgt = null; } else { P.tgt = {x:m.x, y:m.y}; P.pendMon = m; } P.pend = null; return; }
   P.pendMon = null;
   if (best) { P.tgt = {x:best.x, y:best.y}; P.pend = best.kind === 'tree' && !taskFor(best.i) && !G.trees[best.i] ? null : best; }
