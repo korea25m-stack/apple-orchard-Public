@@ -4829,6 +4829,10 @@ function toWorld(p){ return {x:cam.x + (p.x - W / 2) / cam.z, y:cam.y + (p.y - H
 addEventListener('keydown', e => {
   if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
   if (keyWait) { e.preventDefault(); setKey(e.code); return; } // 키 설정 창에서 새 키 받는 중
+  if (swallow[e.code]) { e.preventDefault(); return; } // 창 닫을 때 누른 키는 뗄 때까지 무시
+  // 2026-10-13 창이 떠 있을 때 F·Space(일하기·공격 키)를 누르면 확인 버튼을 눌러 닫아요
+  if (UI.modal && !e.repeat && (e.code === 'KeyF' || e.code === 'Space' || bound('interact', e.code) || bound('attack', e.code)) && confirmModal()) { e.preventDefault(); swallow[e.code] = true; return; }
+  if (UI.modal && (e.code === 'Space' || bound('attack', e.code))) e.preventDefault();
   keys[e.code] = true;
   // 2026-10-13 키 설정(KB)에 따라: 공격·일하기(농막에선 자기)·꽹과리·가방·멈춤
   const acts = actsOf(e.code);
@@ -4838,7 +4842,17 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape' && UI.modal && !UI.modal.noX) UI.close();
   if (e.code.startsWith('Arrow')) e.preventDefault();
 });
-addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('keyup', e => { if (swallow[e.code]) { e.preventDefault(); delete swallow[e.code]; } keys[e.code] = false; });
+const swallow = {};
+// 확인 버튼 찾기: 농막 자기 → 알림·대화 '알겠어요/고마워요/좋아요' → 버튼이 하나뿐인 창
+function confirmModal(){
+  const o = UI.modal; if (!o || !o.el) return false;
+  const pick = ['#nmSleep', '#popOk', '#tOk', '#cOk'].map(s => o.el.querySelector(s)).find(b => b && !b.disabled);
+  const btns = o.footEl ? [...o.footEl.querySelectorAll('button')].filter(b => !b.disabled && b.offsetParent !== null) : [];
+  const b = pick || (btns.length === 1 && !o.body.querySelector('input,textarea,[data-a]') ? btns[0] : null);
+  if (!b) return false;
+  b.click(); return true;
+}
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; for (const k in MB) MB[k] = false; });
 addEventListener('pointerup', e => { if (e.pointerType === 'mouse') MB['Mouse' + e.button] = false; });
 
