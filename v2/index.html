@@ -221,8 +221,6 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
       <span class="t" id="clockT">06:00</span>
       <button class="sp" data-sp="0" title="멈춤">⏸</button>
       <button class="sp" data-sp="1" title="보통">▶</button>
-      <button class="sp" data-sp="2" title="2배">×2</button>
-      <button class="sp" data-sp="4" title="4배">×4</button>
       <button class="sp" id="sndBtn" data-ui="sound" title="소리">🔊</button>
     </div>
   </div>
@@ -3897,7 +3895,7 @@ function intro(){
 // ----- UI 버튼 연결 -----
 function bindUI(){
   document.querySelectorAll('.tb').forEach(b => b.onclick = () => openUI(b.dataset.ui));
-  document.querySelectorAll('.sp[data-sp]').forEach(b => b.onclick = () => { speed = +b.dataset.sp; updateHUD(true); });
+  document.querySelectorAll('.sp[data-sp]').forEach(b => b.onclick = () => { speed = Math.min(1, +b.dataset.sp); updateHUD(true); });
   $('#sndBtn').onclick = () => { if (UI.free()) uiSound(); }; sndBtn();
   $('#helpBtn').onclick = () => { const h = $('#help'); h.hidden = !h.hidden; store.set('haru-help', h.hidden ? '0' : '1'); };
   $('#help').hidden = store.get('haru-help', '1') !== '1'; renderHelp();
