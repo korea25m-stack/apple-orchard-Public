@@ -2622,7 +2622,8 @@ const LOOT = {
   neungi:{name:'능이버섯', ic:'🍄', lo:30000, hi:80000, desc:'"1능이 2표고 3송이"라는 말이 있을 만큼 향이 좋아요.'},
   songi:{name:'송이버섯', ic:'🍄', lo:40000, hi:100000, desc:'살아 있는 소나무 뿌리랑 함께 살아서 사람이 기르기가 아주 어려워요.'},
   sanghwang:{name:'상황버섯', ic:'🍄', lo:50000, hi:120000, desc:'뽕나무 같은 나무에서 몇 해에 걸쳐 아주 천천히 자라요.'},
-  sansam:{name:'산삼', ic:'🌿', lo:80000, hi:150000, desc:'깊은 산에서 오래오래 자란 귀한 삼이에요. 잎이 다섯 갈래로 갈라져요.'}
+  sansam:{name:'산삼', ic:'🌿', lo:80000, hi:150000, desc:'깊은 산에서 오래오래 자란 귀한 삼이에요. 잎이 다섯 갈래로 갈라져요.'},
+  tskin:{name:'호랑이 가죽', ic:'🐯', lo:600000, hi:900000, desc:'전설의 호랑이를 이기면 얻어요. 팔거나 든든철물에서 호랑이 가죽 장비를 만들 수 있어요.'}
 };
 const LOOT_KEYS = Object.keys(LOOT);
 // 구역별로 나오는 전리품 (숫자 = 잘 나오는 정도)
@@ -2772,7 +2773,7 @@ function drawHurtVignette(c){
 }
 const AOE_LV = 5;
 // 2026-10-13 공격력 - 방어도 상쇄: 산짐승마다 방어도가 있어요(단계 0/3/7/12 + 종류 보정)
-const KIND_DEF = {boar:2, badger:3, hare:-2, snake:-1, raccoon:0, deer:0};
+const KIND_DEF = {boar:2, badger:3, hare:-2, snake:-1, raccoon:0, deer:0, lynx:0, wdog:0, wolf:1, bear:4};
 function monDef(m){ return m.V.def != null ? m.V.def : Math.max(0, [0, 3, 7, 12][m.tier] + (KIND_DEF[m.kind] || 0)); }
 const TIGER_NEED = 27; // 호랑이는 도구 데미지가 27 이상이어야 상처가 나요(황금 꽹과리채 +5 정도)
 function weaponUp(){ const g = ensureGear(); return g.own[g.weapon] || 0; }
@@ -2782,7 +2783,7 @@ function hitMon(m, dmg, f, main){
   dmg = Math.max(Math.ceil(dmg * .1), dmg - monDef(m)); // 방어도만큼 깎여요(최소 10%)
   if (m.kind === 'tiger' && !tigerReady()) { dmg = 1; if (main && !(m.warnT > 0)) { m.warnT = 2.5; floats.push({x:m.x, y:m.y - 200, s:`끄떡없다! 도구 데미지 ${TIGER_NEED} 이상이 필요해요`, t:1.8, c:'#b2332b'}); } }
   m.hp -= dmg; m.hitT = 4; m.eng = true; m.flash = .12;
-  if (main) { sfx(crit ? 'crit' : 'hit'); setTimeout(() => sfx({boar:'oink', badger:'oink', tiger:'roar', snake:'hiss', hare:'squeak'}[m.kind] || 'bleat'), 60); FX.stop = Math.max(FX.stop, crit ? .1 : .055); FX.shake = Math.max(FX.shake, crit ? .55 : .28); }
+  if (main) { sfx(crit ? 'crit' : 'hit'); setTimeout(() => sfx({boar:'oink', badger:'oink', tiger:'roar', snake:'hiss', hare:'squeak', lynx:'growl', wdog:'growl', wolf:'growl', bear:'roar'}[m.kind] || 'bleat'), 60); FX.stop = Math.max(FX.stop, crit ? .1 : .055); FX.shake = Math.max(FX.shake, crit ? .55 : .28); }
   burst(m.x, m.y - 50 * m.V.sc, crit ? 14 : 8, crit ? ['#ffd23a', '#ff6b57', '#fffaf1'] : ['#fffaf1', '#ffe36a'], crit ? 520 : 380, .45);
   if (!['wind', 'charge', 'kick'].includes(m.st) && m.kind !== 'tiger') {
     m.stun = f.reach >= 1.25 ? .35 : .2;
@@ -2827,6 +2828,7 @@ let monId = 1, spawnT = 0;
 // 2026-10-13 필드 산짐승 1.5배: 최대 8→12마리, 생성 5초→3.3초. 이미 많은 종류는 덜 나와서 골고루 섞여요
 const MON_CAP = 12, MON_EVERY = 3.3;
 function pickKind(tab){
+  if (seasonOf(G.week) === 'winter' && tab.snake) { tab = {...tab}; delete tab.snake; } // 뱀은 겨울잠
   const n = {}; for (const m of MONS) if (!m.dead && !m.raid) n[m.kind] = (n[m.kind] || 0) + 1;
   const w = {}; for (const k in tab) w[k] = tab[k] / (1 + (n[k] || 0) * 1.5);
   return rollLoot(w);
@@ -3313,11 +3315,12 @@ function drawRoom(cv){
 }
 
 // ===== 2026-10-13 새 산짐승(산토끼·뱀·너구리·오소리) + 전설 보스 호랑이 =====
-const MON_IC = {boar:'🐗', deer:'🦌', hare:'🐇', snake:'🐍', raccoon:'🦝', badger:'🦡', tiger:'🐯'};
-const CHARGER = {boar:1, badger:1, tiger:1};      // 돌진하는 녀석들 (나머지는 가까이 와서 할퀴기·물기)
-const CHASE_SP = {boar:150, badger:140, tiger:185, deer:190, hare:220, raccoon:170, snake:115};
-const SPAWN_MIX = [{hare:3, snake:2, raccoon:3, deer:2, boar:1, badger:1}, {hare:2, snake:2, raccoon:2, deer:2, boar:2, badger:2},
-  {hare:1, snake:2, raccoon:2, deer:2, boar:3, badger:3}, {hare:1, snake:2, raccoon:1, deer:2, boar:3, badger:3}];
+const MON_IC = {boar:'🐗', deer:'🦌', hare:'🐇', snake:'🐍', raccoon:'🦝', badger:'🦡', tiger:'🐯', lynx:'🐆', wdog:'🐕', wolf:'🐺', bear:'🐻'};
+const CHARGER = {boar:1, badger:1, tiger:1, bear:1};      // 돌진하는 녀석들 (나머지는 가까이 와서 할퀴기·물기)
+const CHASE_SP = {boar:150, badger:140, tiger:185, deer:190, hare:220, raccoon:170, snake:115, lynx:215, wdog:200, wolf:205, bear:130};
+// 2026-10-13 구역마다 새 짐승: 얕은 숲 들개 · 깊은 숲 삵·들개 · 골짜기 늑대·삵 · 전설의 산 반달가슴곰·늑대
+const SPAWN_MIX = [{hare:3, snake:2, raccoon:3, deer:2, boar:1, badger:1, wdog:1}, {hare:2, snake:2, raccoon:2, deer:2, boar:2, badger:2, wdog:2, lynx:1},
+  {hare:1, snake:2, raccoon:2, deer:2, boar:3, badger:3, wolf:2, lynx:2, wdog:1}, {hare:1, snake:2, raccoon:1, deer:2, boar:3, badger:3, wolf:2, bear:2, lynx:1}];
 const NEW_BEAST = {
   hare:[{name:'산토끼', hp:40, dmg:.7, spd:1.1, sc:.75, xp:30}, {name:'날쌘 산토끼', hp:70, dmg:1, spd:1.2, sc:.8, xp:50},
     {name:'산토끼 대장', hp:110, dmg:1.4, spd:1.25, sc:.9, b:'#9a6a3a', bs:'#6a4422', xp:80}, {name:'전설의 달토끼', hp:170, dmg:1.9, spd:1.3, sc:1, b:'#f4f2ee', bs:'#c8c2d4', crown:1, xp:120}],
@@ -3328,6 +3331,16 @@ const NEW_BEAST = {
   badger:[{name:'오소리', hp:90, dmg:1.2, spd:1, sc:.85, xp:50}, {name:'힘센 오소리', hp:150, dmg:1.7, spd:1.05, sc:.95, xp:85},
     {name:'오소리 대장', hp:230, dmg:2.3, spd:1.1, sc:1.1, b:'#5a5450', bs:'#34302e', xp:125}, {name:'전설의 흑오소리', hp:330, dmg:3, spd:1.15, sc:1.25, b:'#3a3436', bs:'#1e1a1c', crown:1, xp:185}]
 };
+Object.assign(NEW_BEAST, {
+  lynx:[{name:'삵', hp:55, dmg:1.2, spd:1.15, sc:.8, xp:45}, {name:'날쌘 삵', hp:95, dmg:1.6, spd:1.2, sc:.86, xp:70},
+    {name:'삵 대장', hp:150, dmg:2.1, spd:1.25, sc:.95, b:'#b8864a', bs:'#86582a', xp:105}, {name:'전설의 눈삵', hp:230, dmg:2.8, spd:1.3, sc:1.05, b:'#f2eee6', bs:'#c8c0b0', crown:1, xp:160}],
+  wdog:[{name:'들개', hp:60, dmg:1.1, spd:1.1, sc:.9, xp:40}, {name:'사나운 들개', hp:100, dmg:1.5, spd:1.15, sc:.96, b:'#8a6a4a', bs:'#5a4028', xp:65},
+    {name:'들개 우두머리', hp:160, dmg:2, spd:1.2, sc:1.05, b:'#6a5040', bs:'#40302a', xp:100}, {name:'전설의 검은 들개', hp:240, dmg:2.6, spd:1.25, sc:1.15, b:'#3a3436', bs:'#1e1a1c', crown:1, xp:150}],
+  wolf:[{name:'회색 늑대', hp:90, dmg:1.5, spd:1.2, sc:1, xp:60}, {name:'늑대', hp:150, dmg:2, spd:1.25, sc:1.08, b:'#7a7e86', bs:'#4e525a', xp:95},
+    {name:'늑대 우두머리', hp:230, dmg:2.6, spd:1.3, sc:1.18, b:'#5a5e66', bs:'#363a40', xp:140}, {name:'전설의 은빛 늑대', hp:340, dmg:3.3, spd:1.35, sc:1.3, b:'#e4e8ee', bs:'#a8b0bc', crown:1, xp:200}],
+  bear:[{name:'어린 반달가슴곰', hp:180, dmg:2, spd:.9, sc:1.15, xp:110}, {name:'반달가슴곰', hp:280, dmg:2.6, spd:.95, sc:1.3, xp:160},
+    {name:'큰 반달가슴곰', hp:400, dmg:3.2, spd:1, sc:1.45, xp:230}, {name:'전설의 반달가슴곰 왕', hp:560, dmg:3.9, spd:1.05, sc:1.6, crown:1, xp:320}]
+});
 // 호랑이: 전설의 산 깊은 곳 '호랑이 굴'에만 1마리. 최고 장비 4종 + 도구·작업복 +6 이상이어야 상처를 낼 수 있어요
 const TIGER = {name:'전설의 호랑이', hp:1600, def:15, dmg:4.2, spd:1.25, sc:1.7, xp:500, boss:1};
 NEW_BEAST.tiger = [TIGER, TIGER, TIGER, TIGER];
@@ -3347,6 +3360,7 @@ function killTiger(m){
   let msg;
   if (!('tclaw' in G.gear.own)) { G.gear.own.tclaw = 0; msg = '🐯 단 하나뿐인 <호랑이 발톱 갈퀴>를 얻었어요! 장비 창에서 낄 수 있어요.'; }
   else { G.gear.stones = (G.gear.stones || 0) + 3; msg = '💎 강화석 3개를 얻었어요!'; }
+  addLoot('tskin', 1); msg += ' 🐯 호랑이 가죽도 1장 얻었어요(팔거나 가죽 장비를 만들 수 있어요).';
   floats.push({x:m.x, y:m.y - 220, s:'🏆 전설의 호랑이를 이겼다!', t:3, c:'#ff7a1a', sz:44, pop:.3});
   setTimeout(() => popup('🐯', '전설의 호랑이를 이겼어요!', `${HN()}의 이름이 온 산에 퍼졌어요. ${msg} 호랑이는 7일 뒤 다시 굴로 돌아와요.`), 900);
 }
@@ -3487,6 +3501,47 @@ function drawNewBeast(c, kind, t, V){
     c.beginPath(); c.arc(50, -18, 2.4, 0, 7); c.fillStyle = INK; c.fill();
     eye(37, -23, 2.2);
     if (V.crown) crown(34, -36);
+  } else if (kind === 'lynx') { // 삵: 작은 호랑이 같은 들고양이, 점무늬 + 귀 끝 털
+    const B = b || '#d8a060', S = bs || '#a8743a';
+    shadow(c, 0, 0, 30, 7);
+    c.beginPath(); c.moveTo(-24, -26); c.quadraticCurveTo(-40, -30, -42, -44 + Math.sin(t * 4) * 4); c.lineWidth = 9; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 5.5; c.strokeStyle = B; c.stroke();
+    legs([[-16, leg], [-7, -leg], [10, leg], [18, -leg]], 6, 16, B, S);
+    cel(c, cc => ell(cc, 0, -26, 25, 13), B, S, 4, 4, 2.6);
+    for (const [x, y] of [[-12, -30], [-3, -34], [6, -29], [-8, -22], [3, -22], [12, -33]]) { c.beginPath(); ell(c, x, y, 2.4, 2); c.fillStyle = '#5a3a1e'; c.fill(); }
+    for (const ex of [18, 32]) { cel(c, cc => { cc.moveTo(ex - 5, -42); cc.lineTo(ex, -56); cc.lineTo(ex + 5, -42); cc.closePath(); }, B, S, 1, 1, 2); line(c, [ex, -56, ex, -61], 2, INK); }
+    cel(c, cc => ell(cc, 25, -36, 13, 11), B, S, 2, 2, 2.6);
+    cel(c, cc => ell(cc, 31, -31, 7, 5), '#fff8ec', '#e0d4c0', 1, 1, 1.8);
+    line(c, [18, -44, 20, -38], 2, INK); line(c, [24, -45, 24, -39], 2, INK);
+    c.beginPath(); ell(c, 29, -37, 3, 3); c.fillStyle = '#c8e05a'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = INK; c.stroke(); c.beginPath(); ell(c, 29.5, -37, 1, 2.4); c.fillStyle = INK; c.fill();
+    c.beginPath(); c.arc(37, -32, 1.8, 0, 7); c.fillStyle = '#e86a7a'; c.fill();
+    if (V.crown) crown(25, -58);
+  } else if (kind === 'wdog' || kind === 'wolf') { // 들개·늑대
+    const wolf = kind === 'wolf', B = b || (wolf ? '#9a9ea6' : '#b08a5a'), S = bs || (wolf ? '#6a6e76' : '#7a5a32');
+    shadow(c, 0, 0, wolf ? 40 : 34, 8);
+    c.beginPath(); c.moveTo(-28, -34); c.quadraticCurveTo(-44, -36, -48, wolf ? -22 : -44 + Math.sin(t * 8) * 6); c.lineWidth = wolf ? 12 : 8; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = wolf ? 8 : 5; c.strokeStyle = B; c.stroke();
+    legs([[-18, leg], [-8, -leg], [12, leg], [22, -leg]], 7, 22, B, S);
+    cel(c, cc => ell(cc, 0, -34, 30, 14), B, S, 5, 4, 2.6);
+    if (wolf) cel(c, cc => { cc.moveTo(10, -44); cc.quadraticCurveTo(24, -54, 30, -36); cc.quadraticCurveTo(20, -26, 10, -30); cc.closePath(); }, '#e8eaee', '#c4c8d0', 1, 1, 2);
+    for (const ex of [26, 38]) cel(c, cc => { cc.moveTo(ex - 5, -54); cc.lineTo(ex, -68); cc.lineTo(ex + 5, -54); cc.closePath(); }, B, S, 1, 1, 2);
+    cel(c, cc => ell(cc, 32, -48, 13, 11), B, S, 2, 2, 2.6);
+    cel(c, cc => { cc.moveTo(38, -50); cc.lineTo(54, -46); cc.quadraticCurveTo(56, -40, 50, -38); cc.lineTo(38, -40); cc.closePath(); }, wolf ? '#e8eaee' : B, S, 1, 1, 2.4);
+    c.beginPath(); c.arc(54, -45, 2.6, 0, 7); c.fillStyle = INK; c.fill();
+    if (wolf) { c.beginPath(); ell(c, 35, -51, 2.8, 2.2); c.fillStyle = '#ffd23a'; c.fill(); c.lineWidth = 1.4; c.strokeStyle = INK; c.stroke(); c.beginPath(); ell(c, 35.5, -51, 1, 1.8); c.fillStyle = INK; c.fill(); line(c, [30, -55, 39, -53], 2.2, INK); }
+    else eye(35, -51, 2.4);
+    if (Math.sin(t * 7) > .3) cel(c, cc => { cc.moveTo(44, -39); cc.lineTo(48, -39); cc.lineTo(46, -32); cc.closePath(); }, '#e86a7a', '#b84a5a', 0, 1, 1.4);
+    if (V.crown) crown(32, -62);
+  } else if (kind === 'bear') { // 반달가슴곰: 까만 몸 + 가슴의 하얀 반달
+    const B = '#2a2624', S = '#141210';
+    shadow(c, 0, 0, 50, 11, .3);
+    legs([[-26, leg], [-12, -leg], [16, leg], [30, -leg]], 13, 22, B, S);
+    cel(c, cc => ell(cc, 0, -40, 42, 26), B, S, 6, 6, 3);
+    cel(c, cc => ell(cc, 34, -58, 22, 20), B, S, 3, 3, 3);
+    for (const ex of [22, 44]) { cel(c, cc => ell(cc, ex, -76, 7, 7), B, S, 1, 1, 2.4); c.beginPath(); ell(c, ex, -75, 3.5, 3.5); c.fillStyle = '#5a4a40'; c.fill(); }
+    c.beginPath(); c.moveTo(18, -40); c.quadraticCurveTo(34, -24, 50, -40); c.quadraticCurveTo(34, -32, 18, -40); c.closePath(); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke();
+    cel(c, cc => ell(cc, 46, -52, 11, 8), '#8a6a50', '#5a4030', 1, 1, 2.2);
+    c.beginPath(); ell(c, 53, -54, 4, 3); c.fillStyle = INK; c.fill();
+    c.beginPath(); c.arc(36, -62, 2.6, 0, 7); c.fillStyle = '#fff'; c.fill(); c.beginPath(); c.arc(36.5, -62, 1.5, 0, 7); c.fillStyle = INK; c.fill();
+    if (V.crown) crown(34, -86);
   } else if (kind === 'tiger') {
     const B = '#f2922c', S = '#c4661a';
     shadow(c, 0, 0, 62, 13, .3);
@@ -4229,17 +4284,20 @@ const GEAR = {
     {id:'cloth', name:'면 작업복', base:0, rep:0, price:0, desc:'가볍고 편한 기본 작업복.'},
     {id:'denim', name:'두꺼운 멜빵 작업복', base:3, rep:5, price:250000, desc:'질긴 천이라 덜 아파요.'},
     {id:'leather', name:'가죽 조끼', base:6, rep:20, price:800000, desc:'멧돼지 박치기도 버텨요.'},
-    {id:'guard', name:'든든 보호복', base:10, rep:45, price:2000000, desc:'든든철물 특제 보호복.'}]},
+    {id:'guard', name:'든든 보호복', base:10, rep:45, price:2000000, desc:'든든철물 특제 보호복.'},
+    {id:'tarmor', name:'호랑이 가죽 갑옷', base:16, rep:60, price:500000, craft:{tskin:2}, desc:'호랑이 가죽 2장으로 만든 갑옷. 가장 튼튼해요.'}]},
   boots:{name:'신발', ic:'👢', stat:'spd', unit:'% 빠르게', per:2, items:[
     {id:'rubber', name:'고무신', base:0, rep:0, price:0, desc:'할아버지가 물려주신 고무신.'},
     {id:'rainboot', name:'장화', base:6, rep:5, price:150000, desc:'진흙길도 척척.'},
     {id:'sneaker', name:'튼튼 운동화', base:12, rep:20, price:600000, desc:'과수원을 뛰어다니기 좋아요.'},
-    {id:'wind', name:'바람 운동화', base:18, rep:40, price:1500000, desc:'바람처럼 빨라져요.'}]},
+    {id:'wind', name:'바람 운동화', base:18, rep:40, price:1500000, desc:'바람처럼 빨라져요.'},
+    {id:'tboots', name:'호랑이 가죽 장화', base:22, rep:60, price:300000, craft:{tskin:1}, desc:'호랑이 가죽 1장으로 만든 장화. 호랑이처럼 날쌔요.'}]},
   hat:{name:'모자', ic:'👒', stat:'hp', unit:'체력', per:4, items:[
     {id:'straw', name:'밀짚모자', base:0, rep:0, price:0, desc:'햇볕을 가려 주는 기본 모자.'},
     {id:'wide', name:'챙 넓은 밀짚모자', base:10, rep:8, price:200000, desc:'오래 일해도 덜 지쳐요.'},
     {id:'helmet', name:'안전모', base:20, rep:30, price:700000, desc:'머리를 단단히 지켜요.'},
-    {id:'apple', name:'사과 장식 모자', base:30, rep:60, price:1800000, desc:'사과골 명예 농부만 쓰는 모자.'}]}
+    {id:'apple', name:'사과 장식 모자', base:30, rep:60, price:1800000, desc:'사과골 명예 농부만 쓰는 모자.'},
+    {id:'that', name:'호랑이 가죽 모자', base:40, rep:60, price:300000, craft:{tskin:1}, desc:'호랑이 가죽 1장으로 만든 털모자. 체력이 많이 늘어요.'}]}
 };
 const SLOTS = ['weapon', 'armor', 'boots', 'hat'];
 const MAX_UP = 10; // 2026-10-12: 모든 장비 +10까지
@@ -4309,7 +4367,9 @@ function haruLook(){
   if (g.armor === 'denim') { L.o2 = L.pants = '#2c5596'; }
   if (g.armor === 'leather') { L.outfit = 'vest'; L.o2 = '#8a5a3a'; L.top = '#fffaf0'; L.pants = '#3f5f8a'; }
   if (g.armor === 'guard') { L.outfit = 'jacket'; L.o2 = '#f08a2a'; L.top = '#fff4c8'; L.pants = '#4a4f5a'; }
-  L.shoe = {rubber:'#8a5232', rainboot:'#f2c230', sneaker:'#ffffff', wind:'#4ac8e8'}[g.boots];
+  if (g.armor === 'tarmor') { L.outfit = 'jacket'; L.o2 = '#f2922c'; L.top = '#fff8ec'; L.pants = '#3a2a20'; L.tstripe = 1; }
+  L.shoe = {rubber:'#8a5232', rainboot:'#f2c230', sneaker:'#ffffff', wind:'#4ac8e8', tboots:'#f2922c'}[g.boots];
+  if (g.hat === 'that') { L.hat = 'cap'; L.capCol = '#f2922c'; L.tstripe = 1; }
   if (g.hat === 'helmet') { L.hat = 'cap'; L.capCol = '#ffd23a'; }
   if (g.hat === 'apple') { L.hat = 'straw'; L.appleHat = 1; }
   if (g.hat === 'wide') L.wide = 1;
@@ -4347,6 +4407,7 @@ function uiGear(){
           else if (on) btn = lv >= MAX_UP ? `<button class="btn" disabled>최고 강화</button>` : `<button class="btn pri" data-up="${slot}|${it.id}" ${G.rep < upRep(it, lv) || G.money < upCost(it, lv) ? 'disabled' : ''}>강화 ${won(upCost(it, lv))}${G.rep < upRep(it, lv) ? ` · ⭐${upRep(it, lv)}` : ''}</button>`;
           else if (own) btn = `<button class="btn" data-eq="${slot}|${it.id}">끼기</button>`;
           else if (it.unique) btn = `<button class="btn" disabled>🐯 호랑이를 이기면 얻어요</button>`;
+          else if (it.craft) { const need = it.craft.tskin, have = G.bag.tskin || 0; btn = `<button class="btn" data-craft="${slot}|${it.id}" ${have < need || G.money < it.price || lock ? 'disabled' : ''}>🐯 가죽 ${need}장(${have}) + ${won(it.price)}로 만들기</button>`; }
           else btn = `<button class="btn" data-buy="${slot}|${it.id}" ${lock || G.money < it.price ? 'disabled' : ''}>${lock ? `⭐ 평판 ${it.rep}` : `사기 ${won(it.price)}`}</button>`;
           return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}">${gearImg(it.id, 56)}<div class="gtx"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 전방 180° 베기' : '+5부터 전방 베기'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span>${own ? gearSellBtns(slot, it) : ''}</div>${btn}</div>`;
         }).join('')}</div>`;
@@ -4357,6 +4418,9 @@ function uiGear(){
       <div class="ggrid">${SLOTS.map(card).join('')}</div>
       <div class="gnote" style="margin-top:12px"><b>🧺 가방</b> ${LOOT_KEYS.filter(k => G.bag[k] > 0).map(k => `${LOOT[k].ic} ${LOOT[k].name} ×${G.bag[k]}`).join(' · ') || '비어 있어요. 사냥터에서 버섯·산삼을 찾아봐요!'}${bagCount() ? ' → 금비상회 황금비 사장님한테 팔아요.' : ''}</div>`;
     bindSellBtns(o.body, o);
+    o.body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.craft.split('|'), it = gearItem(s, id), need = it.craft.tskin;
+      if ((G.bag.tskin || 0) < need || G.money < it.price || G.rep < it.rep) return; G.bag.tskin -= need; if (!G.bag.tskin) delete G.bag.tskin; G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id;
+      sfx('fanfare'); toast(`🐯 ${jo(it.name, '을', '를')} 만들었어요!`, 'gold'); updateHUD(true); o.render(o); });
     o.body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.buy.split('|'), it = gearItem(s, id); if (G.money < it.price || G.rep < it.rep) return; G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id; toast(`🎒 ${jo(it.name, '을', '를')} 샀어요!`, 'good'); updateHUD(true); o.render(o); });
     o.body.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.eq.split('|'); G.gear[s] = id; o.render(o); });
     o.body.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.st.split('|'), it = gearItem(s, id); if (!(G.gear.stones > 0) || G.gear.own[id] >= MAX_UP) return; G.gear.stones--; G.gear.own[id]++; toast(`💎 ${it.name} +${G.gear.own[id]} 강화!`, 'good'); o.render(o); });
@@ -4462,6 +4526,11 @@ function drawGearIcon(c, id){
       for (const y of [62, 72, 82]) { dot(44, y, 2.6, '#e6c060'); dot(56, y, 2.6, '#e6c060'); }
       cel(c, cc => rr(cc, 30, 56, 12, 9, 2), '#8a5230', '#6e3c1e', 1, 1, 2);
       break;
+    case 'tarmor':
+      cel(c, P([30, 14, 42, 10, 50, 18, 58, 10, 70, 14, 92, 36, 82, 50, 74, 44, 74, 92, 26, 92, 26, 44, 18, 50, 8, 36]), '#f2922c', '#c4661a', 5, 4, lw);
+      for (const [x, y] of [[34, 34], [62, 30], [40, 58], [60, 62], [36, 80], [64, 82]]) { c.beginPath(); c.moveTo(x - 6, y - 4); c.quadraticCurveTo(x + 2, y, x - 3, y + 6); c.lineWidth = 4; c.strokeStyle = I; c.lineCap = 'round'; c.stroke(); }
+      cel(c, cc => rr(cc, 26, 66, 48, 6, 1), '#fff8ec', '#e0d4c0', 0, 1, 2);
+      break;
     case 'guard':
       cel(c, P([30, 14, 42, 10, 50, 18, 58, 10, 70, 14, 92, 36, 82, 50, 74, 44, 74, 92, 26, 92, 26, 44, 18, 50, 8, 36]), '#f08a2a', '#c8641a', 5, 4, lw);
       for (const y of [56, 74]) { cel(c, cc => rr(cc, 26, y, 48, 7, 1), '#e8f0f4', '#b8c8d0', 0, 1, 2); }
@@ -4487,6 +4556,13 @@ function drawGearIcon(c, id){
       cel(c, cc => rr(cc, 10, 72, 82, 12, 5), '#ffffff', '#d4dade', 1, 2, lw);
       for (const x of [42, 50, 58]) line(c, [x - 4, 46 + (x - 42) * .5, x + 4, 52 + (x - 42) * .5], 3, '#fff');
       c.beginPath(); c.moveTo(16, 60); c.quadraticCurveTo(40, 52, 64, 66); c.lineWidth = 3; c.strokeStyle = '#fff'; c.stroke();
+      break;
+    case 'tboots':
+      cel(c, cc => { cc.moveTo(22, 80); cc.lineTo(24, 22); cc.lineTo(50, 22); cc.lineTo(52, 58); cc.quadraticCurveTo(84, 60, 88, 74); cc.lineTo(88, 82); cc.closePath(); }, '#f2922c', '#c4661a', 4, 4, lw);
+      for (const y of [32, 46]) line(c, [26, y, 40, y + 4], 4, I);
+      line(c, [60, 62, 66, 72], 4, I);
+      cel(c, cc => rr(cc, 20, 78, 70, 10, 4), '#fff8ec', '#e0d4c0', 1, 2, lw);
+      cel(c, cc => rr(cc, 20, 16, 34, 10, 4), '#fff8ec', '#e0d4c0', 1, 1, 2.4);
       break;
     case 'wind':
       for (const y of [48, 60, 72]) line(c, [2, y, 14, y], 3, '#7cc7f2');
@@ -4515,6 +4591,12 @@ function drawGearIcon(c, id){
       cel(c, cc => { cc.moveTo(18, 66); cc.quadraticCurveTo(18, 22, 50, 22); cc.quadraticCurveTo(82, 22, 82, 66); cc.closePath(); }, '#ffd23a', '#e0a818', 6, 4, lw);
       cel(c, cc => rr(cc, 44, 20, 12, 46, 5), '#ffe066', '#e8b820', 2, 1, 2.5);
       shine([28, 50, 30, 36], 3);
+      break;
+    case 'that':
+      cel(c, cc => { cc.moveTo(16, 74); cc.quadraticCurveTo(14, 26, 50, 24); cc.quadraticCurveTo(86, 26, 84, 74); cc.closePath(); }, '#f2922c', '#c4661a', 5, 4, lw);
+      for (const x of [34, 50, 66]) { c.beginPath(); c.moveTo(x - 4, 30); c.quadraticCurveTo(x + 4, 42, x - 2, 54); c.lineWidth = 4; c.strokeStyle = I; c.lineCap = 'round'; c.stroke(); }
+      for (const ex of [24, 76]) { cel(c, cc => ell(cc, ex, 26, 9, 9), '#f2922c', '#c4661a', 1, 1, lw); c.beginPath(); ell(c, ex, 27, 4, 4); c.fillStyle = '#fff8ec'; c.fill(); }
+      cel(c, cc => rr(cc, 12, 66, 76, 14, 6), '#fff8ec', '#e0d4c0', 1, 2, lw);
       break;
     case 'apple':
       cel(c, cc => ell(cc, 50, 70, 40, 11), '#4fae5a', '#357e3e', 3, 3, lw);
@@ -4634,6 +4716,7 @@ function sfx(k){
     // 2026-10-13 회전 베기: 길게 휘몰아치는 바람 + 묵직한 쿵
     case 'whirl': noiseF(t, .38, .45, o, 'bandpass', 400, 3200, 3); tone('sawtooth', 220, t, .3, .12, o, 660); break;
     case 'quake': tone('sine', 90, t, .42, .8, o, 32); noiseF(t, .3, .5, o, 'lowpass', 900, 80); break;
+    case 'growl': tone('sawtooth', 140, t, .28, .18, o, 95); noiseF(t, .25, .2, o, 'lowpass', 600, 200); break;
     case 'swing': noiseF(t, .18, .32, o, 'bandpass', 600, 2600, 2.5); break;
     case 'hit': tone('sine', 150, t, .16, .55, o, 45); noiseF(t, .06, .45, o, 'lowpass', 2400, 300); tone('square', 520, t, .035, .12, o, 200); break;
     case 'crit': tone('sine', 120, t, .26, .7, o, 35); noiseF(t, .1, .55, o, 'lowpass', 3200, 200); tone('triangle', 1760, t + .02, .22, .22, o, 1320); tone('triangle', 2640, t + .05, .18, .12, o); break;
