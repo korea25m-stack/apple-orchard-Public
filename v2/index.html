@@ -1840,6 +1840,30 @@ function drawFrostFan(c, x, y, t){
   cel(c, cc => ell(cc, 0, 0, 9, 9), '#e8423a', '#a82a22', 1, 1, 2.2);
   c.restore();
 }
+// 큰 농업용 방제 드론 + 퍼져 나가는 약 물결
+function drawSprayDrone(c, s, T){
+  for (const r of s.rings) {
+    c.beginPath(); ell(c, s.cx, s.cy, s.rx * r, s.ry * r); c.lineWidth = 10 * (1 - r) + 2;
+    c.strokeStyle = `rgba(150,215,255,${.55 * (1 - r)})`; c.stroke();
+    c.beginPath(); ell(c, s.cx, s.cy, s.rx * r, s.ry * r); c.fillStyle = `rgba(200,236,255,${.12 * (1 - r)})`; c.fill();
+  }
+  shadow(c, s.x, s.y, 70, 18, .2);
+  const hy = s.y - s.h;
+  // 뿌리는 줄기
+  if (s.t > .16 && s.t < .86) for (let k = -3; k <= 3; k++) { const g = c.createLinearGradient(0, hy + 20, 0, s.y); g.addColorStop(0, 'rgba(190,232,255,.55)'); g.addColorStop(1, 'rgba(190,232,255,0)'); c.beginPath(); c.moveTo(s.x + k * 16, hy + 22); c.lineTo(s.x + k * 40 - 14, s.y); c.lineTo(s.x + k * 40 + 14, s.y); c.closePath(); c.fillStyle = g; c.fill(); }
+  c.save(); c.translate(s.x, hy);
+  const arms = [[-70, -26], [70, -26], [-86, 6], [86, 6], [-56, 32], [56, 32]];
+  for (const [dx, dy] of arms) { line(c, [0, 0, dx, dy], 7, INK); line(c, [0, 0, dx, dy], 4, '#4a5560'); }
+  for (const [dx, dy] of arms) { c.save(); c.translate(dx, dy - 6); c.beginPath(); ell(c, 0, 0, 32, 6); c.fillStyle = 'rgba(225,238,248,.7)'; c.fill(); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke(); line(c, [-28 * Math.cos(T * 40), 0, 28 * Math.cos(T * 40), 0], 3, INK); c.restore(); }
+  // 약통·몸통·분사 막대
+  line(c, [-70, 26, 70, 26], 5, INK); line(c, [-70, 26, 70, 26], 2.5, '#c8d0d8');
+  for (let k = -3; k <= 3; k++) { c.beginPath(); c.arc(k * 20, 28, 3, 0, 7); c.fillStyle = '#5aa8e6'; c.fill(); }
+  cel(c, cc => rr(cc, -26, -4, 52, 30, 10), '#e8f4ff', '#a8c8e0', 3, 3, 2.6);
+  cel(c, cc => rr(cc, -34, -22, 68, 26, 12), '#ff6b3a', '#c8461e', 4, 4, 2.8);
+  hl(c, -16, -16, 12, 4, .5);
+  c.beginPath(); c.arc(0, -10, 5, 0, 7); c.fillStyle = Math.sin(T * 8) > 0 ? '#5affa0' : '#2a8a50'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = INK; c.stroke();
+  c.restore();
+}
 function drawDrone(c, x, y, t){
   const hy = y - 110 + Math.sin(t * 2) * 8;
   shadow(c, x, y, 26, 7, .18);
@@ -2042,7 +2066,7 @@ function render(ctx, dt, T){
   if (workerS.on) add(workerS.y, () => drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act));
   for (const c of critters) if (vis(c.x, c.y)) add(c.y, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
   if (raidAnim) add(raidAnim.y, () => drawAnimal(ctx, raidAnim.kind, raidAnim.x, raidAnim.y, T, raidAnim.flip));
-  if (ssAnim) add(ssAnim.y, () => drawSS(ctx, ssAnim.x, ssAnim.y, ssAnim.a));
+  if (ssAnim) add(1e9, () => drawSprayDrone(ctx, ssAnim, T));
   else add(P.y, () => drawHero(ctx));
   E.sort((a, b) => a[0] - b[0]);
   for (const e of E) e[1]();
@@ -3251,32 +3275,35 @@ function chooseSprayMode(k){
     $('#aut').onclick = () => { UI.close(); autoSpray(k); };
   }});
 }
+// 자동 방제 (2026-10-13): 농업용 드론이 과수원 한가운데 떠서 약을 넓게 뿌려요
 function autoSpray(k){
   if (G.money < sprayCost()) return;
   UI.busy = true;
-  const path = [];
-  for (let r = 0; r <= G.rows; r++) {
-    const y = r === 0 ? OY - 45 : OY + (r - 1) * ROW_H + STRIP + ALLEY / 2;
-    const a = [OX - 70, y], b = [OX + ORCH_W + 70, y];
-    if (r % 2) path.push(b, a); else path.push(a, b);
-  }
-  ssAnim = {x:path[0][0], y:path[0][1], a:0, t:0, path, k};
+  const cx = OX + ORCH_W / 2, cy = OY + G.rows * ROW_H / 2;
+  ssAnim = {x:SPOT.shed.x, y:SPOT.shed.y + 30, sx:SPOT.shed.x, sy:SPOT.shed.y + 30, cx, cy, rx:ORCH_W / 2 + 140, ry:G.rows * ROW_H / 2 + 110, h:0, t:0, rings:[], ringT:0, k};
+  sfx('spray');
 }
 function updateSS(dt){
   if (!ssAnim) return;
-  const s = ssAnim; s.t += dt / 3;
-  const segs = s.path.length - 1, f = clamp(s.t, 0, .9999) * segs, i = Math.floor(f), u = f - i;
-  const [ax, ay] = s.path[i], [bx, by] = s.path[i + 1];
-  s.x = ax + (bx - ax) * u; s.y = ay + (by - ay) * u; s.a = Math.atan2(by - ay, bx - ax) + Math.PI;
-  for (let k = 0; k < 3; k++) mist.push({x:s.x + Math.cos(s.a) * 40 + rnd(-30, 30), y:s.y + rnd(-60, 40), r:rnd(14, 30), a:.5});
-  cam.x += (s.x - cam.x) * .1; cam.y += (s.y - cam.y) * .1;
+  const s = ssAnim; s.t += dt / 5;
+  const ease = u => u * u * (3 - 2 * u);
+  if (s.t < .16) { const u = ease(s.t / .16); s.x = s.sx + (s.cx - s.sx) * u; s.y = s.sy + (s.cy - s.sy) * u; s.h = 40 + u * 160; }
+  else if (s.t < .86) {
+    s.x = s.cx + Math.sin(s.t * 20) * 6; s.y = s.cy; s.h = 200 + Math.sin(s.t * 14) * 8;
+    // 약 안개: 드론 아래에서 사방으로 퍼져요
+    for (let q = 0; q < 6; q++) { const a = rnd(0, 6.283), sp = rnd(.45, 1); mist.push({x:s.x + rnd(-20, 20), y:s.y + rnd(-10, 10), r:rnd(18, 34), a:.42, vx:Math.cos(a) * s.rx * 1.25 * sp, vy:Math.sin(a) * s.ry * 1.25 * sp}); }
+    s.ringT -= dt; if (s.ringT <= 0) { s.ringT = .45; s.rings.push(0); sfx('spray'); }
+  } else { const u = ease((s.t - .86) / .14); s.x = s.cx + (s.sx - s.cx) * u; s.y = s.cy + (s.sy - s.cy) * u; s.h = 200 - u * 160; }
+  for (let i = 0; i < s.rings.length; i++) s.rings[i] += dt / 1.6;
+  s.rings = s.rings.filter(r => r < 1);
+  if (mist.length > 700) mist.splice(0, mist.length - 700);
+  cam.x += (s.x - cam.x) * .08; cam.y += (s.y - 120 - cam.y) * .08;
   if (s.t >= 1) {
     const msg = applySpray(s.k, 'B');
     ssAnim = null; UI.busy = false; toast('💧 ' + msg, 'good');
     UI.next();
   }
 }
-
 function uiWorker(){
   UI.open({ic:'👷', title:'인부 부르기', w:820, render(o){
     const tasks = activeTasks().filter(a => a.n);
@@ -4204,7 +4231,7 @@ function update(dt){
   for (const f of flies) { f.t += dt; f.x += Math.cos(f.t * .7) * 40 * dt + 10 * dt; f.y += Math.sin(f.t * 1.3) * 30 * dt; if (f.x > WORLD_W) f.x = 0; }
   for (const f of floats) { f.t -= dt; f.y -= dt * 40; }
   for (let i = floats.length - 1; i >= 0; i--) if (floats[i].t <= 0) floats.splice(i, 1);
-  for (const m2 of mist) { m2.a -= dt * .35; m2.r += dt * 18; }
+  for (const m2 of mist) { m2.a -= dt * .35; m2.r += dt * 18; if (m2.vx) { m2.x += m2.vx * dt; m2.y += m2.vy * dt; m2.vx *= 1 - dt * .9; m2.vy *= 1 - dt * .9; } }
   for (let i = mist.length - 1; i >= 0; i--) if (mist[i].a <= 0) mist.splice(i, 1);
   // 카메라
   if (!ssAnim) { cam.x += (P.x + cam.ox - cam.x) * Math.min(1, dt * 6); cam.y += (P.y - 60 + cam.oy - cam.y) * Math.min(1, dt * 6); }
