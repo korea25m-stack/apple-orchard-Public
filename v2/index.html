@@ -3499,7 +3499,7 @@ function uiSave(){
     $('#svFile').onclick = () => {
       try {
         const blob = new Blob([encodeSave()], {type:'text/plain'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `우주의사과과수원_${G.year}년차_${G.week}주.txt`;
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `과수원키우기_${G.year}년차_${G.week}주.txt`;
         document.body.appendChild(a); a.click(); a.remove();
         msg('파일을 내려받았어요. 안 받아지면 코드 복사를 써 주세요.');
       } catch (e) { msg('파일 저장이 막혔어요. 코드 복사를 써 주세요.', true); }
@@ -3743,7 +3743,7 @@ function uiInv(){
 // ===== 시작할 때 주인공 고르기 + 이름 정하기 =====
 function uiHeroPick(done){
   let sel = (G.hero && G.hero.look) || 'm1', name = (G.hero && G.hero.name) || '';
-  UI.open({ic:'🧑‍🌾', title:'누구랑 과수원을 가꿀까요?', w:1500, noX:true, render(o){
+  UI.open({ic:'🧑‍🌾', title:'🍎 과수원키우기 · 누구랑 과수원을 가꿀까요?', w:1500, noX:true, render(o){
     const card = h => `<button class="hpk ${h.id === sel ? 'on' : ''}" data-h="${h.id}"><canvas width="120" height="200"></canvas><span>${h.label}</span></button>`;
     o.body.innerHTML = `<div class="hpg"><div class="hpc"><h3>🙋‍♂️ 남자</h3><div class="hpr">${HEROES.filter(h => !h.fem).map(card).join('')}</div></div>
       <div class="hpc"><h3>🙋‍♀️ 여자</h3><div class="hpr">${HEROES.filter(h => h.fem).map(card).join('')}</div></div></div>
