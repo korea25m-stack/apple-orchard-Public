@@ -226,6 +226,10 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
 #joy i{position:absolute;left:95px;top:95px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.85);border:4px solid var(--ink)}
 #fBtn{position:absolute;right:70px;bottom:170px;width:220px;height:220px;border-radius:50%;background:var(--sun);border:4px solid var(--ink);z-index:20;font-family:var(--display);font-size:80px;box-shadow:0 8px 0 var(--ink)}
 #fBtn small{display:block;font-size:26px;margin-top:-6px}
+#rideBtn{position:absolute;right:236px;bottom:22px;width:132px;height:100px;z-index:21;font-size:44px;line-height:1;background:#ffe2b8;border:4px solid var(--ink);border-radius:22px;box-shadow:0 6px 0 var(--ink);cursor:pointer}
+#rideBtn small{display:block;font-size:19px;font-family:var(--display);margin-top:4px}
+#rideBtn.on{background:#ff9a3a} #rideBtn:disabled{opacity:.55;filter:grayscale(.6);cursor:default}
+.mountSlot{grid-column:1/-1}.mountRow{display:flex;align-items:center;gap:16px}.mountRow p{margin:4px 0 0;font-size:16px;color:var(--muted)}.mountRow>div{flex:1}
 #atkBtn,#gongBtn{position:absolute;width:150px;height:150px;border-radius:50%;background:#ff8a6a;border:4px solid var(--ink);z-index:20;font-size:58px;box-shadow:0 6px 0 var(--ink);line-height:1}
 #atkBtn{right:310px;bottom:150px} #gongBtn{right:300px;bottom:330px;width:120px;height:120px;font-size:44px;background:#ffd25e}
 #atkBtn small,#gongBtn small{display:block;font-size:22px;font-family:var(--display)}
@@ -326,6 +330,8 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
     <button class="tb" data-ui="save"><b>💾</b>저장</button>
     <button class="tb" data-ui="rank"><b>🏆</b>랭킹</button>
   </div>
+
+  <button id="rideBtn" style="display:none">🐯<small>타기</small></button>
 
   <div id="touchUI">
     <div id="joy"><i></i></div>
@@ -3655,7 +3661,12 @@ function drawSpinGlow(c, sk, back){
   }
   c.restore();
 }
+// 2026-10-14 호랑이 탈것: 타고 있으면 호랑이를 먼저 그리고 우주는 그 위(RIDE_UP)에 앉혀요
 function drawHero(c){
+  if (!riding()) return drawHeroBody(c);
+  ensureHero(); drawRideTiger(c); c.save(); c.translate(0, -RIDE_UP); drawHeroBody(c); c.restore();
+}
+function drawHeroBody(c){
   ensureHero();
   if (P.inv > 0 && Math.floor(P.inv * 12) % 2) c.globalAlpha *= .55;
   const spinning = P.spin > 0, sk = spinning ? 1 - P.spin / SPIN_T : 0;
@@ -5218,6 +5229,60 @@ function drawHunterSpot(c, t){
   }
 }
 
+// ===== 호랑이 탈것 (2026-10-14 달 요청) =====
+// 호랑이 가죽 10장으로 만들어요(마을 장비 창). 숲(사냥터)에서만 탈 수 있고, 마을로 들어오면 저절로 내려요. 타면 이동 속도 +30%.
+const MOUNT_SKIN = 10, MOUNT_SPD = 1.3, RIDE_UP = 46, RIDE_SC = 1.12;
+const hasMount = () => !!(G.gear && G.gear.mount);
+const riding = () => !!G.ride;
+function toggleRide(){
+  if (!hasMount()) { toast(`🐯 호랑이 탈것이 없어요. 호랑이 가죽 ${MOUNT_SKIN}장으로 장비 창에서 만들 수 있어요.`); return; }
+  if (!G.ride && inTown()) { toast('🌲 호랑이는 숲(사냥터)에서만 탈 수 있어요.', 'bad'); return; }
+  G.ride = !G.ride; sfx(G.ride ? 'roar' : 'pick');
+  burst(P.x, P.y - 20, 10, ['#f2922c', '#fff2c4', '#fffaf1'], 300, .4);
+  floats.push({x:P.x, y:P.y - 160, s:G.ride ? '🐯 호랑이를 탔어요! 빠르기 +30%' : '🐯 호랑이에서 내렸어요', t:1.4, c:'#c4661a'});
+  rideBtnSync(true);
+}
+// 매 프레임: 마을에 들어오면 내리고, 버튼 모양을 맞춰요
+let rideSig = '';
+function updateMount(){
+  if (G.ride && (!hasMount() || inTown())) { G.ride = false; toast('🏡 마을에서는 호랑이에서 내려요.'); }
+  rideBtnSync();
+}
+function rideBtnSync(force){
+  const b = $('#rideBtn'); if (!b) return;
+  const sig = [hasMount(), inTown(), riding(), KB.ride.join()].join();
+  if (sig === rideSig && !force) return; rideSig = sig;
+  b.style.display = hasMount() ? '' : 'none';
+  b.disabled = inTown();
+  b.classList.toggle('on', riding());
+  const k = KB.ride.filter(Boolean).map(keyName).join('/');
+  b.innerHTML = `🐯<small>${inTown() ? '숲에서만' : riding() ? '내리기' : '타기'}${k ? ` (${esc(k)})` : ''}</small>`;
+  b.title = inTown() ? '호랑이는 숲(사냥터)에서만 탈 수 있어요' : '';
+}
+// 장비 창 맨 아래 탈것 칸
+function mountCard(){
+  const have = (G.bag && G.bag.tskin) || 0;
+  const btn = hasMount() ? `<button class="btn" disabled>✔ 가지고 있어요</button>`
+    : `<button class="btn pri" id="mountMake" ${have < MOUNT_SKIN ? 'disabled' : ''}>🐯 가죽 ${MOUNT_SKIN}장(${have})으로 만들기</button>`;
+  return `<div class="gslot mountSlot"><div class="gh">🐯 탈것 <small>숲에서만 · 빠르기 +30%</small></div>
+    <div class="mountRow"><canvas id="mountCv" width="220" height="150"></canvas><div><b>호랑이 탈것</b><p>호랑이 가죽 ${MOUNT_SKIN}장으로 만든 커다란 호랑이 인형 탈것이에요. 숲(사냥터)에 나가면 🐯 버튼이나 키로 타요. 마을에 들어오면 저절로 내려요.</p></div>${btn}</div></div>`;
+}
+function mountBind(o){
+  const cv = $('#mountCv'); if (cv) { const c = cv.getContext('2d'); c.save(); c.translate(110, 135); c.scale(1.2, 1.2); drawAnimal(c, 'tiger', 0, 0, 0, false, TIGER); c.restore(); }
+  const b = $('#mountMake'); if (!b) return;
+  b.onclick = () => {
+    if (!townOnly() || hasMount() || ((G.bag.tskin || 0) < MOUNT_SKIN)) return;
+    G.bag.tskin -= MOUNT_SKIN; if (!G.bag.tskin) delete G.bag.tskin;
+    G.gear.mount = 1; sfx('fanfare'); toast('🐯 호랑이 탈것을 만들었어요! 숲에 나가면 탈 수 있어요.', 'gold'); rideBtnSync(true); o.render(o);
+  };
+}
+// 우주 밑에 깔리는 호랑이 (오른쪽 보는 그림을 face에 맞춰 뒤집어요)
+function drawRideTiger(c){
+  c.save(); c.translate(P.x, P.y); c.scale(RIDE_SC, RIDE_SC);
+  drawAnimal(c, 'tiger', 0, 0, P.walk / 11, P.face < 0, TIGER);
+  c.restore();
+}
+
 // ===== 2026-10-14 랭킹: 도감 창 '🏆 랭킹' 탭 =====
 // 서버(Firebase Realtime Database + 익명 로그인)를 달이 연결하기 전에는 '내 기록'만 보여요.
 // 연결하려면 RANK_CFG에 db 주소와 apiKey만 넣으면 돼요. 이름 말고 다른 개인정보는 보내지 않아요.
@@ -5863,10 +5928,10 @@ function drawPackScene(c, W2, H2){
 // ===== 키 설정 (2026-10-13): 기본은 마우스 왼쪽 = 공격, 오른쪽 = 막기. 플레이어가 직접 바꿀 수 있어요 =====
 const KEY_ACTS = [
   ['attack', '⚔️ 공격 (휘두르기)'], ['block', '🛡️ 막기 (누르고 있기)'], ['interact', '✋ 일하기·말 걸기'],
-  ['gong', '🥁 꽹과리'], ['bag', '🎒 가방'],
+  ['gong', '🥁 꽹과리'], ['bag', '🎒 가방'], ['ride', '🐯 호랑이 타기·내리기'],
   ['up', '⬆️ 위로 걷기'], ['down', '⬇️ 아래로 걷기'], ['left', '⬅️ 왼쪽으로 걷기'], ['right', '➡️ 오른쪽으로 걷기']
 ];
-const KEY_DEF = {attack:['Mouse0', 'Space'], block:['Mouse2', 'KeyF'], interact:['KeyF', ''], gong:['KeyQ', ''], bag:['KeyI', ''],
+const KEY_DEF = {attack:['Mouse0', 'Space'], block:['Mouse2', 'KeyF'], interact:['KeyF', ''], gong:['KeyQ', ''], bag:['KeyI', ''], ride:['KeyR', ''],
   up:['KeyW', ''], down:['KeyS', ''], left:['KeyA', ''], right:['KeyD', '']};
 let KB = JSON.parse(JSON.stringify(KEY_DEF));
 (function loadKeys(){ try { const s = JSON.parse(store.get('haru-keys', 'null')); if (s) for (const k in KEY_DEF) if (Array.isArray(s[k])) KB[k] = [s[k][0] || '', s[k][1] || '']; } catch (e) {} })();
@@ -5892,6 +5957,7 @@ function pressAct(act, ev){
   if (act === 'attack') { if (UI.free()) { if (ev && ev.wx != null && Math.abs(ev.wx - P.x) > 8) P.face = ev.wx < P.x ? -1 : 1; heroAttack(); } return true; }
   if (act === 'interact') { if (UI.modal && $('#nmSleep')) { $('#nmSleep').click(); return true; } if (!inCombat()) pressF(); return true; }
   if (act === 'gong') { if (UI.free()) heroGong(); return true; }
+  if (act === 'ride') { if (UI.free()) toggleRide(); return true; }
   if (act === 'bag') { if (UI.modal && UI.modal.inv) UI.close(); else if (UI.free()) uiInv(); return true; }
   return false;
 }
@@ -5907,6 +5973,7 @@ function renderHelp(){
     <div><b>마우스 드래그</b>화면 둘러보기</div>
     <div><b>${esc(k('bag'))}</b>가방 (전리품·장비)</div>
     <div><b>${esc(k('gong'))}</b>꽹과리 (산짐승 깜짝)</div>
+    <div><b>${esc(k('ride'))}</b>호랑이 타기·내리기 (숲에서만, 탈것이 있을 때)</div>
     <div style="margin-top:8px"><button class="btn pri" id="keyBtn" style="font-size:17px;padding:6px 14px">⌨️ 키 설정 바꾸기</button></div>`;
   $('#keyBtn').onclick = () => uiKeys();
 }
@@ -6101,9 +6168,10 @@ function uiGear(){
       if (lv >= MAX_UP || G.money < upCost(it, lv) || G.rep < upRep(it, lv)) return;
       G.money -= upCost(it, lv); G.gear.own[id] = lv + 1; toast(`🔨 ${it.name} +${lv + 1} 강화 성공!`, 'good'); updateHUD(true); o.render(o);
     });
+    o.body.insertAdjacentHTML('beforeend', mountCard()); mountBind(o);
     o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">💰 ${won(G.money)} · 든든철물 곽든든 사장님한테 가도 열려요</span><button class="btn pri" id="gOk">닫기</button>`;
     $('#gOk').onclick = () => UI.close();
-    townLock(o, '[data-up], [data-st], [data-buy], [data-craft]');
+    townLock(o, '[data-up], [data-st], [data-buy], [data-craft], #mountMake');
   }});
 }
 
@@ -6830,7 +6898,8 @@ function update(dt){
       else { mx = dx / d; my = dy / d; }
     }
   }
-  const sp = P.spd * (1 + farmer().spd / 100) * (P.blk ? .45 : 1), m = Math.hypot(mx, my);
+  updateMount();
+  const sp = P.spd * (1 + farmer().spd / 100) * (P.blk ? .45 : 1) * (riding() ? MOUNT_SPD : 1), m = Math.hypot(mx, my);
   if (P.kb) { moveBy(P, P.kb.x * dt, P.kb.y * dt); P.kb.t -= dt; if (P.kb.t <= 0) P.kb = null; }
   else if (m > .1 && P.act <= 0) {
     const nx = mx / Math.max(1, m), ny = my / Math.max(1, m);
@@ -7032,6 +7101,7 @@ function joyMove(e){
 $('#fBtn').addEventListener('pointerdown', e => { e.preventDefault(); pressF(); });
 const fUp = () => { P.touchBlock = false; };
 $('#atkBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroAttack(); });
+$('#rideBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (UI.free()) toggleRide(); });
 $('#gongBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroGong(); });
 $('#fBtn').addEventListener('pointerup', fUp); $('#fBtn').addEventListener('pointercancel', fUp); $('#fBtn').addEventListener('pointerleave', fUp);
 $('#fsBtn').onclick = () => {
