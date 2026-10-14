@@ -146,6 +146,7 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .hpn{display:flex;align-items:center;gap:14px;margin-top:16px;font-family:var(--display);font-size:22px}
 .hpn input{font:inherit;font-size:24px;padding:8px 14px;border:2.5px solid var(--ink);border-radius:12px;width:260px}.hpn small{font-family:var(--body);font-size:15px;color:var(--muted)}
 .snd{display:flex;align-items:center;gap:14px;margin:10px 0;font-family:var(--display);font-size:22px}.snd b{width:150px;font-weight:400}.snd input{flex:1;accent-color:#e8423a}.snd span{width:40px;text-align:right}.snd .btn{width:96px}
+.townLock{background:#fff1e6;border:2px solid #ff9a5a;border-radius:12px;padding:8px 14px;margin:0 0 10px;font-family:var(--display);font-size:19px;color:#b2482b}
 .gnote{font-size:16px;color:var(--muted);margin:10px 2px}
 .ggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .gslot{border:2.5px solid var(--ink);border-radius:16px;background:#fff;padding:10px 12px}
@@ -3976,7 +3977,7 @@ NEW_BEAST.tiger = Array(7).fill(TIGER);
 const PBEAR = {name:'전설의 흰곰', hp:2600, def:20, dmg:4.3, spd:1.15, sc:1.95, xp:800, boss:1};
 NEW_BEAST.pbear = Array(7).fill(PBEAR);
 const PBEAR_NEED = 34;
-const DEN = {x:-4200, y:-6250, rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', sign:'⚠️ 호랑이 굴 · 최고 장비 +6', ic:'🐯'};
+const DEN = {x:-4200, y:-6250, rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
 DEN.gate = Math.atan2((-5000 - DEN.y) / DEN.ry, (-2000 - DEN.x) / DEN.rx); // 숲길이 들어오는 쪽(남동)
 const BDEN = {x:1700, y:18700, rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 설산의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
 BDEN.gate = Math.atan2((17500 - BDEN.y) / BDEN.ry, (3000 - BDEN.x) / BDEN.rx); // 북동쪽 설산 길
@@ -4059,7 +4060,7 @@ function denEntities1(ctx, D, add, vis, T){
     if (vis(x, y, 200)) add(y, () => drawTorch(ctx, x, y, T + k));
   }
   const gx = D.x + Math.cos(D.gate) * (D.rx + 220), gy = D.y + Math.sin(D.gate) * (D.ry + 200);
-  if (vis(gx, gy)) add(gy, () => drawSign(ctx, gx, gy, D.sign));
+  if (D.sign && vis(gx, gy)) add(gy, () => drawSign(ctx, gx, gy, D.sign));
 }
 function drawCave(c, x, y, snow){
   c.save(); c.translate(x, y);
@@ -4104,7 +4105,7 @@ function drawDenFx(c, dt){
   if (denDust.length < (sn ? 90 : 40)) denDust.push({x:rnd(0, W), y:rnd(-40, H), v:rnd(20, 50) * (sn ? 3 : 1), r:rnd(1.5, 3.5) * (sn ? 1.4 : 1), a:rnd(.2, .5) + (sn ? .3 : 0)});
   for (const d of denDust) { d.y += d.v * dt; d.x += Math.sin(d.y / 60) * .4 + (sn ? 70 * dt : 0); if (d.y > H + 10 || d.x > W + 10) { d.y = -10; d.x = rnd(-200, W); } c.beginPath(); c.arc(d.x, d.y, d.r, 0, 7); c.fillStyle = sn ? `rgba(255,255,255,${d.a * k})` : `rgba(230,210,180,${d.a * k})`; c.fill(); }
   if (tg && (tg.eng || Math.hypot(tg.x - P.x, tg.y - P.y) < 900)) {
-    const w = 760, x = W / 2 - w / 2, y = 330;
+    const w = 760, x = W / 2 - w / 2, y = H - 200; // 2026-10-14 화면 위쪽에 있으면 굴 안쪽(위)에 있는 호랑이를 가려서 아래로 옮겼어요
     c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = INK; const tt = D.title + '  Lv.' + BOSS_LV[D.kind]; c.strokeText(tt, W / 2, y - 12); c.fillStyle = sn ? '#bfe8ff' : '#ffd23a'; c.fillText(tt, W / 2, y - 12);
     c.beginPath(); rr(c, x, y, w, 26, 13); c.fillStyle = '#2a1c17'; c.fill(); c.lineWidth = 3; c.strokeStyle = '#fffaf1'; c.stroke();
     c.beginPath(); rr(c, x + 4, y + 4, (w - 8) * clamp(tg.hp / tg.max, 0, 1), 18, 9); c.fillStyle = sn ? '#4ab0f0' : '#ff5a2a'; c.fill();
@@ -4742,6 +4743,16 @@ function fireWorker(){
   toast(`👷 인부 아저씨가 돌아갔어요. 남은 일당 ${won(back)}을 돌려받았어요.`, 'good');
 }
 
+// 2026-10-14 달 요청: 장비 강화·소매 포장 같은 사과·장비 일은 마을(사냥터 밖, 과수원 포함)에서만 해요
+const inTown = () => !inHunt(P.x, P.y);
+const TOWN_MSG = '🏡 마을에서만 할 수 있어요. 사냥터에서 나와서 해요.';
+function townOnly(){ if (inTown()) return true; toast(TOWN_MSG, 'bad'); return false; }
+// 사냥터에서 연 창: 안내를 맨 위에 붙이고 일 버튼은 막아요(보기·장비 끼기는 돼요)
+function townLock(o, sel){
+  if (inTown()) return;
+  [o.body, o.footEl].forEach(el => el && el.querySelectorAll(sel).forEach(b => { b.disabled = true; b.title = TOWN_MSG; }));
+  o.body.insertAdjacentHTML('afterbegin', `<div class="townLock">${TOWN_MSG}</div>`);
+}
 function uiStore(tab){
   tab = tab || 'stock';
   UI.open({ic:'📦', title:'사과 창고', render(o){
@@ -4777,11 +4788,13 @@ function uiStore(tab){
     o.body.querySelectorAll('[data-ord]').forEach(b => b.onclick = () => { UI.close(); setTimeout(() => openShed('pack', 'order:' + b.dataset.ord), 160); });
     o.footEl.innerHTML = keys.length && tab === 'stock' ? `<button class="btn pri" id="sellAll">🚚 사과 팔러 가기 (${totalStock()}상자)</button>` : '';
     const sa = $('#sellAll'); if (sa) sa.onclick = () => { UI.close(); setTimeout(() => uiShip(keys), 160); };
+    townLock(o, '#shedUp, [data-sell], [data-proc], [data-rt], [data-ord], #sellAll');
   }});
 }
 
 // 출하량 고르기: 2026-10-14 달 요청으로 아이도 쉽게. 큰 버튼 4개(조금·반·많이·전부)만 고르면 돼요. 상자 수로 고르기는 '직접 고르기' 안에
 function uiShip(keys){
+  if (!townOnly()) return;
   keys = keys.filter(k => G.stock[k] > 0); if (!keys.length) return;
   if (!G.ship || G.ship.mode !== 'box' && G.ship.mode !== 'pct') G.ship = {mode:'pct', pct:100};
   if (![25, 50, 75, 100].includes(G.ship.pct)) G.ship.pct = 100;
@@ -5487,6 +5500,7 @@ function drawRawPile(c){
 // ----- 창고 화면 -----
 let SH = null;
 function openShed(mode, focus){
+  if (!townOnly()) return;
   shedInit();
   SH = {mode:mode || 'sort', items:[], grab:null, spawnT:0, ok:0, miss:0, msg:'', msgT:0, fx:[], arms:{}, bump:{}, pk:null, t:0, ptr:{x:0, y:0}};
   let raf = 0, last = performance.now();
@@ -6076,6 +6090,7 @@ function uiGear(){
     });
     o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">💰 ${won(G.money)} · 든든철물 곽든든 사장님한테 가도 열려요</span><button class="btn pri" id="gOk">닫기</button>`;
     $('#gOk').onclick = () => UI.close();
+    townLock(o, '[data-up], [data-st], [data-buy], [data-craft]');
   }});
 }
 
