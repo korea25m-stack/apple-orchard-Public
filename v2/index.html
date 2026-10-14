@@ -1995,7 +1995,7 @@ const SPOT = {
   rabbit:{x:2440, y:1360}, chicken:{x:560, y:1720}, cat:{x:250, y:880}, dog:{x:690, y:980},
   jangdok:{x:110, y:960}, sotdae:{x:-90, y:1560}, nongmak:{x:800, y:1400}, portal:{x:110, y:1680} /* 2026-10-13 이장님 아래 순간이동 포탈 */ // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
 };
-const ROAD = [[-1000, 1250], [-300, 1270], [300, 1440], [650, 1250], [905, 1175], [930, 1150]];
+const ROAD = [[-1000, 1250], [930, 1250], [930, 1150]]; // 2026-10-14 달 요청: 마을 길은 반듯하게(가로·세로로만)
 const YARD = {x:520, y:925, rx:270, ry:85}, HYARD = {x:-450, y:1000, rx:230, ry:72};
 
 let P = {x:930, y:1000, dir:0, walk:0, act:0, tgt:null, spd:270};
@@ -2012,7 +2012,7 @@ let gsig = '', feats = null;
 function groundSig(){ return seasonOf(G.week) + '|' + G.rows + '|' + (G.deco.pond ? 1 : 0); }
 function inOrchard(x, y, pad = 0){ return x > OX - 130 - pad && x < OX + ORCH_W + 130 + pad && y > OY - 95 - pad && y < OY + G.rows * ROW_H + pad; }
 function nearRoad(x, y, d){
-  for (const R of [ROAD, ...VROADS]) for (let i = 0; i < R.length - 1; i++) {
+  for (const R of [ROAD, ...VROADS, ...YARD_ROADS, ...HOUSE_PATHS]) for (let i = 0; i < R.length - 1; i++) {
     const [ax, ay] = R[i], [bx, by] = R[i + 1];
     const t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2), 0, 1);
     if ((x - ax - t * (bx - ax)) ** 2 + (y - ay - t * (by - ay)) ** 2 < d * d) return true;
@@ -2067,16 +2067,15 @@ function drawGround(c, x0, y0, w, h){
   c.fillStyle = pal.g; c.fillRect(x0, y0, w, h);
   for (const b of featsNear(feats.blobs, x0, y0, w, h)) {
     if (!inB(b.x, b.y, b.r * 1.3)) continue;
-    c.beginPath(); b.pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath();
-    c.fillStyle = b.dark ? pal.g2 : pal.g3; c.fill();
+    // 2026-10-14 바닥 얼룩: 각진 다각형 대신 둥글게 이은 곡선 + 옅게
+    const P = b.pts, n = P.length, mid = i => [(P[i][0] + P[(i + 1) % n][0]) / 2, (P[i][1] + P[(i + 1) % n][1]) / 2];
+    c.beginPath(); c.moveTo(...mid(n - 1)); for (let i = 0; i < n; i++) { const m = mid(i); c.quadraticCurveTo(P[i][0], P[i][1], m[0], m[1]); } c.closePath();
+    c.globalAlpha = .55; c.fillStyle = b.dark ? pal.g2 : pal.g3; c.fill(); c.globalAlpha = 1;
   }
   // 길
   const road = (pts, wd, col) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.lineWidth = wd; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(); };
-  road(ROAD, 118, win ? '#d8dfe6' : '#c99d62'); road(ROAD, 100, win ? '#f2f5f8' : '#ecd29a');
-  road([[650, 1250], [560, 1000]], 84, win ? '#d8dfe6' : '#c99d62'); road([[650, 1250], [560, 1000]], 68, win ? '#f2f5f8' : '#ecd29a');
-  drawVillageGround(c, win);
   drawHuntGround(c, x0, y0, w, h, win);
-  road([[-450, 1235], [-450, 1010]], 84, win ? '#d8dfe6' : '#c99d62'); road([[-450, 1235], [-450, 1010]], 68, win ? '#f2f5f8' : '#ecd29a');
+  drawVillageGround(c, win, x0, y0, w, h);
   for (const Y of [YARD, HYARD]) {
     c.beginPath(); ell(c, Y.x, Y.y, Y.rx + 8, Y.ry + 8); c.fillStyle = win ? '#d8dfe6' : '#c99d62'; c.fill();
     c.beginPath(); ell(c, Y.x, Y.y, Y.rx, Y.ry); c.fillStyle = win ? '#f2f5f8' : '#ecd29a'; c.fill();
@@ -2710,7 +2709,8 @@ function drawSkyFx(ctx, dt, T){
 // 2026-10-13 마을 2배: 아래 좌표(옛 배치)를 광장 기준으로 두 배 넓혀 서쪽으로 옮겨요 → vxy()
 const VSC = 2, VOLD = {x:430, y:2190}, VNEW = {x:-1000, y:2500};
 const vxy = (x, y) => [VNEW.x + (x - VOLD.x) * VSC, VNEW.y + (y - VOLD.y) * VSC];
-const VROADS = [[[-1000, 1250], [-1000, 4440]], [[-2100, 2500], [-60, 2500]], [[-60, 2500], [250, 1900], [300, 1440]]];
+const VROADS = [[[-1000, 1250], [-1000, 4440]], [[-2100, 2500], [-60, 2500]], [[-60, 2500], [-60, 1250]]]; // 2026-10-14 대각선 길을 반듯하게
+const YARD_ROADS = [[[560, 1250], [560, 1000]], [[-450, 1250], [-450, 1010]]]; // 큰길 → 창고 마당·한옥 마당
 const PLAZA = {x:VNEW.x, y:VNEW.y, rx:280, ry:115};
 const VB = [
   {x:210, y:1900, roof:'#6f8fd8', wall:'#fff3dc', sign:'복순 떡방앗간'},
@@ -2734,6 +2734,7 @@ const VB = [
 ]);
 // 길가 나무 (넓어진 마을이 휑하지 않게)
 const VSTREET = -1000, PLAY = {x:430, y:3150};
+const HOUSE_PATHS = VB.map(b => [[b.x, b.y + 16], [b.x > -300 ? -60 : VSTREET, b.y + 16]]); // 집 앞에서 큰길까지
 const VTREES = [];
 for (let y = 1720; y < 4400; y += 290) for (const side of [-1, 1]) {
   const x = VSTREET + side * 175;
@@ -2846,21 +2847,39 @@ function talkNpc(n){
 }
 
 // ----- 마을 그림 -----
-function drawVillageGround(c, win){
+// 2026-10-14 달 요청: 마을 길은 반듯한 보도블록 길(경계석 + 엇갈린 블록 무늬). 가로·세로 조각만 있어요
+// 경계석 → 바닥 → 무늬 순서로 한꺼번에 그려서 길이 만나는 곳에 금이 안 생겨요. plates = 집 앞 마당 판(무늬 없음)
+function paveRoads(c, list, win, x0, y0, w, h, plates){
+  const segs = []; for (const [pts, wd] of list) for (let i = 0; i < pts.length - 1; i++) { const [ax, ay] = pts[i], [bx, by] = pts[i + 1], hw = wd / 2;
+    segs.push({x:Math.min(ax, bx) - hw, y:Math.min(ay, by) - hw, w:Math.abs(bx - ax) + wd, h:Math.abs(by - ay) + wd, hor:Math.abs(bx - ax) > Math.abs(by - ay)}); }
+  for (const p of plates || []) segs.push({...p, plain:1});
+  const vis = s => !(x0 != null) || (s.x < x0 + w + 40 && s.x + s.w > x0 - 40 && s.y < y0 + h + 40 && s.y + s.h > y0 - 40);
+  const S = segs.filter(vis);
+  c.fillStyle = win ? '#c8d2da' : '#a99f8e'; for (const s of S) { c.beginPath(); rr(c, s.x - 7, s.y - 7, s.w + 14, s.h + 14, 10); c.fill(); }
+  c.fillStyle = win ? '#f2f5f8' : '#e8e1d3'; for (const s of S) { c.beginPath(); rr(c, s.x, s.y, s.w, s.h, 6); c.fill(); }
+  c.strokeStyle = win ? '#dfe6ec' : '#d3c8b4'; c.lineWidth = 2;
+  for (const s of S) {
+    if (s.plain) continue;
+    c.save(); c.beginPath(); c.rect(s.x, s.y, s.w, s.h); c.clip(); c.beginPath();
+    const bw = 46, rows = Math.max(1, Math.round((s.hor ? s.h : s.w) / 30)), rh = (s.hor ? s.h : s.w) / rows;
+    for (let r = 1; r < rows; r++) { if (s.hor) { c.moveTo(s.x, s.y + r * rh); c.lineTo(s.x + s.w, s.y + r * rh); } else { c.moveTo(s.x + r * rh, s.y); c.lineTo(s.x + r * rh, s.y + s.h); } }
+    for (let r = 0; r < rows; r++) { const off = r % 2 ? bw / 2 : 0;
+      if (s.hor) for (let x = Math.floor((s.x - off) / bw) * bw + off; x < s.x + s.w; x += bw) { c.moveTo(x, s.y + r * rh); c.lineTo(x, s.y + (r + 1) * rh); }
+      else for (let y = Math.floor((s.y - off) / bw) * bw + off; y < s.y + s.h; y += bw) { c.moveTo(s.x + r * rh, y); c.lineTo(s.x + (r + 1) * rh, y); } }
+    c.stroke(); c.restore();
+  }
+}
+function drawVillageGround(c, win, x0, y0, w, h){
   const road = (pts, wd, col) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.lineWidth = wd; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(); };
-  for (const r of VROADS) road(r, 104, win ? '#d8dfe6' : '#b8b0a2');
-  for (const r of VROADS) road(r, 88, win ? '#f2f5f8' : '#e4ddd0');
+  paveRoads(c, [...[ROAD, ...VROADS, ...YARD_ROADS].map(p => [p, 96]), ...HOUSE_PATHS.map(p => [p, 40])], win, x0, y0, w, h,
+    VB.map(b => { const hw = b.big ? 130 : 100; return {x:b.x - hw, y:b.y - 10, w:hw * 2, h:40}; }));
   c.beginPath(); ell(c, PLAZA.x, PLAZA.y, PLAZA.rx + 8, PLAZA.ry + 8); c.fillStyle = win ? '#d8dfe6' : '#b8b0a2'; c.fill();
   c.beginPath(); ell(c, PLAZA.x, PLAZA.y, PLAZA.rx, PLAZA.ry); c.fillStyle = win ? '#f2f5f8' : '#eee6d6'; c.fill();
   // 보도블록 무늬
   c.strokeStyle = win ? '#e2e8ee' : '#d6cdbc'; c.lineWidth = 2;
   for (let k = 1; k < 4; k++) { c.beginPath(); ell(c, PLAZA.x, PLAZA.y, PLAZA.rx * k / 4, PLAZA.ry * k / 4); c.stroke(); }
-  // 집 앞에서 큰길까지 오솔길
-  for (const b of VB) { const sx = b.x > -300 ? -60 : VSTREET; road([[b.x, b.y + 16], [sx, b.y + 16]], 44, win ? '#e9eef2' : '#d9c9a4'); }
   // 놀이터 모래밭
   c.beginPath(); ell(c, PLAY.x, PLAY.y, 300, 120); c.fillStyle = win ? '#e9eef2' : '#e8d4a0'; c.fill(); c.lineWidth = 3; c.strokeStyle = win ? '#c8d2da' : '#c8a868'; c.stroke();
-  // 집 앞마당
-  for (const b of VB) { const hw = b.big ? 130 : 100; c.beginPath(); rr(c, b.x - hw, b.y - 10, hw * 2, 40, 14); c.fillStyle = win ? '#e9eef2' : '#d9c9a4'; c.fill(); }
 }
 function drawVHouse(c, b){
   const w = b.big ? 240 : 180, hw = w / 2, wh = b.big ? 80 : 68;
@@ -2965,7 +2984,7 @@ const ZONES = [
 const SNOW_Y = 13000;
 function snowK(y){ return clamp((y - SNOW_Y) / 1600, 0, 1); }
 const zoneName = (z, x, y) => (snowK(y) > .5 && z >= 4 ? '눈 덮인 설산' : ZONES[z].name);
-const TRAILS = [ // 2026-10-13 맵 4배에 맞춰 새로 낸 숲길
+const TRAILS_RAW = [ // 2026-10-13 맵 4배에 맞춰 새로 낸 숲길
   [[2880, 1200], [4400, 1300], [5800, 800], [7400, 1500], [9200, 1000]],
   [[4400, 1300], [5000, 3200], [6400, 4800], [7800, 6600], [8800, 9200]],
   [[1600, 5600], [1800, 6700], [3200, 7000], [5000, 6600], [6800, 7800], [8800, 9200]], [[5000, 6600], [6400, 4800]],
@@ -2989,14 +3008,48 @@ const TRAILS = [ // 2026-10-13 맵 4배에 맞춰 새로 낸 숲길
   // 흰곰 굴로 가는 남쪽 설산 길
   [[1400, 11000], [2200, 12800], [1200, 14600], [2400, 16200], [3000, 17500]], [[6200, 12600], [4400, 14200], [1200, 14600]], [[-5800, 11000], [-2600, 13400], [1200, 14600]]
 ];
-const CLEARINGS = TRAILS.flat().filter(([x, y]) => inHunt(x, y) && gateDist(x, y) > 500).map(([x, y]) => ({x, y, r:230}));
+// 2026-10-14 달 요청: 숲길을 구불구불한 오솔길로. 꺾이는 점(갈림길·빈터)은 그대로 두고 그 사이만 부드럽게 휘어요
+function wiggleTrail(T, seed){
+  const R = srand(seed), out = [T[0]];
+  for (let i = 0; i < T.length - 1; i++) {
+    const [ax, ay] = T[i], [bx, by] = T[i + 1], L = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / L, ny = (bx - ax) / L;
+    const n = Math.max(2, Math.round(L / 110)), A = Math.min(150, L * .07) * (R() < .5 ? -1 : 1), m = Math.max(1, Math.round(L / 1700)), ph = R() * 6.283, A2 = A * .35;
+    for (let k = 1; k <= n; k++) { const t = k / n, o = Math.sin(Math.PI * t) * (A * Math.sin(Math.PI * t * m) + A2 * Math.sin(t * 9 + ph));
+      out.push([ax + (bx - ax) * t + nx * o, ay + (by - ay) * t + ny * o]); }
+  }
+  return out;
+}
+// 꺾인 곳을 한 번 둥글게 깎아요(Chaikin). 처음·끝 점은 그대로라 갈림길이 이어져요
+const chaikin = T => { const o = [T[0]]; for (let i = 0; i < T.length - 1; i++) { const [ax, ay] = T[i], [bx, by] = T[i + 1]; o.push([ax * .75 + bx * .25, ay * .75 + by * .25], [ax * .25 + bx * .75, ay * .25 + by * .75]); } o.push(T[T.length - 1]); return o; };
+const TRAILS = TRAILS_RAW.map((T, i) => chaikin(wiggleTrail(T, 3100 + i * 17)));
+const CLEARINGS = TRAILS_RAW.flat().filter(([x, y]) => inHunt(x, y) && gateDist(x, y) > 500).map(([x, y]) => ({x, y, r:230}));
+// 길 조각을 600칸 격자에 담아 가까운 것만 봐요(오솔길은 점이 많아서)
+const TRAIL_G = new Map();
+for (const T of TRAILS) for (let i = 0; i < T.length - 1; i++) {
+  const [ax, ay] = T[i], [bx, by] = T[i + 1];
+  for (let gx = Math.floor((Math.min(ax, bx) - 650) / 600); gx <= Math.floor((Math.max(ax, bx) + 650) / 600); gx++) for (let gy = Math.floor((Math.min(ay, by) - 650) / 600); gy <= Math.floor((Math.max(ay, by) + 650) / 600); gy++) {
+    const k = gx + ',' + gy; let L = TRAIL_G.get(k); if (!L) TRAIL_G.set(k, L = []); L.push([ax, ay, bx, by]);
+  }
+}
 function nearTrail(x, y, d){
-  for (const R of TRAILS) for (let i = 0; i < R.length - 1; i++) {
-    const [ax, ay] = R[i], [bx, by] = R[i + 1];
+  const L = TRAIL_G.get(Math.floor(x / 600) + ',' + Math.floor(y / 600)); if (!L) return false;
+  for (const [ax, ay, bx, by] of L) {
     const t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2), 0, 1);
     if ((x - ax - t * (bx - ax)) ** 2 + (y - ay - t * (by - ay)) ** 2 < d * d) return true;
   }
   return false;
+}
+// 오솔길 가장자리 장식(작은 돌·풀포기·들꽃). 땅 조각마다 나눠 담아요
+const TRAIL_DECO = new Map();
+{ const R = srand(4747);
+  for (const T of TRAILS) for (let i = 0; i < T.length - 1; i++) {
+    const [ax, ay] = T[i], [bx, by] = T[i + 1], L = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / L, ny = (bx - ax) / L;
+    for (let d = R() * 60; d < L; d += 45 + R() * 50) {
+      const sd = R() < .5 ? -1 : 1, off = 34 + R() * 26, x = ax + (bx - ax) * d / L + nx * off * sd, y = ay + (by - ay) * d / L + ny * off * sd, r = R();
+      const k = Math.floor(x / 512) + ',' + Math.floor(y / 512); let M = TRAIL_DECO.get(k); if (!M) TRAIL_DECO.set(k, M = []);
+      M.push([x, y, r < .3 ? 0 : r < .8 ? 1 : 2, R()]);
+    }
+  }
 }
 const inClearing = (x, y, pad = 0) => CLEARINGS.some(c => (x - c.x) ** 2 + ((y - c.y) * 1.3) ** 2 < (c.r + pad) ** 2);
 
@@ -3040,6 +3093,13 @@ const bagCount = () => { ensureGear(); return Object.values(G.bag).reduce((a, b)
 // ----- 숲 그림 -----
 let FOREST = null;
 const FOREST_THIN = .4;
+// 2026-10-14 자연스러운 숲: 부드러운 잡음(value noise)으로 나무가 모인 숲·듬성한 풀밭·소나무 숲·참나무 숲이 생겨요
+function vnoise(x, y, sc, seed){
+  const fx = x / sc, fy = y / sc, ix = Math.floor(fx), iy = Math.floor(fy), u = fx - ix, v = fy - iy;
+  const hsh = (a, b) => { let n = (a * 374761393 + b * 668265263 + seed * 1442695041) | 0; n = (n ^ (n >>> 13)) * 1274126177 | 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+  const sm = t => t * t * (3 - 2 * t), a = hsh(ix, iy), b = hsh(ix + 1, iy), c2 = hsh(ix, iy + 1), d = hsh(ix + 1, iy + 1);
+  return a + (b - a) * sm(u) + (c2 - a) * sm(v) + (a - b - c2 + d) * sm(u) * sm(v);
+}
 function buildForest(){
   FOREST = [];
   const R = srand(808), R3 = srand(6060);
@@ -3048,10 +3108,13 @@ function buildForest(){
     if (!inHunt(x, y) || homeDist(x, y) < 70) continue;
     if (nearTrail(x, y, 120) || inClearing(x, y, 40) || inDen(x, y, 260)) continue;
     if (R() < .18) continue;
-    let kind = k < .45 ? 'pine' : k < .85 ? 'oak' : k < .95 ? 'bush' : 'rock';
+    const dn = vnoise(x, y, 1500, 1) * .7 + vnoise(x, y, 520, 2) * .3, pn = vnoise(x, y, 2600, 3);
+    const pineP = clamp(.12 + (pn - .25) * 1.5, .08, .92);
+    let kind = k < .1 ? 'rock' : k < .22 ? 'bush' : R3() < pineP ? 'pine' : 'oak';
     if (kind === 'oak' && snowK(y) > .3) kind = 'pine'; // 설산엔 눈 쌓인 소나무만
-    // 2026-10-14 달 요청: 부딪히는 나무·바위를 지금의 60%로 (덤불은 그대로). 남는 나무 자리는 예전과 같아요
-    if (kind !== 'bush' && R3() < FOREST_THIN) continue;
+    // 2026-10-14 달 요청: 부딪히는 나무·바위는 예전의 60% 정도. 대신 잡음으로 모였다 흩어졌다 해요(덤불은 숲 가장자리에 더)
+    const keep = kind === 'bush' ? .35 + (1 - Math.abs(dn - .5) * 2) * .5 : kind === 'rock' ? .45 : clamp((dn - .28) * 2.1, 0, 1);
+    if (R3() > keep) continue;
     FOREST.push({x, y, k:kind, s});
   }
   // 2026-10-14 설산 봉우리: 눈 덮인 바위산. 길·굴·빈터는 비워 둬요. 맨 남쪽 끝은 봉우리가 줄지어 있어요
@@ -3123,7 +3186,7 @@ function drawRock(c, x, y, s){
 }
 function drawHuntGround(c, x0, y0, w, h, win){
   if (x0 >= HOME.x0 && x0 + w <= HOME.x1 && y0 >= HOME.y0 && y0 + h <= HOME.y1) return;
-  const pal = PAL[seasonOf(G.week)], base = win ? '#dfe8ee' : pal.g2, dark = win ? '#c6d4de' : '#3f7a34';
+  const S = seasonOf(G.week), pal = PAL[S], base = win ? '#dfe8ee' : pal.g2, dark = win ? '#c6d4de' : '#3f7a34';
   // 숲 바닥: 깊이 들어갈수록 조금씩 짙어져요
   for (let cy = y0; cy < y0 + h; cy += 64) for (let cx = x0; cx < x0 + w; cx += 64) {
     if (!inHunt(cx + 32, cy + 32)) continue;
@@ -3131,18 +3194,49 @@ function drawHuntGround(c, x0, y0, w, h, win){
     const t2 = clamp((homeDist(cx + 32, cy + 32) - 7000) / 7000, 0, 1); // ★5~★7은 더 짙은 숲
     c.fillStyle = mix(mix(base, dark, .1 + t * .35 + t2 * .22), '#eef4f8', sk * .94); c.fillRect(cx, cy, 65, 65);
   }
-  const sn = snowK(y0 + h / 2) > .5; win = win || sn;
-  const R = srand((x0 / 512 | 0) * 977 + (y0 / 512 | 0) * 131 + 5);
-  for (let k = 0; k < 14; k++) { const x = x0 + R() * w, y = y0 + R() * h; if (!inHunt(x, y)) continue; c.beginPath(); ell(c, x, y, 40 + R() * 70, 16 + R() * 26); c.fillStyle = win ? '#e9eff3' : 'rgba(30,70,25,.16)'; c.fill(); }
-  // 빈터 + 오솔길
-  for (const cl of CLEARINGS) { if (cl.x < x0 - 300 || cl.x > x0 + w + 300 || cl.y < y0 - 300 || cl.y > y0 + h + 300) continue; c.beginPath(); ell(c, cl.x, cl.y, cl.r, cl.r / 1.3); c.fillStyle = win ? '#f2f6f9' : pal.g; c.fill(); }
-  const road = (pts, wd, col) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.lineWidth = wd; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(); };
+  const sk = snowK(y0 + h / 2), sn = sk > .5; win = win || sn;
+  // 2026-10-14 바닥 얼룩: 땅 조각 경계에서 잘리지 않게 월드 격자(256)마다 같은 자리에 그려요. 부드러운 두 겹 타원
+  for (let gy = Math.floor(y0 / 256) - 1; gy <= Math.floor((y0 + h) / 256); gy++) for (let gx = Math.floor(x0 / 256) - 1; gx <= Math.floor((x0 + w) / 256); gx++) {
+    const R = srand(gx * 7919 + gy * 104729 + 11);
+    for (let k = 0; k < 2; k++) {
+      const x = (gx + R()) * 256, y = (gy + R()) * 256, rx = 60 + R() * 90, ry = rx * (.35 + R() * .2), lt = R() < .45;
+      if (!inHunt(x, y)) continue;
+      c.fillStyle = win ? (lt ? 'rgba(255,255,255,.35)' : 'rgba(170,190,205,.16)') : (lt ? 'rgba(255,255,220,.10)' : 'rgba(30,70,25,.09)');
+      c.beginPath(); ell(c, x, y, rx, ry); c.fill(); c.beginPath(); ell(c, x + rx * .2, y - ry * .1, rx * .62, ry * .62); c.fill();
+    }
+  }
+  // 빈터: 가장자리가 부드럽게 번지는 풀밭
+  for (const cl of CLEARINGS) { if (cl.x < x0 - 300 || cl.x > x0 + w + 300 || cl.y < y0 - 300 || cl.y > y0 + h + 300) continue;
+    c.fillStyle = win ? 'rgba(248,251,253,.5)' : mix(pal.g, '#ffffff', .08); c.globalAlpha = .3;
+    for (const f of [1.15, 1, .85]) { c.beginPath(); ell(c, cl.x, cl.y, cl.r * f, cl.r * f / 1.3); c.fill(); }
+    c.globalAlpha = 1; }
   drawDenGround(c, x0, y0, w, h);
-  for (const T of TRAILS) road(T, 96, win ? '#d8dfe6' : '#a8794e');
-  for (const T of TRAILS) road(T, 80, win ? '#f2f5f8' : '#c99d62');
-  // 낙엽·돌 점
-  for (let k = 0; k < 60; k++) { const x = x0 + R() * w, y = y0 + R() * h; if (!inHunt(x, y)) continue; c.beginPath(); ell(c, x, y, 4, 2.4); c.fillStyle = win ? '#ffffff' : ['#c98a3a', '#8a6a3a', '#5a8a3a'][k % 3]; c.fill(); }
+  // 오솔길: 풀이 살짝 눌린 가장자리 → 흙길 → 가운데 밟혀 반들반들한 줄
+  const road = (pts, wd, col) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.lineWidth = wd; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(); };
+  const near = TRAILS.filter((T, i) => { const b = TRAIL_BB[i]; return b[0] < x0 + w + 120 && b[2] > x0 - 120 && b[1] < y0 + h + 120 && b[3] > y0 - 120; });
+  const snowMix = col => mix(col, '#f4f7fa', win && !sn ? .85 : sk * .88);
+  for (const T of near) road(T, 98, win ? 'rgba(200,214,224,.55)' : 'rgba(70,110,50,.18)');
+  for (const T of near) road(T, 76, snowMix('#b88d5c'));
+  for (const T of near) road(T, 66, snowMix('#cfa874'));
+  for (const T of near) road(T, 26, snowMix('#dcbd8a'));
+  // 길가 장식: 작은 돌 · 풀포기 · 들꽃
+  for (let ty = Math.floor(y0 / 512) - 1; ty <= Math.floor((y0 + h) / 512); ty++) for (let tx = Math.floor(x0 / 512) - 1; tx <= Math.floor((x0 + w) / 512); tx++) {
+    const M = TRAIL_DECO.get(tx + ',' + ty); if (!M) continue;
+    for (const [x, y, k, r] of M) {
+      if (x < x0 - 20 || x > x0 + w + 20 || y < y0 - 20 || y > y0 + h + 20) continue;
+      if (k === 0) { c.beginPath(); ell(c, x, y, 5 + r * 5, 3 + r * 3); c.fillStyle = win ? '#c6d0d8' : '#a9a29a'; c.fill(); c.beginPath(); ell(c, x - 1.5, y - 1.5, 2 + r * 2, 1.2 + r); c.fillStyle = win ? '#ffffff' : '#cfc9c2'; c.fill(); }
+      else if (k === 1) { c.strokeStyle = win ? '#c9d7e2' : mix(pal.g2, '#2c6a2a', .35); c.lineWidth = 2.6; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(x - 6, y - 8 - r * 4); c.lineTo(x - 1, y); c.lineTo(x + 1, y - 11 - r * 4); c.moveTo(x + 1, y); c.lineTo(x + 7, y - 7); c.stroke(); }
+      else if (!win) { const col = ['#ffffff', '#ffe066', '#ff9ec4', '#b9a2ff'][Math.floor(r * 4)];
+        for (let p = 0; p < 5; p++) { const a = p * 1.256; c.beginPath(); c.arc(x + Math.cos(a) * 3.2, y + Math.sin(a) * 3.2, 2.6, 0, 7); c.fillStyle = col; c.fill(); }
+        c.beginPath(); c.arc(x, y, 1.8, 0, 7); c.fillStyle = '#ffd23a'; c.fill(); }
+    }
+  }
+  // 낙엽 (자리마다 같은 곳에)
+  const R = srand((x0 / 512 | 0) * 977 + (y0 / 512 | 0) * 131 + 5);
+  for (let k = 0; k < 40; k++) { const x = x0 + R() * w, y = y0 + R() * h; if (!inHunt(x, y) || nearTrail(x, y, 45)) continue; c.beginPath(); ell(c, x, y, 4, 2.4); c.fillStyle = win ? '#ffffff' : ['#c98a3a', '#8a6a3a', '#5a8a3a'][k % 3]; c.fill(); }
 }
+const TRAIL_BB = TRAILS.map(T => [Math.min(...T.map(p => p[0])), Math.min(...T.map(p => p[1])), Math.max(...T.map(p => p[0])), Math.max(...T.map(p => p[1]))]);
 
 // ----- 우주 (싸움) -----
 function ensureHero(){
