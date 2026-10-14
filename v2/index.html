@@ -215,6 +215,33 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
 #rotate b{font-size:80px;font-weight:400}
 @media (orientation:portrait) and (pointer:coarse){#rotate{display:flex}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* 2026-10-14 창 정렬 다듬기(글자 크기는 그대로): 낱말 중간에서 줄 안 바뀌게, 카드 아래쪽 값·버튼 줄 맞추기, 여백 통일 */
+#stage{word-break:keep-all;overflow-wrap:anywhere}
+.modal .mb>p{margin:0 0 12px}
+.modal .mb>p:last-child{margin-bottom:0}
+.modal .mb>.grid,.modal .mb>.tabs,.modal .mb>.fact,.modal .mb>textarea,.modal .mb>.gstat{margin-bottom:14px}
+.modal .mb>:last-child{margin-bottom:0}
+.modal .mf{align-items:center}
+.modal .mf>.btn{min-width:112px;text-align:center}
+.grid{align-items:stretch}
+.opt .t{line-height:1.25}
+.opt>.p{margin-top:auto;padding-top:4px}
+.opt>.p+.btn{margin-top:4px}
+.opt>.btn:last-child{margin-top:auto;text-align:center}
+.opt>.p+.btn:last-child{margin-top:4px}
+.opt>.sub{margin-top:auto}
+.opt>.sub+.p{margin-top:0}
+.opt>.vline{margin-top:auto;color:var(--muted)}
+.opt>.brow{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
+.gi{align-items:center}
+.gi .gtx b{margin-right:4px}
+.gs{white-space:nowrap;margin-right:6px}
+.gact{flex:none;width:210px;display:flex;flex-direction:column;gap:6px}
+.gact .btn{width:100%;text-align:center;white-space:normal;line-height:1.25}
+.ivg>.gnote{grid-column:1/-1}
+.tbl td:last-child,.tbl th:last-child{text-align:right}
+.tbl td{vertical-align:middle}
 </style>
 
 </head><body>
@@ -2948,15 +2975,19 @@ const bagCount = () => { ensureGear(); return Object.values(G.bag).reduce((a, b)
 
 // ----- 숲 그림 -----
 let FOREST = null;
+const FOREST_THIN = .4;
 function buildForest(){
   FOREST = [];
-  const R = srand(808);
+  const R = srand(808), R3 = srand(6060);
   for (let gy = WY0 + 220; gy < WY1 - 60; gy += 200) for (let gx = WX0 + 140; gx < WX1 - 60; gx += 200) {
     const x = gx + (R() - .5) * 150, y = gy + (R() - .5) * 150, k = R(), s = .85 + R() * .5;
     if (!inHunt(x, y) || homeDist(x, y) < 70) continue;
     if (nearTrail(x, y, 120) || inClearing(x, y, 40) || inDen(x, y, 260)) continue;
     if (R() < .18) continue;
-    FOREST.push({x, y, k:k < .45 ? 'pine' : k < .85 ? 'oak' : k < .95 ? 'bush' : 'rock', s});
+    const kind = k < .45 ? 'pine' : k < .85 ? 'oak' : k < .95 ? 'bush' : 'rock';
+    // 2026-10-14 달 요청: 부딪히는 나무·바위를 지금의 60%로 (덤불은 그대로). 남는 나무 자리는 예전과 같아요
+    if (kind !== 'bush' && R3() < FOREST_THIN) continue;
+    FOREST.push({x, y, k:kind, s});
   }
   // 사냥터 경계 소나무 줄 (입구는 비워 둬요)
   BORDER = [];
@@ -4460,7 +4491,7 @@ function uiBook(tab){
   UI.open({ic:'📖', title:'사과 도감', render(o){
     const tabs = `<div class="tabs">${[['var', '🍎 품종'], ['ach', '🏅 업적'], ['fact', '💡 사과 상식'], ['rec', '🏆 기록']].map(([k, n]) => `<button class="tab ${tab === k ? 'on' : ''}" data-t="${k}">${n}</button>`).join('')}</div>`;
     let b = '';
-    if (tab === 'var') b = `<div class="grid">${VAR_KEYS.map(v => { const V = VARS[v]; return `<div class="opt ${G.planted[v] ? 'have' : ''}"><span class="t"><canvas width="44" height="44" data-ap="${v}"></canvas>${V.name}</span><span>${V.desc}</span><span style="color:var(--muted)">수확 ${V.hv[0]}~${V.hv[1]}주 · ${G.planted[v] ? '심어 봤어요' : unlocked(v) ? '아직 안 심었어요' : `평판 ${V.rep}에 열려요`}</span></div>`; }).join('')}</div>`;
+    if (tab === 'var') b = `<div class="grid">${VAR_KEYS.map(v => { const V = VARS[v]; return `<div class="opt ${G.planted[v] ? 'have' : ''}"><span class="t"><canvas width="44" height="44" data-ap="${v}"></canvas>${V.name}</span><span>${V.desc}</span><span class="vline">수확 ${V.hv[0]}~${V.hv[1]}주 · ${G.planted[v] ? '심어 봤어요' : unlocked(v) ? '아직 안 심었어요' : `평판 ${V.rep}에 열려요`}</span></div>`; }).join('')}</div>`;
     if (tab === 'ach') b = `<div class="grid g4">${Object.entries(ACH).map(([k, a]) => `<div class="opt ${G.ach[k] ? 'have' : 'lock'}" style="align-items:center;text-align:center"><span style="font-size:42px">${G.ach[k] ? a[0] : '🔒'}</span><b style="font-family:var(--display);font-weight:400;font-size:20px">${a[1]}</b><span>${a[2]}</span></div>`).join('')}</div>`;
     if (tab === 'fact') b = `<ol style="margin:0;padding-left:26px;line-height:1.8">${[...Object.keys(TASKS).map(k => TASKS[k].fact), ...FACTS].map(f => `<li>${esc(f)}</li>`).join('')}</ol>`;
     if (tab === 'rec') b = `<table class="tbl"><tr><th>항목</th><th>기록</th></tr>
@@ -4479,9 +4510,9 @@ function uiSave(){
     o.body.innerHTML = `<p style="margin-top:0">게임은 이 브라우저에 저절로 저장돼요. 다른 기기에서 이어 하려면 파일이나 세이브 코드를 쓰세요.</p>
       <div class="grid g2">
         <div class="opt"><span class="t">📥 내보내기</span><span>파일로 받거나, 코드를 복사해서 메모장·카톡에 붙여 두세요.</span>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn y" id="svFile">파일로 저장</button><button class="btn" id="svCopy">코드 복사</button></div></div>
+          <div class="brow"><button class="btn y" id="svFile">파일로 저장</button><button class="btn" id="svCopy">코드 복사</button></div></div>
         <div class="opt"><span class="t">📂 불러오기</span><span>세이브 파일을 고르거나 코드를 아래에 붙여 넣으세요.</span>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn y" for="ldFile" style="cursor:pointer">파일 고르기</label><input type="file" id="ldFile" accept=".txt,text/plain" hidden><button class="btn" id="ldCode">코드로 불러오기</button></div></div>
+          <div class="brow"><label class="btn y" for="ldFile" style="cursor:pointer">파일 고르기</label><input type="file" id="ldFile" accept=".txt,text/plain" hidden><button class="btn" id="ldCode">코드로 불러오기</button></div></div>
       </div>
       <textarea id="svText" placeholder="APPLE2: 로 시작하는 세이브 코드" spellcheck="false"></textarea>
       <div id="svMsg" style="min-height:28px;margin-top:6px"></div>`;
@@ -4929,7 +4960,7 @@ function uiGear(){
           else if (it.unique) btn = `<button class="btn" disabled>🐯 호랑이를 이기면 얻어요</button>`;
           else if (it.craft) { const need = it.craft.tskin, have = G.bag.tskin || 0; btn = `<button class="btn" data-craft="${slot}|${it.id}" ${have < need || G.money < it.price || lock ? 'disabled' : ''}>🐯 가죽 ${need}장(${have}) + ${won(it.price)}로 만들기</button>`; }
           else btn = `<button class="btn" data-buy="${slot}|${it.id}" ${lock || G.money < it.price ? 'disabled' : ''}>${lock ? `⭐ 평판 ${it.rep}` : `사기 ${won(it.price)}`}</button>`;
-          return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}">${gearImg(it.id, 56)}<div class="gtx"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 전방 180° 베기' : '+5부터 전방 베기'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span>${own ? gearSellBtns(slot, it) : ''}</div>${btn}</div>`;
+          return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}">${gearImg(it.id, 56)}<div class="gtx"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 전방 180° 베기' : '+5부터 전방 베기'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span>${own ? gearSellBtns(slot, it) : ''}</div><div class="gact">${btn}</div></div>`;
         }).join('')}</div>`;
     };
     o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${f.lv}</b><span class="xpb"><i style="width:${f.xp / f.need * 100}%"></i></span><span>${f.xp}/${f.need}</span>
