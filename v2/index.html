@@ -5505,7 +5505,7 @@ function shedRender(o){
     h += `<div class="srtShop"><b>🤖 자동 분류기</b>${SORTERS.map(s => G.sorter[s.g] ? `<span class="own">✔ ${gByK(s.g).name}</span>`
       : s === nx ? `<button class="btn y" id="srtBuy" ${G.money >= s.price ? '' : 'disabled'}>${gByK(s.g).name} 분류기 달기 · ${won(s.price)}</button>` : `<span class="lock">🔒 ${gByK(s.g).name}</span>`).join('')}
       ${!nx && raw ? `<button class="btn go" id="srtAll">⚡ ${raw}상자 한꺼번에 분류</button>` : ''}
-      <small>${raw ? '사과를 눌러 집고 → 알맞은 통을 눌러요. 통만 눌러도(또는 1~4 키) 맨 앞 사과가 들어가요.' : carryN() ? '들고 있는 노란 박스가 있어요.' : '분류할 사과가 없어요. 밭에서 사과를 따서 노란 박스로 가져오세요.'}</small></div>
+      <small>${raw ? '사과를 눌러 집고 → 알맞은 통을 눌러요. 통만 눌러도(또는 1~4 키) 맨 앞 사과가 들어가요. 사과 하나에 상자가 여러 개 묶여 있어요(10상자당 1개, 5~10번).' : carryN() ? '들고 있는 노란 박스가 있어요.' : '분류할 사과가 없어요. 밭에서 사과를 따서 노란 박스로 가져오세요.'}</small></div>
       <canvas id="shCv" width="1456" height="480"></canvas>`;
   } else {
     h += `<div class="pkWrap"><div class="pkList">${pl.length ? pl.map(e => { const o2 = e.o, ok = stockAtLeast(o2.g) >= o2.n, on = SH.pk && SH.pk.kind === e.kind && SH.pk.o === o2;
@@ -5519,7 +5519,7 @@ function shedRender(o){
   o.body.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { SH.mode = b.dataset.m; if (SH.mode === 'pack' && !SH.pk) { const e = packList().find(e => stockAtLeast(e.o.g) >= e.o.n); if (e) packPick(e); } shedRerender(); });
   $('#shBook').onclick = () => { UI.close(); setTimeout(() => uiStore(), 160); };
   const sb = $('#srtBuy'); if (sb) sb.onclick = () => { if (buySorter()) shedRerender(); };
-  const sa = $('#srtAll'); if (sa) sa.onclick = () => { SH.items = []; SH.grab = null; const n = sortAllNow(); sfx('coin'); toast(`⚡ 자동 분류기가 ${n}상자를 한꺼번에 나눴어요!`, 'good'); shedRerender(); };
+  const sa = $('#srtAll'); if (sa) sa.onclick = () => { SH.items = []; SH.grab = null; SH.queue = null; const n = sortAllNow(); sfx('coin'); toast(`⚡ 자동 분류기가 ${n}상자를 한꺼번에 나눴어요!`, 'good'); shedRerender(); };
   o.body.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { const e = packList().find(e => e.kind + ':' + e.o.id === b.dataset.pk); if (e) { packPick(e); shedRerender(); } });
   const cv = o.body.querySelector('#shCv');
   const pt = e => { const r = cv.getBoundingClientRect(); return {x:(e.clientX - r.left) * cv.width / r.width, y:(e.clientY - r.top) * cv.height / r.height}; };
@@ -5530,13 +5530,28 @@ function shedRender(o){
 function shMsg(s){ SH.msg = s; SH.msgT = 3; }
 
 // ----- 분류(컨베이어) -----
-function rawAvail(){
-  const fl = {}; for (const it of SH.items) fl[it.key] = (fl[it.key] || 0) + 1;
-  const ks = Object.keys(G.raw).filter(k => G.raw[k] - (fl[k] || 0) > 0);
-  if (!ks.length) return null;
-  let tot = 0; for (const k of ks) tot += G.raw[k] - (fl[k] || 0);
-  let r = Math.random() * tot; for (const k of ks) { r -= G.raw[k] - (fl[k] || 0); if (r <= 0) return k; }
-  return ks[0];
+// 2026-10-14 달 요청: 한 상자씩 다 고르면 너무 많아요 → 10상자당 사과 1개(최소 5개, 최대 10개)만 벨트에 올라와요.
+// 사과 하나가 같은 등급 상자 묶음이라, 한 번 넣으면 그 묶음이 통째로 그 등급 통으로 가요.
+function sortBatches(){
+  const N = rawN(); if (!N) return [];
+  const K = Math.min(N, clamp(Math.ceil(N / 10), 5, 10)), byG = {};
+  for (const k in G.raw) { const gk = k.split('|')[1]; (byG[gk] = byG[gk] || []).push(...Array(G.raw[k]).fill(k)); }
+  const gs = Object.keys(byG), slot = {}; let left = K;
+  for (const g of gs) { slot[g] = 1; left--; }
+  const want = gs.map(g => ({g, r:byG[g].length / N * K - 1})).sort((a, b) => b.r - a.r);
+  while (left > 0) { const w = want.sort((a, b) => b.r - a.r)[0]; if (slot[w.g] >= byG[w.g].length) { w.r = -1e9; if (want.every(x => x.r < -1e8)) break; continue; } slot[w.g]++; w.r -= 1; left--; }
+  const out = [];
+  for (const g of gs) {
+    const L = byG[g], s = slot[g];
+    for (let i = 0; i < s; i++) {
+      const part = L.slice(Math.round(i * L.length / s), Math.round((i + 1) * L.length / s)), bag = {};
+      for (const k of part) bag[k] = (bag[k] || 0) + 1;
+      const v = Object.keys(bag).sort((a, b) => bag[b] - bag[a])[0].split('|')[0];
+      out.push({bag, gk:g, v, n:part.length});
+    }
+  }
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  return out;
 }
 const autoOf = it => !!G.sorter[it.gk];
 function sortUpdate(dt){
@@ -5548,8 +5563,9 @@ function sortUpdate(dt){
   S.spd = fast ? 460 : 135;
   S.spawnT -= dt;
   if (S.spawnT <= 0 && S.items.length < 9) {
-    const key = rawAvail();
-    if (key) { const [v, gk] = key.split('|'); S.items.push({key, v, gk, x:230, y:168 - AR[gk], st:'belt', t:0}); S.spawnT = fast ? .3 : 1.0; }
+    if (!S.queue) S.queue = sortBatches();
+    const b = S.queue.shift();
+    if (b) { S.items.push({b, v:b.v, gk:b.gk, n:b.n, x:230, y:168 - AR[b.gk], st:'belt', t:0}); S.spawnT = fast ? .3 : 1.0; }
   }
   for (const it of S.items) {
     it.t += dt;
@@ -5557,12 +5573,12 @@ function sortUpdate(dt){
       const px = it.x; it.x += S.spd * dt;
       const bx = SORT_X[it.gk];
       if (autoOf(it) && px < bx && it.x >= bx) { S.arms[it.gk] = 1; dropTo(it, it.gk); }
-      if (it.x > 1450) { it.st = 'gone'; shMsg('🔄 놓친 사과는 한 바퀴 더 돌아요!'); }
+      if (it.x > 1450) { it.st = 'gone'; S.queue.push(it.b); shMsg('🔄 놓친 사과는 한 바퀴 더 돌아요!'); }
     } else if (it.st === 'held') { it.x = S.ptr.x; it.y = S.ptr.y; }
     else if (it.st === 'drop') {
       const k = Math.min(1, it.t / .45);
       it.x = it.x0 + (it.x1 - it.x0) * k; it.y = it.y0 + (it.y1 - it.y0) * k - Math.sin(k * Math.PI) * 70;
-      if (k >= 1) { it.st = 'gone'; bagAdd(G.raw, it.key, -1); bagAdd(G.stock, it.key, 1); S.bump[it.gk] = 1; sfx('pick'); if (!rawN()) { shMsg('🎉 사과를 다 나눴어요! 주문 포장도 해 볼까요?'); shedRerender(); } }
+      if (k >= 1) { it.st = 'gone'; for (const k in it.b.bag) { bagAdd(G.raw, k, -it.b.bag[k]); bagAdd(G.stock, k, it.b.bag[k]); } S.bump[it.gk] = 1; sfx('pick'); if (!rawN()) { shMsg('🎉 사과를 다 나눴어요! 주문 포장도 해 볼까요?'); shedRerender(); } }
     } else if (it.st === 'back') {
       const k = Math.min(1, it.t / .5); it.x = it.x0 + (230 - it.x0) * k; it.y = it.y0 + (168 - AR[it.gk] - it.y0) * k - Math.sin(k * Math.PI) * 90;
       if (k >= 1) it.st = 'belt';
@@ -5593,7 +5609,7 @@ function sortToBin(gk){
 function drawSort(c, W2, H2){
   const S = SH; c.clearRect(0, 0, W2, H2); shedBg(c, W2, H2);
   // 노란 박스 더미
-  const raw = rawN(), fl = S.items.length, left = Math.max(0, raw - fl);
+  const left = (S.queue || []).reduce((a, b) => a + b.n, 0) + (S.queue ? 0 : rawN());
   const k = Math.min(9, Math.ceil(left / 5));
   for (let i = 0; i < k; i++) drawYCrate(c, 70 + (i % 3) * 56, 200 - Math.floor(i / 3) * 34, 52, 30, i === k - 1);
   c.font = '22px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(left ? `분류 전 ${left}상자` : '노란 박스 비었어요', 125, 250);
@@ -5622,8 +5638,9 @@ function drawSort(c, W2, H2){
   });
   // 집은 통 표시
   if (S.grab) { const g = binAt(S.ptr); if (g) { c.beginPath(); rr(c, SORT_X[g] - 125, 270, 250, 170, 20); c.lineWidth = 5; c.strokeStyle = '#ffd23a'; c.stroke(); } }
-  for (const it of S.items) if (it !== S.grab) drawGApple(c, it.x, it.y, it.v, it.gk, S.t);
-  if (S.grab) { shadow(c, S.grab.x, S.grab.y + 40, 22, 6); drawGApple(c, S.grab.x, S.grab.y, S.grab.v, S.grab.gk, S.t); }
+  const tag = it => { if (it.n > 1) { c.font = '18px Jua'; c.textAlign = 'center'; c.lineWidth = 5; c.strokeStyle = '#fffaf1'; const y = it.y - AR[it.gk] - 16; c.strokeText(`${it.n}상자`, it.x, y); c.fillStyle = INK; c.fillText(`${it.n}상자`, it.x, y); } };
+  for (const it of S.items) if (it !== S.grab) { drawGApple(c, it.x, it.y, it.v, it.gk, S.t); tag(it); }
+  if (S.grab) { shadow(c, S.grab.x, S.grab.y + 40, 22, 6); drawGApple(c, S.grab.x, S.grab.y, S.grab.v, S.grab.gk, S.t); tag(S.grab); }
   // 점수·말풍선
   c.font = '20px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(`맞힘 ${S.ok} · 다시 ${S.miss}`, 125, 284);
   if (S.msgT > 0 && S.msg) {
