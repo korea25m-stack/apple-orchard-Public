@@ -205,6 +205,8 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
 #atkBtn small,#gongBtn small{display:block;font-size:22px;font-family:var(--display)}
 #sleepFx{position:absolute;inset:0;z-index:300;background:#140f22;color:#fff6d8;font-family:var(--display);font-size:72px;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .7s}
 #sleepFx.on{opacity:1;pointer-events:auto}
+#sleepFx .sfIn{text-align:center;padding:0 120px}
+#sleepFx .sfTip{margin-top:34px;font-family:inherit;font-size:30px;line-height:1.4;color:#ffe6a8;opacity:.92}
 #fsBtn{position:absolute;left:20px;top:240px;z-index:20;width:70px;height:62px;font-size:30px}
 .touch .touch #helpBtn,.touch #help{display:none}
 .touch .tb{width:128px;height:110px;font-size:21px}
@@ -3574,12 +3576,48 @@ function hasWork(){
   if (G.errand && totalStock() >= G.errand.need) return true;
   return false;
 }
-function fadeScreen(txt, mid, done){
+// tip: 큰 글씨 아래 작은 한 줄, hold: 화면을 더 오래 보여 줄 시간(ms)
+function fadeScreen(txt, mid, done, tip, hold){
   let el = $('#sleepFx');
   if (!el) { el = document.createElement('div'); el.id = 'sleepFx'; $('#stage').appendChild(el); }
-  el.innerHTML = `<div>${txt}</div>`; el.classList.add('on'); UI.busy = true;
-  setTimeout(() => { mid(); setTimeout(() => { el.classList.remove('on'); setTimeout(() => { UI.busy = false; done && done(); UI.next(); }, 700); }, 600); }, 900);
+  el.innerHTML = `<div class="sfIn"><div>${txt}</div>${tip ? `<div class="sfTip">${tip}</div>` : ''}</div>`; el.classList.add('on'); UI.busy = true;
+  setTimeout(() => { mid(); setTimeout(() => { el.classList.remove('on'); setTimeout(() => { UI.busy = false; done && done(); UI.next(); }, 700); }, 600 + (hold || 0)); }, 900);
 }
+// ----- 2026-10-14 잘 때 보여 주는 게임 팁 (지금 게임 수치와 맞는 것만) -----
+const tipKey = a => (KB[a] || []).filter(Boolean).map(keyName)[0] || '키 설정';
+const SLEEP_TIPS = [
+  () => '🌀 이장님 아래 순간이동 포탈로 한 번 찾은 숲속 쉼터에 바로 갈 수 있어요.',
+  () => '⛺ 숲속 쉼터에서 쉬면 체력이 가득 차요. 산짐승도 못 들어와요.',
+  () => '💎 장비 강화는 강화석으로도, 돈으로도 할 수 있어요.',
+  () => '⚔️ 도구를 +5까지 강화하면 앞쪽 짐승들을 한 번에 가로로 베어요.',
+  () => '⚡ 전기 울타리를 세우면 멧돼지·고라니가 과수원에 못 내려와요.',
+  () => '📦 소매 주문은 경매보다 비싸게 팔려요. 주문마다 포장은 직접 해요.',
+  () => '🧪 영양제는 5월·8월·10월에 한 번씩 줄 수 있어요.',
+  () => '🐛 방제는 병·해충 위험이 \'높음\'일 때만 할 수 있어요.',
+  () => '🌱 심은 해엔 사과가 안 열려요. 10년차까지 해마다 더 많이 열려요.',
+  () => '🪓 묘목 창에서 한 줄을 통째로 뽑고 다른 품종을 심을 수 있어요.',
+  () => '⭐ 평판이 오르면 이지플·감홍·시나노골드 같은 새 품종을 심을 수 있어요.',
+  () => '🍎 이지플은 늦서리·우박 피해를 절반만 받아요.',
+  () => '🌀 방상팬은 봄 늦서리 때 꽃이 어는 걸 막아 줘요.',
+  () => '🕸️ 우박망은 우박을 막고, 태풍 때 떨어지는 사과를 반으로 줄여요.',
+  () => '❄️ 저온저장고가 있으면 경매값이 10% 올라요.',
+  () => '🛖 원두막을 지으면 인부가 하루에 25% 더 일해요.',
+  () => '👷 인부는 할 일이 있을 때만 시간을 써요. 그만 부르면 남은 만큼 돌려받아요.',
+  () => '🐇 ★1·★2 산짐승은 먼저 때리지 않으면 덤비지 않아요.',
+  () => `🛡️ 짐승이 칠 때 막기(${tipKey('block')})를 딱 맞춰 누르면 피해가 0이에요.`,
+  () => `🥁 꽹과리(${tipKey('gong')})를 치면 가까운 산짐승이 깜짝 놀라 멈춰요.`,
+  () => '🐯 호랑이는 도구 데미지가 27 이상이어야 상처를 낼 수 있어요.',
+  () => '🍯 석청을 모으면 꿀벌통을 3단계까지 키울 수 있어요.',
+  () => '💰 전리품은 금비상회에서 팔아요. 한 주에 많이 팔면 값이 조금씩 내려가요.',
+  () => '❓ 이장님과 순자 할머니의 사과 퀴즈를 맞히면 5만원과 평판을 받아요.',
+  () => '🚚 경매 출하 때 수확량 %나 상자 수를 골라 일부만 팔 수 있어요.',
+  () => '🏠 사과 창고를 키우면 경매값이 오르고 소매 주문도 더 자주 와요.',
+  () => `🎒 가방(${tipKey('bag')})에서 장비를 끌어다 끼면 옷차림도 바뀌어요.`,
+  () => '😵 사냥하다 쓰러져도 잃는 건 없어요. 농막에서 깨어나요.',
+  () => '🗺️ 집에서 멀리 갈수록 ★이 많은 센 산짐승이 나와요.'
+];
+let lastTip = -1;
+function sleepTip(){ let i; do { i = Math.floor(Math.random() * SLEEP_TIPS.length); } while (i === lastTip && SLEEP_TIPS.length > 1); lastTip = i; return SLEEP_TIPS[i](); }
 function toMorning(){ const d0 = absDay(); let g = 0; while (absDay() === d0 && g++ < 20) advance(2); G.hour = 6; }
 function sleepUntilWork(){
   UI.close();
@@ -3590,7 +3628,7 @@ function sleepUntilWork(){
     let n = 0; while (n++ < 400 && !hasWork()) { advance(14); G.hour = 6; }
     P.hp = P.max; P.x = SPOT.nongmak.x; P.y = SPOT.nongmak.y + 50; P.dir = 0; P.tgt = null; cam.x = P.x; cam.y = P.y;
     saveLocal(); todoSig = ''; updateHUD(true);
-  }, () => toast(`🌅 ${absDay() - start}일 푹 자고 일어났어요! ${G.year}년차 ${weekLabel(G.week).m}월 ${weekLabel(G.week).wk}째 주 아침이에요. 체력도 가득!`, 'good'));
+  }, () => toast(`🌅 ${absDay() - start}일 푹 자고 일어났어요! ${G.year}년차 ${weekLabel(G.week).m}월 ${weekLabel(G.week).wk}째 주 아침이에요. 체력도 가득!`, 'good'), sleepTip(), 1600);
 }
 function heroFaint(){
   P.hp = 0;
