@@ -279,7 +279,7 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
 .pkCard .t{font-family:var(--display);font-size:20px}.pkCard.on{background:#fff3c4;box-shadow:0 0 0 4px #ffd25e}.pkCard:disabled{opacity:.5;cursor:default}.pkCard small{color:#6a5a4c}
 .pkAct{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}.pkAct .pkG{flex:1;font-size:17px}
 .hqList{display:flex;flex-direction:column;gap:8px;margin-top:10px}.hqCard{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;text-align:left;border:2.5px solid var(--ink);border-radius:14px;background:#fff;padding:8px 12px;font-size:17px}
-.hqCard:hover{background:#fff3c4}.hqCard b{font-family:var(--display);font-weight:400;font-size:20px}.hqCard small,.hqCard .hqR{grid-column:2;color:#6a5a4c;font-size:15px}.hqCard .hqR{color:#2f6f3e}
+.hqCard:hover{background:#fff3c4}.hqCard.off{background:#f1ece4;opacity:.75}.hqCard b{font-family:var(--display);font-weight:400;font-size:20px}.hqCard small,.hqCard .hqR{grid-column:2;color:#6a5a4c;font-size:15px}.hqCard .hqR{color:#2f6f3e}
 .hqLv{grid-row:span 3;color:#fff;font-family:var(--display);border:2px solid var(--ink);border-radius:10px;padding:4px 10px;font-size:17px}.hqRew{margin-top:10px;background:#f3fbe8;border:2px solid #9fd39a;border-radius:12px;padding:8px 12px;font-size:17px}
 </style>
 
@@ -4964,6 +4964,11 @@ const HQ_XP = [80, 150, 250, 400, 600, 850, 1200];
 const HQ_LV = {easy:{name:'쉬움', d:-1, n:5, mul:.7, col:'#5cc46c'}, fit:{name:'알맞음', d:0, n:4, mul:1, col:'#ffb13b'}, hard:{name:'도전', d:1, n:3, mul:1.4, col:'#ff6b57'}};
 const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'전설의 산 호랑이 굴'}, pbear:{min:5, money:8000000, xp:900, stones:4, rep:6, where:'남쪽 눈 덮인 설산 흰곰 굴'}};
 const HUNTER_NAME = '윤산들 사냥꾼';
+// 2026-10-14 달 요청: 난이도마다 한 번 끝내면 1년(364일) 뒤에 다시 받을 수 있어요
+const HQ_REST = 364;
+const hqUntil = lv => (G.hqUsed || {})[lv] || 0;
+const hqLocked = lv => hqUntil(lv) > absDay();
+function hqWhenTxt(lv){ const d = hqUntil(lv), y = Math.floor(d / 364) + 1, w = Math.floor((d % 364) / 7) + 1, L = weekLabel(w); return `${y}년차 ${L.m}월 ${L.wk}주`; }
 
 function hqTier(){ const pw = farmerPower(); let t = 0; HQ_PW.forEach((v, i) => { if (pw >= v) t = i; }); return t; }
 function hqKind(t){
@@ -5004,6 +5009,7 @@ function hqClaim(){
   const q = G.hq; if (!hqDone()) return;
   ensureGear(); G.money += q.money; addInc('hunt', q.money); G.rep += q.rep; gainXp(q.xp);
   if (q.stones) G.gear.stones = (G.gear.stones || 0) + q.stones;
+  G.hqUsed = G.hqUsed || {}; G.hqUsed[q.lv] = absDay() + HQ_REST;
   G.stats.hq = (G.stats.hq || 0) + 1; G.hq = null; G.hqOff = null; todoSig = ''; sfx('fanfare'); checkRich();
   toast(`🏹 의뢰 보상! ${hqReward(q)}`, 'gold');
 }
@@ -5022,10 +5028,11 @@ function talkHunter(){
     return o;
   }
   const T = hqTier(), L = hqOffers(), f = farmer();
-  const cards = L.map((x, i) => { const lv = HQ_LV[x.lv], boss = HQ_BOSS[x.lv];
+  const cards = L.map((x, i) => { const lv = HQ_LV[x.lv], boss = HQ_BOSS[x.lv], lock = hqLocked(x.lv);
+    if (lock) return `<div class="hqCard off"><span class="hqLv" style="background:#a89a8c">${boss ? '전설' : lv.name}</span><b>✔ 올해는 끝냈어요</b><small>🔒 ${hqWhenTxt(x.lv)}부터 다시 받을 수 있어요</small><span class="hqR"></span></div>`;
     return `<button class="hqCard" data-hq="${i}"><span class="hqLv" style="background:${boss ? '#7a4ab8' : lv.col}">${boss ? '전설' : lv.name}</span>
       <b>${MON_IC[x.kind] || '🐾'} ${hqName(x)} ${x.n}마리</b><small>📍 ${hqWhere(x)}</small><span class="hqR">${hqReward(x)}</span></button>`; }).join('');
-  const o = talk('hunter', `산에 들어갈 거야? ${n} 장비를 보니 <b>${'★'.repeat(T + 1)}</b> 짐승까지는 거뜬하겠어. <small>(도구 ⚔️${f.atk} · 방어 ${f.def} · 체력 ${f.hp} · 레벨 ${f.lv})</small><br>하나 골라 봐. 장비가 좋아지면 더 센 의뢰를 줄게.<div class="hqList">${cards}</div>`,
+  const o = talk('hunter', `산에 들어갈 거야? ${n} 장비를 보니 <b>${'★'.repeat(T + 1)}</b> 짐승까지는 거뜬하겠어. <small>(도구 ⚔️${f.atk} · 방어 ${f.def} · 체력 ${f.hp} · 레벨 ${f.lv})</small><br>하나 골라 봐. 난이도마다 1년에 한 번씩만 줄 수 있어.<div class="hqList">${cards}</div>`,
     `<button class="btn" id="tOk">다음에요</button>`);
   $('#tOk').onclick = () => UI.close();
   o.body.querySelectorAll('[data-hq]').forEach(b => b.onclick = () => {
@@ -5048,7 +5055,7 @@ function drawHunterSpot(c, t){
   c.font = '13px Jua'; c.textAlign = 'center'; c.fillStyle = '#fffaf1'; c.fillText('사냥 의뢰', bx, by - 103);
   for (const [dx, dy, rot] of [[-22, -88, -.08], [14, -84, .07], [-6, -62, .03]]) { c.save(); c.translate(bx + dx, by + dy); c.rotate(rot); cel(c, cc => rr(cc, -14, -10, 28, 20, 2), '#fffaf1', '#e5dccb', 1, 1, 1.4); c.beginPath(); c.arc(0, -10, 2.4, 0, 7); c.fillStyle = '#d6372c'; c.fill(); c.restore(); }
   drawPerson(c, s.x, s.y, 'hunter', 0, 0, 0);
-  const mark = hqDone() ? '!' : G.hq ? '' : '?';
+  const mark = hqDone() ? '!' : G.hq ? '' : hqOffers().some(q => !hqLocked(q.lv)) ? '?' : '';
   if (mark) {
     const y = s.y - 118 + Math.sin(t * 3) * 4;
     c.font = '40px Jua'; c.lineWidth = 7; c.strokeStyle = '#fffaf1'; c.strokeText(mark, s.x, y); c.fillStyle = hqDone() ? '#ff7a1a' : '#2f6fb8'; c.fillText(mark, s.x, y);
