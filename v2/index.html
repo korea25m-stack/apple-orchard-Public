@@ -4663,7 +4663,7 @@ function bindUI(){
 // ===== 2026-10-14 랭킹: 도감 창 '🏆 랭킹' 탭 =====
 // 서버(Firebase Realtime Database + 익명 로그인)를 달이 연결하기 전에는 '내 기록'만 보여요.
 // 연결하려면 RANK_CFG에 db 주소와 apiKey만 넣으면 돼요. 이름 말고 다른 개인정보는 보내지 않아요.
-const RANK_CFG = {db:'', apiKey:''};
+const RANK_CFG = {db:'https://orchard-rank-default-rtdb.asia-southeast1.firebasedatabase.app', apiKey:'AIzaSyD0EKMi-3zuDYAkgPNlsXuwZ9jycxPLjaY'};
 const rankOnline = () => !!(RANK_CFG.db && RANK_CFG.apiKey);
 // 서버 규칙과 같은 상한(조작 방지). 과수원 최대 20줄×12그루×6상자 = 한 해 1440상자
 const RANK_MAX = {lv:99, rep:999, money:1e11, avg:1440, year:200};
@@ -4700,7 +4700,7 @@ async function rankAuth(){
   }
   if (!rankTok) {
     res = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + k, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({returnSecureToken:true})});
-    if (!res.ok) throw new Error('login');
+    if (!res.ok) throw new Error('login ' + res.status);
     const j = await res.json(); rankTok = {id:j.idToken, uid:j.localId, refresh:j.refreshToken, exp:Date.now() + (+j.expiresIn) * 1000};
   }
   store.set('haru-rank-auth', JSON.stringify({refresh:rankTok.refresh}));
@@ -4712,12 +4712,12 @@ async function rankSubmit(){
   if (bad) throw new Error(bad);
   const a = await rankAuth();
   const res = await fetch(rankUrl('/rank/' + a.uid + '.json?auth=' + a.id), {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...r, t:{'.sv':'timestamp'}})});
-  if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? '조금 뒤에 다시 올려 주세요(1분에 한 번).' : '올리지 못했어요.');
+  if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? '조금 뒤에 다시 올려 주세요(1분에 한 번).' : `올리지 못했어요 (오류 ${res.status}).`);
   G.rankSent = Date.now(); return a.uid;
 }
 async function rankFetch(){
   const res = await fetch(rankUrl('/rank.json?orderBy="score"&limitToLast=100'));
-  if (!res.ok) throw new Error('list');
+  if (!res.ok) throw new Error('list ' + res.status);
   const j = await res.json() || {};
   return Object.entries(j).map(([id, v]) => ({id, ...v})).filter(v => v && v.score === rankScore(v) && !rankNameOk(v.name)).sort((a, b) => b.score - a.score);
 }
@@ -4753,12 +4753,12 @@ function rankFoot(o){
 }
 function rankLoad(o){
   if (!rankOnline()) return;
-  rankFetch().then(l => { rankList = l; rankMsg = ''; }).catch(() => { rankMsg = '순위를 불러오지 못했어요. 인터넷을 확인해 주세요.'; }).then(() => UI.modal && o.render(o));
+  rankFetch().then(l => { rankList = l; rankMsg = ''; }).catch(e => { rankMsg = `순위를 불러오지 못했어요. 인터넷을 확인해 주세요. (${e.message})`; }).then(() => UI.modal && o.render(o));
 }
 function rankWire(o){
   const re = $('#rkRe'), up = $('#rkUp');
   if (re) re.onclick = () => { rankList = null; rankMsg = ''; o.render(o); rankLoad(o); };
-  if (up) up.onclick = () => { up.disabled = true; rankSubmit().then(() => { rankMsg = '내 기록을 올렸어요!'; toast('🏆 랭킹에 내 기록을 올렸어요!', 'good'); rankList = null; o.render(o); rankLoad(o); }).catch(e => { rankMsg = e.message === 'login' ? '랭킹 서버에 들어가지 못했어요.' : e.message; o.render(o); }); };
+  if (up) up.onclick = () => { up.disabled = true; rankSubmit().then(() => { rankMsg = '내 기록을 올렸어요!'; toast('🏆 랭킹에 내 기록을 올렸어요!', 'good'); rankList = null; o.render(o); rankLoad(o); }).catch(e => { rankMsg = e.message.startsWith('login') ? `랭킹 서버에 들어가지 못했어요 (${e.message}).` : e.message; o.render(o); }); };
 }
 
 // ===== 소매 판매 + 포장 (2026-10-13) =====
