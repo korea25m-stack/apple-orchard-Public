@@ -242,6 +242,8 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
 .ivg>.gnote{grid-column:1/-1}
 .tbl td:last-child,.tbl th:last-child{text-align:right}
 .tbl td{vertical-align:middle}
+.rkTbl td,.rkTbl th{text-align:right}.rkTbl td:nth-child(2),.rkTbl th:nth-child(2){text-align:left}.rkTbl .rkN{text-align:center;font-family:var(--display)}.rkTbl th:first-child{text-align:center}
+.rkTbl tr.rkMe td{background:#fff3c4}.rkWarn{color:#b2332b}.rkNote{color:var(--muted)}
 </style>
 
 </head><body>
@@ -4488,8 +4490,9 @@ function uiLand(){
 
 function uiBook(tab){
   tab = tab || 'var';
+  if (tab === 'rank') { rankList = null; setTimeout(() => UI.modal && UI.modal.render && rankLoad(UI.modal), 0); }
   UI.open({ic:'📖', title:'사과 도감', render(o){
-    const tabs = `<div class="tabs">${[['var', '🍎 품종'], ['ach', '🏅 업적'], ['fact', '💡 사과 상식'], ['rec', '🏆 기록']].map(([k, n]) => `<button class="tab ${tab === k ? 'on' : ''}" data-t="${k}">${n}</button>`).join('')}</div>`;
+    const tabs = `<div class="tabs">${[['var', '🍎 품종'], ['ach', '🏅 업적'], ['fact', '💡 사과 상식'], ['rec', '📊 기록'], ['rank', '🏆 랭킹']].map(([k, n]) => `<button class="tab ${tab === k ? 'on' : ''}" data-t="${k}">${n}</button>`).join('')}</div>`;
     let b = '';
     if (tab === 'var') b = `<div class="grid">${VAR_KEYS.map(v => { const V = VARS[v]; return `<div class="opt ${G.planted[v] ? 'have' : ''}"><span class="t"><canvas width="44" height="44" data-ap="${v}"></canvas>${V.name}</span><span>${V.desc}</span><span class="vline">수확 ${V.hv[0]}~${V.hv[1]}주 · ${G.planted[v] ? '심어 봤어요' : unlocked(v) ? '아직 안 심었어요' : `평판 ${V.rep}에 열려요`}</span></div>`; }).join('')}</div>`;
     if (tab === 'ach') b = `<div class="grid g4">${Object.entries(ACH).map(([k, a]) => `<div class="opt ${G.ach[k] ? 'have' : 'lock'}" style="align-items:center;text-align:center"><span style="font-size:42px">${G.ach[k] ? a[0] : '🔒'}</span><b style="font-family:var(--display);font-weight:400;font-size:20px">${a[1]}</b><span>${a[2]}</span></div>`).join('')}</div>`;
@@ -4498,10 +4501,12 @@ function uiBook(tab){
       <tr><td>지금까지 딴 사과</td><td>${G.stats.boxes}상자</td></tr><tr><td>판 사과</td><td>${G.stats.sold}상자</td></tr>
       <tr><td>방제 횟수</td><td>${G.stats.sprays}번</td></tr><tr><td>맞힌 퀴즈</td><td>${G.stats.quiz}개</td></tr><tr><td>쫓아낸 멧돼지·고라니</td><td>${G.stats.raids}마리</td></tr>
       ${G.contest.map(c => `<tr><td>${c.year}년차 품평회</td><td>${c.rank}등 (품질 ${c.q}점)</td></tr>`).join('')}</table>`;
+    if (tab === 'rank') b = rankBody(o);
     o.body.innerHTML = tabs + b;
     o.body.querySelectorAll('[data-ap]').forEach(cv => { const c = cv.getContext('2d'), V = VARS[cv.dataset.ap]; drawApple(c, 22, 24, 15, V.col, V.sh, !!V.st); });
-    o.body.querySelectorAll('.tab').forEach(x => x.onclick = () => { tab = x.dataset.t; o.render(o); });
-    o.footEl.innerHTML = `<span style="align-self:center">업적 ${Object.keys(G.ach).length}/${Object.keys(ACH).length}</span>`;
+    o.body.querySelectorAll('.tab').forEach(x => x.onclick = () => { tab = x.dataset.t; o.render(o); if (tab === 'rank') { rankList = null; rankLoad(o); } });
+    o.footEl.innerHTML = tab === 'rank' ? rankFoot(o) : `<span style="align-self:center">업적 ${Object.keys(G.ach).length}/${Object.keys(ACH).length}</span>`;
+    if (tab === 'rank') rankWire(o);
   }});
 }
 
@@ -4653,6 +4658,107 @@ function bindUI(){
   const fold = store.get('haru-todo', '0') === '1';
   $('#todo').classList.toggle('fold', fold); $('#todoArrow').textContent = fold ? '▸' : '▾';
   $('#todoH').onclick = () => { const f = !$('#todo').classList.contains('fold'); $('#todo').classList.toggle('fold', f); $('#todoArrow').textContent = f ? '▸' : '▾'; store.set('haru-todo', f ? '1' : '0'); };
+}
+
+// ===== 2026-10-14 랭킹: 도감 창 '🏆 랭킹' 탭 =====
+// 서버(Firebase Realtime Database + 익명 로그인)를 달이 연결하기 전에는 '내 기록'만 보여요.
+// 연결하려면 RANK_CFG에 db 주소와 apiKey만 넣으면 돼요. 이름 말고 다른 개인정보는 보내지 않아요.
+const RANK_CFG = {db:'', apiKey:''};
+const rankOnline = () => !!(RANK_CFG.db && RANK_CFG.apiKey);
+// 서버 규칙과 같은 상한(조작 방지). 과수원 최대 20줄×12그루×6상자 = 한 해 1440상자
+const RANK_MAX = {lv:99, rep:999, money:1e11, avg:1440, year:200};
+const RANK_BAD = ['시발', '씨발', 'ㅅㅂ', 'ㅆㅂ', '병신', 'ㅂㅅ', '개새', '새끼', '좆', '존나', '지랄', '미친', '닥쳐', '꺼져', '니미', '느금', '엠창', 'fuck', 'shit', 'bitch', 'sex', '섹스', 'porn', 'damn'];
+
+// 연평균 수확량 = 지금까지 딴 상자 ÷ 지나간 해 수(올해 포함)
+function rankStats(){
+  const lv = (G.fm && G.fm.lv) || 1, year = G.year || 1;
+  const avg = Math.round((G.stats.boxes || 0) / Math.max(1, year) * 10) / 10;
+  const r = {name:HN(), lv:Math.min(lv, RANK_MAX.lv), rep:Math.min(G.rep || 0, RANK_MAX.rep), money:clamp(Math.round(G.money || 0), 0, RANK_MAX.money), avg:Math.min(avg, RANK_MAX.avg), year:Math.min(year, RANK_MAX.year)};
+  r.score = rankScore(r);
+  return r;
+}
+// 점수 = 연평균 수확 상자 × 10 + 평판 × 20 + 레벨 × 30 + 돈 10만원마다 1점
+function rankScore(r){ return Math.floor(r.avg * 10 + r.rep * 20 + r.lv * 30 + r.money / 100000); }
+function rankNameOk(n){
+  n = String(n || '').trim();
+  if (n.length < 1 || n.length > 10) return '이름은 1~10글자로 해 주세요.';
+  if (!/^[가-힣a-zA-Z0-9 ]+$/.test(n)) return '이름은 한글·영어·숫자만 쓸 수 있어요.';
+  const low = n.toLowerCase().replace(/\s/g, '');
+  if (RANK_BAD.some(w => low.includes(w))) return '랭킹에는 고운 이름만 올릴 수 있어요.';
+  return '';
+}
+
+// ----- 서버 연결 (익명 로그인 토큰은 이 브라우저에만 저장) -----
+let rankTok = null;
+async function rankAuth(){
+  if (rankTok && rankTok.exp > Date.now() + 60000) return rankTok;
+  const k = RANK_CFG.apiKey, saved = JSON.parse(store.get('haru-rank-auth', 'null') || 'null');
+  let res;
+  if (saved && saved.refresh) {
+    res = await fetch('https://securetoken.googleapis.com/v1/token?key=' + k, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'grant_type=refresh_token&refresh_token=' + encodeURIComponent(saved.refresh)});
+    if (res.ok) { const j = await res.json(); rankTok = {id:j.id_token, uid:j.user_id, refresh:j.refresh_token, exp:Date.now() + (+j.expires_in) * 1000}; }
+  }
+  if (!rankTok) {
+    res = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + k, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({returnSecureToken:true})});
+    if (!res.ok) throw new Error('login');
+    const j = await res.json(); rankTok = {id:j.idToken, uid:j.localId, refresh:j.refreshToken, exp:Date.now() + (+j.expiresIn) * 1000};
+  }
+  store.set('haru-rank-auth', JSON.stringify({refresh:rankTok.refresh}));
+  return rankTok;
+}
+const rankUrl = p => RANK_CFG.db.replace(/\/$/, '') + p;
+async function rankSubmit(){
+  const r = rankStats(), bad = rankNameOk(r.name);
+  if (bad) throw new Error(bad);
+  const a = await rankAuth();
+  const res = await fetch(rankUrl('/rank/' + a.uid + '.json?auth=' + a.id), {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...r, t:{'.sv':'timestamp'}})});
+  if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? '조금 뒤에 다시 올려 주세요(1분에 한 번).' : '올리지 못했어요.');
+  G.rankSent = Date.now(); return a.uid;
+}
+async function rankFetch(){
+  const res = await fetch(rankUrl('/rank.json?orderBy="score"&limitToLast=100'));
+  if (!res.ok) throw new Error('list');
+  const j = await res.json() || {};
+  return Object.entries(j).map(([id, v]) => ({id, ...v})).filter(v => v && v.score === rankScore(v) && !rankNameOk(v.name)).sort((a, b) => b.score - a.score);
+}
+
+// ----- 화면 -----
+let rankList = null, rankMsg = '';
+function rankRow(i, r, me){
+  return `<tr class="${me ? 'rkMe' : ''}"><td class="rkN">${i}</td><td>${esc(r.name)}${me ? ' <small>(나)</small>' : ''}</td><td>${r.lv}</td><td>${r.rep}</td><td>${won(r.money)}</td><td>${r.avg}상자</td><td><b>${r.score.toLocaleString('ko-KR')}</b></td></tr>`;
+}
+function rankBody(o){
+  const me = rankStats(), myId = rankTok && rankTok.uid, nameBad = rankNameOk(me.name);
+  const head = '<tr><th>순위</th><th>이름</th><th>레벨</th><th>평판</th><th>돈</th><th>연평균 수확</th><th>점수</th></tr>';
+  let rows = '', note = '';
+  if (!rankOnline()) {
+    rows = rankRow('-', me, true);
+    note = '🌐 모두의 순위는 랭킹 서버를 연결하면 열려요. 지금은 내 기록만 보여요.';
+  } else if (!rankList) {
+    rows = rankRow('-', me, true); note = rankMsg || '순위를 불러오는 중이에요…';
+  } else {
+    rows = rankList.length ? rankList.map((r, i) => rankRow(i + 1, r, r.id === myId)).join('') : '';
+    if (!rankList.some(r => r.id === myId)) rows += rankRow('-', me, true);
+    note = rankMsg;
+  }
+  return `<table class="tbl rkTbl">${head}${rows}</table>
+    <div class="fact">🧮 <b>점수</b> = 연평균 수확 상자 × 10 + 평판 × 20 + 레벨 × 30 + 돈 10만원마다 1점<br>
+    <small>연평균 수확 = 지금까지 딴 상자 ÷ 지나간 해 수(올해 포함). 이름 말고 다른 정보는 올리지 않아요.</small></div>
+    ${nameBad ? `<p class="rkWarn">⚠️ ${nameBad} 이름은 새 게임에서 정해요.</p>` : ''}${note ? `<p class="rkNote">${esc(note)}</p>` : ''}`;
+}
+function rankFoot(o){
+  if (!rankOnline()) return '<span style="margin-right:auto">내 점수 ' + rankStats().score.toLocaleString('ko-KR') + '점</span>';
+  const bad = rankNameOk(HN());
+  return `<span style="margin-right:auto">내 점수 ${rankStats().score.toLocaleString('ko-KR')}점</span><button class="btn" id="rkRe">🔄 새로 보기</button><button class="btn pri" id="rkUp" ${bad ? 'disabled' : ''}>🏆 내 기록 올리기</button>`;
+}
+function rankLoad(o){
+  if (!rankOnline()) return;
+  rankFetch().then(l => { rankList = l; rankMsg = ''; }).catch(() => { rankMsg = '순위를 불러오지 못했어요. 인터넷을 확인해 주세요.'; }).then(() => UI.modal && o.render(o));
+}
+function rankWire(o){
+  const re = $('#rkRe'), up = $('#rkUp');
+  if (re) re.onclick = () => { rankList = null; rankMsg = ''; o.render(o); rankLoad(o); };
+  if (up) up.onclick = () => { up.disabled = true; rankSubmit().then(() => { rankMsg = '내 기록을 올렸어요!'; toast('🏆 랭킹에 내 기록을 올렸어요!', 'good'); rankList = null; o.render(o); rankLoad(o); }).catch(e => { rankMsg = e.message === 'login' ? '랭킹 서버에 들어가지 못했어요.' : e.message; o.render(o); }); };
 }
 
 // ===== 소매 판매 + 포장 (2026-10-13) =====
