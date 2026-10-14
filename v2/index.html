@@ -3486,6 +3486,7 @@ function updateMon(m, dt){
   } else if (m.st === 'chase') {
     const far = tig ? !inDenOf(D, P.x, P.y, 60) : m.raid ? pd > 900 : (pd > 750 || Math.hypot(m.x - m.hx, m.y - m.hy) > 1500 || !inHunt(P.x, P.y));
     if (far) { m.eng = false; m.st = m.raid ? (m.bites >= 3 ? 'leave' : 'raid') : 'wander'; m.tx = m.hx; m.ty = m.hy; }
+    else if (tig && bossTrySkill(m, dt, pd)) { m.flip = P.x < m.x; }
     else if (boar && pd < 330 && pd > (tig ? 170 : 0) && m.cc <= 0) { m.st = 'wind'; m.tm = tig ? .7 : .6; m.flip = P.x < m.x; if (tig) sfx('roar'); }
     else if ((!boar || tig) && pd < (tig ? 170 : 125) && m.cc <= 0) { m.st = 'kick'; m.tm = tig ? .45 : .35; m.flip = P.x < m.x; }
     else if (pd > (tig ? 140 : 105)) moveTo(P.x, P.y, (CHASE_SP[m.kind] || 170) * sp);
@@ -3499,6 +3500,7 @@ function updateMon(m, dt){
   } else if (m.st === 'kick') {
     m.tm -= dt;
     if (m.tm <= 0) { m.st = 'chase'; m.cc = tig ? 1.4 : 1.8; if (pd < (tig ? 175 : 125) && P.inv <= 0) heroHurt(m, 11); }
+  } else if (m.st === 'skill') { bossSkillUpdate(m, dt);
   } else if (m.st === 'hop') {
     m.tm -= dt; m.x += m.hv.x * dt; m.y += m.hv.y * dt; if (Math.abs(m.hv.x) > 10) m.flip = m.hv.x < 0;
     if (m.tm <= 0) m.st = 'chase';
@@ -3606,6 +3608,7 @@ function updateHunt(dt){
     updateMon(m, dt);
     if ((m.dead && m.deadT > 1.2) || (!m.raid && Math.hypot(m.x - P.x, m.y - P.y) > 4200)) MONS.splice(i, 1);
   }
+  updateBossFx(dt);
   for (let i = FORAGE.length - 1; i >= 0; i--) { FORAGE[i].t += dt; if (Math.hypot(FORAGE[i].x - P.x, FORAGE[i].y - P.y) > 4800) FORAGE.splice(i, 1); }
   const dn = denAt(P.x, P.y), z = dn ? 'den' : zoneAt(P.x, P.y), zn = typeof z === 'number' && z >= 0 ? zoneName(z, P.x, P.y) : '';
   if (z !== zoneShow.z || zn !== zoneShow.n) { zoneShow = {z, n:zn, d:dn, t:3}; }
@@ -3667,7 +3670,7 @@ function drawHero(c){
 function drawMon(c, m){
   c.save();
   if (m.dead) c.globalAlpha = clamp(1 - m.deadT, 0, 1);
-  c.translate(m.x + (m.st === 'wind' ? rnd(-2, 2) : 0), m.y); const s = 1.25 * m.V.sc; c.scale(s, s);
+  c.translate(m.x + (m.st === 'wind' ? rnd(-2, 2) : 0), m.y - (m.jz || 0)); const s = 1.25 * m.V.sc; c.scale(s, s);
   if (m.flash > 0) { c.filter = 'brightness(2.6) saturate(.4)'; c.scale(1.06, .94); }
   drawAnimal(c, m.kind, 0, 0, m.st === 'eat' ? m.t * .5 : m.stun > 0 || m.st === 'wander' && m.wait > 0 ? 0 : m.t, m.flip, m.V);
   c.filter = 'none'; c.restore();
@@ -3721,6 +3724,7 @@ function huntEntities(ctx, add, vis, T){
   for (const p of PEAKS) if (vis(p.x, p.y - 150 * p.s, 420 * p.s)) add(p.y, () => drawPeak(ctx, p.x, p.y, p.s, p.v));
   for (const o of FOREST) if (vis(o.x, o.y)) add(o.y, () => o.k === 'pine' ? drawPine(ctx, o.x, o.y, o.s * 1.1) : o.k === 'oak' ? drawOak(ctx, o.x, o.y, o.s) : o.k === 'rock' ? drawRock(ctx, o.x, o.y, o.s) : drawBush(ctx, o.x, o.y, o.s * 1.2));
   for (const f of FORAGE) if (vis(f.x, f.y)) add(f.y - 1, () => drawForage(ctx, f));
+  if (BFX.length) add(-1e9, () => drawBossFx(ctx));
   for (const m of MONS) if (vis(m.x, m.y)) add(m.y, () => drawMon(ctx, m));
 }
 // 화면 위: 작은 지도, 습격 화살표, 구역 안내
@@ -3949,10 +3953,10 @@ Object.assign(NEW_BEAST, {
     {name:'큰 반달가슴곰', hp:400, dmg:3.2, spd:1, sc:1.45, xp:230}, {name:'전설의 반달가슴곰 왕', hp:560, dmg:3.9, spd:1.05, sc:1.6, crown:1, xp:320}]
 });
 // 호랑이: 전설의 산 깊은 곳 '호랑이 굴'에만 1마리. 도구 데미지 27 이상이어야 상처를 낼 수 있어요
-const TIGER = {name:'전설의 호랑이', hp:1600, def:15, dmg:4.2, spd:1.25, sc:1.7, xp:500, boss:1};
+const TIGER = {name:'전설의 호랑이', hp:1600, def:15, dmg:3.5, spd:1.25, sc:1.7, xp:500, boss:1};
 NEW_BEAST.tiger = Array(7).fill(TIGER);
 // 2026-10-14 흰곰: 남쪽 끝 설산 '흰곰 굴'에 1마리. 호랑이보다 한 단계 세요(도구 데미지 34 이상 = 호랑이 발톱 갈퀴 +3)
-const PBEAR = {name:'전설의 흰곰', hp:2600, def:20, dmg:5.2, spd:1.15, sc:1.95, xp:800, boss:1};
+const PBEAR = {name:'전설의 흰곰', hp:2600, def:20, dmg:4.3, spd:1.15, sc:1.95, xp:800, boss:1};
 NEW_BEAST.pbear = Array(7).fill(PBEAR);
 const PBEAR_NEED = 34;
 const DEN = {x:-4200, y:-6250, rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', sign:'⚠️ 호랑이 굴 · 최고 장비 +6', ic:'🐯'};
@@ -4259,6 +4263,115 @@ function drawPortal(c, x, y, T){
   for (let i = 0; i < 10; i++) { const a = T * 1.5 + i * .63, r = 40 + (i % 3) * 14, yy = -70 + Math.sin(a * 1.3 + i) * 60; c.beginPath(); c.arc(Math.cos(a) * r, yy, 2.5, 0, 7); c.fillStyle = '#ffffff'; c.fill(); }
   c.restore();
   drawSign(c, x + 175, y + 20, '🌀 숲속 쉼터로');
+}
+
+// ===== 보스 특수공격 (2026-10-14) =====
+// 보스마다 특수공격 2가지. 바닥에 빨간(얼음은 파란) 표시가 먼저 차오르고, 다 차면 그 자리에 공격이 떨어져요.
+// 표시 밖으로 피하면 안 맞아요. 막기(F)를 하고 있으면 반만 맞아요. 큰 기술 뒤엔 보스가 잠깐 지쳐서(💫) 때릴 기회가 생겨요.
+// 새 보스를 만들면 BOSS_SKILLS에 기술 이름 두 개만 적으면 돼요.
+const BOSS_SKILLS = {tiger:['claws', 'pounce'], pbear:['icefield', 'lane']};
+const BOSS_CD = [5.5, 3.8];
+const BFX = [];
+const SKILL_TXT = {claws:'🐾 발톱 자국이 따라와요! 계속 움직여요', pounce:'🐯 덮치기! 빨간 원 밖으로 피해요', icefield:'❄️ 얼음 기둥! 빈틈으로 피해요', lane:'🐻‍❄️ 돌진! 옆으로 비켜요'};
+
+function bossHit(m, base, txt){
+  if (P.inv > 0 || P.hp <= 0) return;
+  const f = farmer(), half = P.blk;
+  const dmg = Math.max(2, Math.round((base * m.V.dmg - f.def) * (half ? .5 : 1)));
+  P.hp -= dmg; P.inv = .9; P.hurtT = 0; sfx(half ? 'block' : 'hurt');
+  FX.hurt = half ? .3 : .7; FX.shake = Math.max(FX.shake, .6); FX.stop = Math.max(FX.stop, .07);
+  floats.push({x:P.x, y:P.y - 140, s:`${half ? '🛡️ ' : ''}${txt} -${dmg}`, t:1.1, c:half ? '#2f6fb8' : '#d6372c'});
+  if (P.hp <= 0) heroFaint();
+}
+const inCircle = (z, x, y) => Math.hypot(x - z.x, (y - z.y) * 1.25) < z.r;
+function inLane(z, x, y){ const dx = x - z.x, dy = y - z.y, a = dx * z.ux + dy * z.uy, b = Math.abs(-dx * z.uy + dy * z.ux); return a > -40 && a < z.len + 40 && b < z.w / 2; }
+function addZone(m, z){ z.m = m; z.t = 0; z.done = false; z.fade = 0; BFX.push(z); return z; }
+// 바닥 표시 하나가 다 차면 터져요
+function zoneHit(z){
+  z.done = true; z.fade = .4;
+  const ice = z.ice, cols = ice ? ['#d8f2ff', '#8ec8f0', '#fffaf1'] : ['#ffb13b', '#ff6b57', '#fffaf1'];
+  if (z.shape === 'circle') { burst(z.x, z.y - 10, 14, cols, 520, .5); if (inCircle(z, P.x, P.y)) bossHit(z.m, z.dmg, z.txt); }
+  FX.shake = Math.max(FX.shake, .35); sfx(ice ? 'crash' : 'thunder');
+}
+function startSkill(m){
+  const list = BOSS_SKILLS[m.kind]; if (!list || !list.length) return false;
+  m.skI = ((m.skI || 0) + 1) % list.length;
+  const id = list[m.skI]; m.st = 'skill'; m.sk = {id, t:0, n:0}; m.flip = P.x < m.x;
+  floats.push({x:P.x, y:P.y - 200, s:SKILL_TXT[id], t:2.2, c:'#b2332b', sz:32});
+  sfx('roar');
+  if (id === 'pounce') { m.sk.z = addZone(m, {shape:'circle', x:P.x, y:P.y, r:230, warn:1.15, dmg:15, txt:'덮치기'}); }
+  if (id === 'icefield') {
+    // 가운데 + 십자 4곳 → 0.75초 뒤 가운데 + 대각선 4곳. 빈 칸으로 옮겨 다니며 피해요
+    const cx = P.x, cy = P.y, make = rot => { addZone(m, {shape:'circle', ice:1, x:cx, y:cy, r:140, warn:1.3, dmg:9, txt:'얼음 기둥'});
+      for (let i = 0; i < 4; i++) { const a = rot + i * Math.PI / 2; addZone(m, {shape:'circle', ice:1, x:cx + Math.cos(a) * 290, y:cy + Math.sin(a) * 290 * .8, r:140, warn:1.3, dmg:9, txt:'얼음 기둥'}); } };
+    const r0 = rnd(0, .4); make(r0); m.sk.second = () => make(r0 + Math.PI / 4);
+  }
+  if (id === 'lane') {
+    const D = m.den, d = Math.hypot(P.x - m.x, P.y - m.y) || 1, ux = (P.x - m.x) / d, uy = (P.y - m.y) / d;
+    let len = 1050; while (len > 200 && !inDenOf(D, m.x + ux * len, m.y + uy * len, -40)) len -= 50;
+    m.sk.z = addZone(m, {shape:'lane', ice:1, x:m.x, y:m.y, ux, uy, len, w:230, warn:1.0, dmg:14, txt:'돌진'});
+  }
+  return true;
+}
+function bossSkillUpdate(m, dt){
+  const s = m.sk, D = m.den; s.t += dt;
+  const end = rest => { m.st = 'chase'; m.sk = null; m.cc = 1.2; m.skCd = BOSS_CD[m.hp < m.max * .5 ? 1 : 0]; if (rest) { m.stun = rest; floats.push({x:m.x, y:m.y - 200, s:'💫 지쳤다! 지금 때려요!', t:1.6, c:'#2f6fb8', sz:28}); } };
+  if (!inDenOf(D, P.x, P.y, 60)) { end(0); return; }
+  if (s.id === 'claws') {
+    // 0.45초마다 우주 발밑에 발톱 자국 4번
+    if (s.n < 4 && s.t >= s.n * .45) { addZone(m, {shape:'circle', x:P.x, y:P.y, r:140, warn:.8, dmg:8, txt:'할퀴기'}); s.n++; }
+    if (s.t > 4 * .45 + .9) end(.9);
+  } else if (s.id === 'pounce') {
+    const z = s.z, k = clamp((s.t - .85) / .3, 0, 1);
+    if (k > 0 && !s.jump) { s.jump = {x:m.x, y:m.y}; }
+    if (s.jump) { m.x = s.jump.x + (z.x - s.jump.x) * k; m.y = s.jump.y + (z.y - s.jump.y) * k; m.jz = Math.sin(k * Math.PI) * 120; }
+    if (z.done) { m.jz = 0; end(2.2); }
+  } else if (s.id === 'icefield') {
+    if (!s.n && s.t > .75) { s.second(); s.n = 1; }
+    if (s.t > 2.4) end(1.1);
+  } else if (s.id === 'lane') {
+    const z = s.z;
+    if (z.done && !s.run) s.run = {d:0};
+    if (s.run) {
+      const st = Math.min(z.len - s.run.d, 1500 * dt); s.run.d += st; m.x += z.ux * st; m.y += z.uy * st; m.flip = z.ux < 0;
+      if (Math.random() < .5) burst(m.x, m.y - 10, 2, ['#e8f6ff', '#fffaf1'], 200, .4);
+      if (Math.hypot(P.x - m.x, (P.y - m.y) * 1.2) < 150) bossHit(m, z.dmg, z.txt);
+      if (s.run.d >= z.len - 1) { FX.shake = Math.max(FX.shake, .5); sfx('crash'); end(2); }
+    }
+  }
+}
+// updateMon(chase)에서 불러요: 쿨다운이 끝나면 기술을 써요
+function bossTrySkill(m, dt, pd){
+  if (m.skCd == null) m.skCd = 2.5;
+  m.skCd -= dt;
+  return m.skCd <= 0 && pd < 700 && startSkill(m);
+}
+function updateBossFx(dt){
+  for (const z of BFX) { if (z.done) z.fade -= dt; else { z.t += dt; if (z.t >= z.warn) zoneHit(z); } }
+  for (let i = BFX.length - 1; i >= 0; i--) if (BFX[i].done && BFX[i].fade <= 0 || BFX[i].m.dead) BFX.splice(i, 1);
+}
+function drawBossFx(c){
+  for (const z of BFX) {
+    const k = clamp(z.t / z.warn, 0, 1), ice = z.ice;
+    const edge = ice ? '#4a9ad8' : '#d6372c', fill = ice ? '120,190,240' : '230,70,50';
+    c.save();
+    if (z.done) { c.globalAlpha = clamp(z.fade / .4, 0, 1); }
+    if (z.shape === 'circle') {
+      c.beginPath(); c.ellipse(z.x, z.y, z.r, z.r / 1.25, 0, 0, 7);
+      c.fillStyle = `rgba(${fill},${z.done ? .45 : .14 + .12 * Math.sin(T * 14)})`; c.fill();
+      c.setLineDash(z.done ? [] : [14, 10]); c.lineWidth = 4; c.strokeStyle = edge; c.stroke(); c.setLineDash([]);
+      if (!z.done) { c.beginPath(); c.ellipse(z.x, z.y, z.r * k, z.r * k / 1.25, 0, 0, 7); c.fillStyle = `rgba(${fill},.38)`; c.fill(); }
+      else { c.beginPath(); c.ellipse(z.x, z.y, z.r * (1.2 - z.fade), z.r * (1.2 - z.fade) / 1.25, 0, 0, 7); c.lineWidth = 8; c.strokeStyle = ice ? '#e8f6ff' : '#fff2c4'; c.stroke(); }
+      if (ice && z.done) for (let i = 0; i < 5; i++) { const a = i * 1.26, x = z.x + Math.cos(a) * z.r * .45, y = z.y + Math.sin(a) * z.r * .35; cel(c, cc => { cc.moveTo(x - 12, y); cc.lineTo(x, y - 70 - (i % 2) * 30); cc.lineTo(x + 12, y); cc.closePath(); }, '#e8f6ff', '#9ccbe8', 2, 2, 2.4); }
+    } else {
+      c.translate(z.x, z.y); c.rotate(Math.atan2(z.uy, z.ux));
+      c.beginPath(); rr(c, 0, -z.w / 2, z.len, z.w, 30); c.fillStyle = `rgba(${fill},${.14 + .1 * Math.sin(T * 14)})`; c.fill();
+      c.setLineDash([16, 10]); c.lineWidth = 4; c.strokeStyle = edge; c.stroke(); c.setLineDash([]);
+      c.beginPath(); rr(c, 0, -z.w / 2, z.len * k, z.w, 30); c.fillStyle = `rgba(${fill},.34)`; c.fill();
+      c.fillStyle = edge; for (let x = 120; x < z.len; x += 160) { c.beginPath(); c.moveTo(x, -26); c.lineTo(x + 40, 0); c.lineTo(x, 26); c.lineTo(x + 12, 0); c.closePath(); c.fill(); }
+    }
+    c.restore();
+  }
 }
 
 // ===== 2026-10-13 기상 이벤트 화면 연출 (태풍·우박·늦서리) =====
