@@ -3335,6 +3335,22 @@ function drawHurtVignette(c){
 const AOE_LV = 5;
 // 2026-10-13 공격력 - 방어도 상쇄: 산짐승마다 방어도가 있어요(단계 0/3/7/12 + 종류 보정)
 const KIND_DEF = {boar:2, badger:3, hare:-2, snake:-1, raccoon:0, deer:0, lynx:0, wdog:0, wolf:1, bear:4};
+// 2026-10-14 달 요청: ★ 대신 귀여운 레벨 숫자. ★1 = Lv1, 호랑이 Lv20, 흰곰 Lv25를 기준으로 나눴어요(플레이어 레벨은 그대로)
+const TIER_LV = [1, 3, 6, 9, 12, 15, 18];
+const KIND_LV = {hare:-1, snake:0, raccoon:0, deer:0, boar:1, badger:1, lynx:1, wdog:0, wolf:1, bear:1};
+const BOSS_LV = {tiger:20, pbear:25};
+function monLv(kind, tier){ return BOSS_LV[kind] || (tier ? Math.max(2, TIER_LV[tier] + (KIND_LV[kind] || 0)) : 1); }
+const zoneLv = z => z > 0 ? `Lv${Math.max(2, TIER_LV[z] - 1)}~${TIER_LV[z] + 1}` : 'Lv1';
+function lvCol(lv){ return lv >= 20 ? ['#a06ae8', '#6e3fb8'] : lv >= 15 ? ['#ff6b6b', '#c83a3a'] : lv >= 11 ? ['#ff9a3a', '#c86a14'] : lv >= 7 ? ['#ffc53a', '#c8901a'] : lv >= 3 ? ['#5cc0e8', '#2f88b8'] : ['#7fd36a', '#4a9a3a']; }
+// 동글동글한 레벨 배지. 너비를 돌려줘요
+function drawLvBadge(c, x, y, lv, sz = 17){
+  const [a, b] = lvCol(lv), txt = 'Lv.' + lv; c.save(); c.font = `${sz}px Jua`; const w = c.measureText(txt).width + sz * 1.1, h = sz * 1.45;
+  c.beginPath(); rr(c, x, y - h / 2, w, h, h / 2); c.fillStyle = b; c.fill();
+  c.beginPath(); rr(c, x, y - h / 2 - 2, w, h, h / 2); c.fillStyle = a; c.fill(); c.lineWidth = 2.2; c.strokeStyle = INK; c.stroke();
+  c.beginPath(); c.ellipse(x + h * .45, y - h * .22, h * .18, h * .1, -.5, 0, 7); c.fillStyle = 'rgba(255,255,255,.7)'; c.fill();
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 3.5; c.strokeStyle = b; c.strokeText(txt, x + w / 2, y - 1); c.fillStyle = '#fffaf1'; c.fillText(txt, x + w / 2, y - 1);
+  c.restore(); return w;
+}
 function monDef(m){ return m.V.def != null ? m.V.def : Math.max(0, [0, 1, 7, 12, 15, 18, 21][m.tier] + (m.tier >= 2 ? KIND_DEF[m.kind] || 0 : 0)); }
 const TIGER_NEED = 27; // 호랑이는 도구 데미지가 27 이상이어야 상처가 나요(황금 꽹과리채 +5 정도)
 function weaponUp(){ const g = ensureGear(); return g.own[g.weapon] || 0; }
@@ -3558,7 +3574,7 @@ function uiRest(r){
   if (first) unlockRestToast(r);
   UI.open({ic:'⛺', title:r.name, w:860, render(o){
     o.body.innerHTML = `<p style="margin-top:0">모닥불 옆에서 쉬었더니 <b>체력이 가득 찼어요!</b> ❤️ ${Math.round(P.hp)}/${P.max}</p>
-      <p>${ZONES[Math.max(0, zoneAt(r.x, r.y))].stars} ${zoneName(Math.max(0, zoneAt(r.x, r.y)), r.x, r.y)} 한가운데예요. 쉼터 안에는 산짐승이 못 들어와요.</p>
+      <p>${zoneLv(Math.max(0, zoneAt(r.x, r.y)))} ${zoneName(Math.max(0, zoneAt(r.x, r.y)), r.x, r.y)} 한가운데예요. 쉼터 안에는 산짐승이 못 들어와요.</p>
       <p class="gnote">찾은 쉼터 ${restsFound().length}/${RESTS.length}곳 · 찾은 쉼터끼리, 그리고 마을의 🌀 순간이동 포탈(이장님 아래)에서 바로 오갈 수 있어요.</p>`;
     o.footEl.innerHTML = `${warpButtons(r)}<button class="btn" data-home="1">🌀 마을 포탈로</button><button class="btn pri" id="rsOk">더 둘러보기</button>`;
     bindWarp(o);
@@ -3681,7 +3697,8 @@ function drawMon(c, m){
   if (m.eng || m.hitT > 0 || m.raid || Math.hypot(m.x - P.x, m.y - P.y) < 520) {
     const w = 96, y = top;
     c.font = '16px Jua'; c.textAlign = 'center'; c.lineWidth = 4; c.strokeStyle = '#fffaf1';
-    const nm = m.V.boss ? `👑 ${m.V.name}` : `${'★'.repeat(m.tier + 1)} ${m.V.name}`; c.strokeText(nm, m.x, y - 6); c.fillStyle = m.raid ? '#b2332b' : INK; c.fillText(nm, m.x, y - 6);
+    const nm = m.V.boss ? `👑 ${m.V.name}` : m.V.name, lv = monLv(m.kind, m.tier), nw = c.measureText(nm).width, bw = c.measureText('Lv.' + lv).width + 19, x0 = m.x - (nw + bw + 6) / 2;
+    drawLvBadge(c, x0, y - 13, lv); c.textAlign = 'left'; c.strokeText(nm, x0 + bw + 6, y - 6); c.fillStyle = m.raid ? '#b2332b' : INK; c.fillText(nm, x0 + bw + 6, y - 6); c.textAlign = 'center';
     c.beginPath(); rr(c, m.x - w / 2, y, w, 10, 5); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke();
     c.beginPath(); rr(c, m.x - w / 2 + 2, y + 2, (w - 4) * clamp(m.hp / m.max, 0, 1), 6, 3); c.fillStyle = '#ff6b57'; c.fill();
   }
@@ -3745,7 +3762,7 @@ function buildMiniBase(){
   c.fillText('과수원', (OX + ORCH_W / 2) * s, OY * s - 2); c.fillText('마을', VNEW.x * s, (VNEW.y - 1100) * s);
   c.fillStyle = 'rgba(255,255,255,.35)'; for (const p of PEAKS) { c.beginPath(); c.moveTo((p.x - 160 * p.s) * s, p.y * s); c.lineTo(p.x * s, (p.y - 300 * p.s) * s); c.lineTo((p.x + 160 * p.s) * s, p.y * s); c.fill(); }
   c.fillStyle = INK;
-  [['전설의 산 ★4', 1600, -6200], ['★5', 11000, -1200], ['★6', -10600, -6600], ['★7', 13600, -13400], ['눈 덮인 설산', 1600, 15600]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
+  [['전설의 산 ' + zoneLv(3), 1600, -6200], [zoneLv(4), 11000, -1200], [zoneLv(5), -10600, -6600], [zoneLv(6), 13600, -13400], ['눈 덮인 설산', 1600, 15600]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
 }
 function drawHuntOverlay(ctx, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3776,7 +3793,7 @@ function drawHuntOverlay(ctx, T){
   // 구역 안내
   if (zoneShow.t > 0) {
     ctx.globalAlpha = clamp(zoneShow.t, 0, 1);
-    const txt = zoneShow.z === 'den' ? zoneShow.d.label : zoneShow.z < 0 ? '🏡 집 근처 · 시간이 원래대로 흘러요' : `${zoneShow.n === '눈 덮인 설산' ? '🏔️' : '🌲'} ${zoneShow.n} ${ZONES[zoneShow.z].stars} · 사냥터에선 시간이 천천히 흘러요`;
+    const txt = zoneShow.z === 'den' ? zoneShow.d.label : zoneShow.z < 0 ? '🏡 집 근처 · 시간이 원래대로 흘러요' : `${zoneShow.n === '눈 덮인 설산' ? '🏔️' : '🌲'} ${zoneShow.n} ${zoneLv(zoneShow.z)} · 사냥터에선 시간이 천천히 흘러요`;
     ctx.font = '34px Jua'; ctx.textAlign = 'center'; const tw = ctx.measureText(txt).width + 60;
     ctx.beginPath(); rr(ctx, W / 2 - tw / 2, 210, tw, 60, 20); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3.5; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.fillText(txt, W / 2, 252);
@@ -3847,7 +3864,7 @@ const SLEEP_TIPS = [
   () => '❄️ 저온저장고가 있으면 경매값이 10% 올라요.',
   () => '🛖 원두막을 지으면 인부가 하루에 25% 더 일해요.',
   () => '👷 인부는 할 일이 있을 때만 시간을 써요. 그만 부르면 남은 만큼 돌려받아요.',
-  () => '🐇 ★1·★2 산짐승은 먼저 때리지 않으면 덤비지 않아요.',
+  () => '🐇 Lv1~5 순한 산짐승은 먼저 때리지 않으면 덤비지 않아요.',
   () => `🛡️ 짐승이 칠 때 막기(${tipKey('block')})를 딱 맞춰 누르면 피해가 0이에요.`,
   () => `🥁 꽹과리(${tipKey('gong')})를 치면 가까운 산짐승이 깜짝 놀라 멈춰요.`,
   () => '🐯 호랑이는 도구 데미지가 27 이상이어야 상처를 낼 수 있어요.',
@@ -3858,7 +3875,7 @@ const SLEEP_TIPS = [
   () => '🏠 사과 창고를 키우면 경매값이 오르고 소매 주문도 더 자주 와요.',
   () => `🎒 가방(${tipKey('bag')})에서 장비를 끌어다 끼면 옷차림도 바뀌어요.`,
   () => '😵 사냥하다 쓰러져도 잃는 건 없어요. 농막에서 깨어나요.',
-  () => '🗺️ 집에서 멀리 갈수록 ★이 많은 센 산짐승이 나와요.'
+  () => '🗺️ 집에서 멀리 갈수록 레벨이 높은 센 산짐승이 나와요.'
 ];
 let lastTip = -1;
 function sleepTip(){ let i; do { i = Math.floor(Math.random() * SLEEP_TIPS.length); } while (i === lastTip && SLEEP_TIPS.length > 1); lastTip = i; return SLEEP_TIPS[i](); }
@@ -4088,7 +4105,7 @@ function drawDenFx(c, dt){
   for (const d of denDust) { d.y += d.v * dt; d.x += Math.sin(d.y / 60) * .4 + (sn ? 70 * dt : 0); if (d.y > H + 10 || d.x > W + 10) { d.y = -10; d.x = rnd(-200, W); } c.beginPath(); c.arc(d.x, d.y, d.r, 0, 7); c.fillStyle = sn ? `rgba(255,255,255,${d.a * k})` : `rgba(230,210,180,${d.a * k})`; c.fill(); }
   if (tg && (tg.eng || Math.hypot(tg.x - P.x, tg.y - P.y) < 900)) {
     const w = 760, x = W / 2 - w / 2, y = 330;
-    c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = INK; c.strokeText(D.title, W / 2, y - 12); c.fillStyle = sn ? '#bfe8ff' : '#ffd23a'; c.fillText(D.title, W / 2, y - 12);
+    c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = INK; const tt = D.title + '  Lv.' + BOSS_LV[D.kind]; c.strokeText(tt, W / 2, y - 12); c.fillStyle = sn ? '#bfe8ff' : '#ffd23a'; c.fillText(tt, W / 2, y - 12);
     c.beginPath(); rr(c, x, y, w, 26, 13); c.fillStyle = '#2a1c17'; c.fill(); c.lineWidth = 3; c.strokeStyle = '#fffaf1'; c.stroke();
     c.beginPath(); rr(c, x + 4, y + 4, (w - 8) * clamp(tg.hp / tg.max, 0, 1), 18, 9); c.fillStyle = sn ? '#4ab0f0' : '#ff5a2a'; c.fill();
     if (!bossReady(tg)) { c.font = '22px Jua'; c.lineWidth = 5; c.strokeStyle = INK; const t = `⚠️ 지금 도구로는 상처를 못 내요 (도구 데미지 ${weaponDmg()} / ${D.need} 필요)`; c.strokeText(t, W / 2, y + 58); c.fillStyle = '#ffb3a8'; c.fillText(t, W / 2, y + 58); }
@@ -5105,8 +5122,8 @@ function hqOffers(){
   }
   return G.hqOff.list;
 }
-const hqName = q => HQ_BOSS[q.kind] ? (q.kind === 'tiger' ? '전설의 호랑이' : '전설의 흰곰') : `${'★'.repeat(q.tier + 1)} ${BEAST_NOUN[q.kind]}`;
-const hqWhere = q => HQ_BOSS[q.kind] ? HQ_BOSS[q.kind].where : `${ZONES[q.tier].name}(${ZONES[q.tier].stars}) 근처`;
+const hqName = q => HQ_BOSS[q.kind] ? (q.kind === 'tiger' ? '전설의 호랑이' : '전설의 흰곰') : `Lv${monLv(q.kind, q.tier)} ${BEAST_NOUN[q.kind]}`;
+const hqWhere = q => HQ_BOSS[q.kind] ? HQ_BOSS[q.kind].where : `${ZONES[q.tier].name}(${zoneLv(q.tier)}) 근처`;
 function hqReward(q){ return `💰 ${won(q.money)} · ⭐ 경험치 ${q.xp}${q.stones ? ` · 💎 강화석 ${q.stones}` : ''} · 평판 +${q.rep}`; }
 function hqDone(){ return G.hq && G.hq.got >= G.hq.n; }
 // killMon에서 불러요: 의뢰한 짐승(같은 종류, ★이 같거나 높으면)을 이기면 한 마리
@@ -5134,7 +5151,7 @@ function talkHunter(){
     return o;
   }
   if (q) {
-    const o = talk('hunter', `${jo(hqName(q), '은', '는')} ${hqWhere(q)}에 많아. 지금 <b>${q.got}/${q.n}마리</b>야. ${HQ_BOSS[q.kind] ? '굴 앞에서 몸 상태부터 챙기라고.' : '★이 더 많은 녀석을 이겨도 쳐 줄게.'}<div class="hqRew">${hqReward(q)}</div>`,
+    const o = talk('hunter', `${jo(hqName(q), '은', '는')} ${hqWhere(q)}에 많아. 지금 <b>${q.got}/${q.n}마리</b>야. ${HQ_BOSS[q.kind] ? '굴 앞에서 몸 상태부터 챙기라고.' : '같은 짐승이면 레벨이 더 높은 녀석을 이겨도 쳐 줄게.'}<div class="hqRew">${hqReward(q)}</div>`,
       `<button class="btn" id="hqDrop">의뢰 그만두기</button><button class="btn pri" id="tOk">다녀올게요</button>`);
     $('#tOk').onclick = () => UI.close();
     $('#hqDrop').onclick = () => { G.hq = null; todoSig = ''; UI.close(); toast('사냥 의뢰를 그만뒀어요.'); };
@@ -5145,7 +5162,7 @@ function talkHunter(){
     if (lock) return `<div class="hqCard off"><span class="hqLv" style="background:#a89a8c">${boss ? '전설' : lv.name}</span><b>✔ 올해는 끝냈어요</b><small>🔒 ${hqWhenTxt(x.lv)}부터 다시 받을 수 있어요</small><span class="hqR"></span></div>`;
     return `<button class="hqCard" data-hq="${i}"><span class="hqLv" style="background:${boss ? '#7a4ab8' : lv.col}">${boss ? '전설' : lv.name}</span>
       <b>${MON_IC[x.kind] || '🐾'} ${hqName(x)} ${x.n}마리</b><small>📍 ${hqWhere(x)}</small><span class="hqR">${hqReward(x)}</span></button>`; }).join('');
-  const o = talk('hunter', `산에 들어갈 거야? ${n} 장비를 보니 <b>${'★'.repeat(T + 1)}</b> 짐승까지는 거뜬하겠어. <small>(도구 ⚔️${f.atk} · 방어 ${f.def} · 체력 ${f.hp} · 레벨 ${f.lv})</small><br>하나 골라 봐. 난이도마다 1년에 한 번씩만 줄 수 있어.<div class="hqList">${cards}</div>`,
+  const o = talk('hunter', `산에 들어갈 거야? ${n} 장비를 보니 <b>Lv${T ? TIER_LV[T] + 1 : 1}</b> 짐승까지는 거뜬하겠어. <small>(도구 ⚔️${f.atk} · 방어 ${f.def} · 체력 ${f.hp} · 레벨 ${f.lv})</small><br>하나 골라 봐. 난이도마다 1년에 한 번씩만 줄 수 있어.<div class="hqList">${cards}</div>`,
     `<button class="btn" id="tOk">다음에요</button>`);
   $('#tOk').onclick = () => UI.close();
   o.body.querySelectorAll('[data-hq]').forEach(b => b.onclick = () => {
