@@ -175,6 +175,31 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
 .bidder.win{background:#fff3c4;transform:scale(1.07);box-shadow:0 0 0 4px var(--sun)}
 .bidder.big{background:#ffe0f0}
 .ticker{font-family:var(--display);font-size:44px;text-align:center}
+/* 2026-10-14 경매 쉽게: 출하 큰 버튼 4개 + 저절로 이어지는 경매 + 끝나면 번 돈 크게 */
+.shQ{font-family:var(--display);font-size:28px;text-align:center;margin:2px 0 14px}
+.shPick{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.shCard{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;border:3px solid var(--ink);border-radius:18px;background:#fff;cursor:pointer;font:inherit;color:var(--ink);transition:transform .12s}
+.shCard:hover{transform:translateY(-3px)}
+.shCard i{font-style:normal;font-size:38px;line-height:1.1}
+.shCard b{font-family:var(--display);font-weight:400;font-size:30px}
+.shCard small{font-size:16px;opacity:.7}
+.shCard span{font-family:var(--display);font-size:22px;margin-top:4px;background:#fff3c4;border-radius:10px;padding:2px 12px}
+.shCard.on{background:#ffe9a8;box-shadow:0 0 0 5px var(--sun);transform:scale(1.04)}
+.shSum{font-family:var(--display);font-size:30px;text-align:center;margin:18px 0 6px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.shSum small{font-family:inherit;font-size:18px;opacity:.7}
+.shChips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0 10px}
+.shChip{background:#fff;border:2px solid #e3d6bd;border-radius:12px;padding:3px 10px;font-size:17px}
+.shMore{margin-top:8px;font-size:17px}.shMore summary{cursor:pointer;opacity:.75;padding:4px 0}
+.btn.shGo{font-size:26px;padding:12px 34px}
+.aHead{display:flex;align-items:center;gap:14px}.aHead .dot{width:28px;height:28px}
+.aHead b{font-family:var(--display);font-size:28px;font-weight:400}.aProg{margin-left:auto;font-family:var(--display);font-size:22px}
+.aBar{height:12px;border:2px solid var(--ink);border-radius:8px;background:#fff;margin:8px 0;overflow:hidden}.aBar i{display:block;height:100%;background:var(--sun);transition:width .3s}
+.aTot{text-align:center;font-size:22px;font-family:var(--display)}
+.aDone{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 0}
+.aDone>i{font-style:normal;font-size:64px}.aDone>b{font-family:var(--display);font-weight:400;font-size:32px}
+.aMoney{font-family:var(--display);font-size:60px;color:#c47a00}
+.aList{display:flex;flex-direction:column;gap:6px;min-width:520px;margin-top:6px}
+.aList>div{display:flex;align-items:center;gap:8px;font-size:19px;border-bottom:1.5px dashed #e3d6bd;padding:4px 2px}.aList em{margin-left:auto;font-style:normal;font-family:var(--display)}
 
 /* 대화 */
 .talk{display:flex;gap:18px;align-items:flex-start}
@@ -4505,73 +4530,99 @@ function uiStore(tab){
     o.body.querySelectorAll('[data-proc]').forEach(b => b.onclick = () => { const m = processLot(b.dataset.proc); toast(`🫙 가공해서 팔았어요. +${won(m)}`, 'good'); o.render(o); });
     o.body.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => { const r = G.retail.find(x => x.id == b.dataset.rt); UI.close(); setTimeout(() => uiPack(r), 160); });
     o.body.querySelectorAll('[data-ord]').forEach(b => b.onclick = () => { deliver(G.orders.find(x => x.id == b.dataset.ord)); o.render(o); });
-    o.footEl.innerHTML = keys.length && tab === 'stock' ? `<button class="btn pri" id="sellAll">🚚 경매 출하하기 (${totalStock()}상자 중 고르기)</button>` : '';
+    o.footEl.innerHTML = keys.length && tab === 'stock' ? `<button class="btn pri" id="sellAll">🚚 사과 팔러 가기 (${totalStock()}상자)</button>` : '';
     const sa = $('#sellAll'); if (sa) sa.onclick = () => { UI.close(); setTimeout(() => uiShip(keys), 160); };
   }});
 }
 
-// 출하량 고르기 (2026-10-13): 상자 수로, 또는 수확량의 몇 %로
+// 출하량 고르기: 2026-10-14 달 요청으로 아이도 쉽게. 큰 버튼 4개(조금·반·많이·전부)만 고르면 돼요. 상자 수로 고르기는 '직접 고르기' 안에
 function uiShip(keys){
   keys = keys.filter(k => G.stock[k] > 0); if (!keys.length) return;
-  if (!G.ship) G.ship = {mode:'pct', pct:100};
+  if (!G.ship || G.ship.mode !== 'box' && G.ship.mode !== 'pct') G.ship = {mode:'pct', pct:100};
+  if (![25, 50, 75, 100].includes(G.ship.pct)) G.ship.pct = 100;
   const cnt = {}; for (const k of keys) cnt[k] = G.stock[k];
-  const pctOf = k => Math.round(G.stock[k] * G.ship.pct / 100);
-  const pick = k => G.ship.mode === 'pct' ? pctOf(k) : cnt[k];
+  const pctOf = (k, p) => Math.round(G.stock[k] * p / 100);
+  const pick = k => G.ship.mode === 'pct' ? pctOf(k, G.ship.pct) : cnt[k];
   const est = k => { const [v, gk] = k.split('|'); return clamp(gByK(gk).base * VARS[v].mult * (G.b.cold ? 1.1 : 1) * shedMult(), 3, 10) * 10000; };
-  UI.open({ic:'🚚', title:'경매 출하', w:1000, render(o){
-    const pct = G.ship.mode === 'pct';
-    const tot = keys.reduce((s, k) => s + pick(k), 0), all = keys.reduce((s, k) => s + G.stock[k], 0), money = keys.reduce((s, k) => s + pick(k) * est(k), 0);
-    o.body.innerHTML = `<div class="tabs"><button class="tab ${pct ? 'on' : ''}" data-m="pct">📊 수확량의 %로</button><button class="tab ${pct ? '' : 'on'}" data-m="box">📦 상자 수로</button></div>
-      ${pct ? `<div class="snd" style="margin:6px 0 12px"><b>보낼 양</b><input type="range" min="0" max="100" step="5" value="${G.ship.pct}" id="shPct"><span style="min-width:64px"><b>${G.ship.pct}%</b></span>
-        ${[25, 50, 75, 100].map(p => `<button class="btn ${G.ship.pct === p ? 'pri' : ''}" data-p="${p}">${p}%</button>`).join('')}</div>` : ''}
-      <table class="tbl"><tr><th>품종</th><th>등급</th><th>창고</th><th>보낼 상자</th><th>예상 값(상자당)</th></tr>${keys.map(k => { const [v, gk] = k.split('|'), g = gByK(gk);
+  const sum = f => keys.reduce((s, k) => s + f(k), 0);
+  const CH = [[25, '🍎', '조금', '4개 중 1개'], [50, '🍎🍎', '반만', '절반'], [75, '🍎🍎🍎', '많이', '4개 중 3개'], [100, '📦', '전부', '모두']];
+  UI.open({ic:'🚚', title:'사과 팔러 가기', w:1000, render(o){
+    const pct = G.ship.mode === 'pct', all = sum(k => G.stock[k]);
+    const tot = sum(pick), money = sum(k => pick(k) * est(k));
+    const chips = keys.filter(k => pick(k) > 0).map(k => { const [v, gk] = k.split('|'), g = gByK(gk);
+      return `<span class="shChip"><span class="dot" style="background:${VARS[v].col}"></span>${VARS[v].name} <b style="color:${g.col}">${g.name}</b> ${pick(k)}상자</span>`; }).join('');
+    o.body.innerHTML = `<p class="shQ">창고에 사과가 <b>${all}상자</b> 있어요. 얼마나 팔까요?</p>
+      <div class="shPick">${CH.map(([p, ic, t, sub]) => { const n = sum(k => pctOf(k, p));
+        return `<button class="shCard ${pct && G.ship.pct === p ? 'on' : ''}" data-p="${p}"><i>${ic}</i><b>${t}</b><small>${sub}</small><span>${n}상자</span></button>`; }).join('')}</div>
+      <div class="shSum"><span>${tot ? `📦 <b>${tot}상자</b>를 팔면 💰 <b>약 ${won(Math.round(money / 10000) * 10000)}</b>!` : '팔 사과를 골라 주세요.'}</span>${all - tot > 0 ? `<small>남는 ${all - tot}상자는 창고에 그대로 있어요.</small>` : ''}</div>
+      ${tot ? `<div class="shChips">${chips}</div>` : ''}
+      <details class="shMore" ${pct ? '' : 'open'}><summary>✋ 상자 수 직접 고르기 (어른용)</summary>
+      <table class="tbl"><tr><th>품종</th><th>등급</th><th>창고</th><th>보낼 상자</th><th>값(상자당)</th></tr>${keys.map(k => { const [v, gk] = k.split('|'), g = gByK(gk);
         return `<tr><td><span class="dot" style="background:${VARS[v].col}"></span>${VARS[v].name}</td><td><b style="color:${g.col}">${g.name}</b></td><td>${G.stock[k]}</td>
-        <td>${pct ? `<b>${pick(k)}</b>상자` : `<button class="btn" data-d="${k}|-10">−10</button> <button class="btn" data-d="${k}|-1">−</button> <b style="display:inline-block;min-width:40px;text-align:center">${cnt[k]}</b> <button class="btn" data-d="${k}|1">+</button> <button class="btn" data-d="${k}|10">+10</button> <button class="btn" data-d="${k}|all">전부</button> <button class="btn" data-d="${k}|0">0</button>`}</td>
-        <td>약 ${(est(k) / 10000).toFixed(1)}만원</td></tr>`; }).join('')}</table>
-      <div class="fact">🚚 ${all}상자 중 <b>${tot}상자</b>를 보내요. 예상 약 <b>${won(Math.round(money))}</b> · 남은 ${all - tot}상자는 창고에 그대로 있어요(주문 납품·나중에 팔기).</div>`;
-    o.body.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { G.ship.mode = b.dataset.m; o.render(o); });
-    o.body.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { G.ship.pct = +b.dataset.p; o.render(o); });
-    const r = $('#shPct'); if (r) { r.oninput = () => { r.nextElementSibling.innerHTML = `<b>${r.value}%</b>`; }; r.onchange = () => { G.ship.pct = +r.value; o.render(o); }; }
-    o.body.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const [v, g, d] = b.dataset.d.split('|'), k = v + '|' + g; cnt[k] = d === 'all' ? G.stock[k] : d === '0' ? 0 : clamp(cnt[k] + +d, 0, G.stock[k]); o.render(o); });
-    o.footEl.innerHTML = `<button class="btn" id="shNo">취소</button><button class="btn pri" id="shGo" ${tot ? '' : 'disabled'}>🔨 경매 시작 (${tot}상자)</button>`;
+        <td><button class="btn" data-d="${k}|-1">−</button> <b style="display:inline-block;min-width:40px;text-align:center">${pick(k)}</b> <button class="btn" data-d="${k}|1">+</button> <button class="btn" data-d="${k}|all">전부</button> <button class="btn" data-d="${k}|0">0</button></td>
+        <td>약 ${(est(k) / 10000).toFixed(1)}만원</td></tr>`; }).join('')}</table></details>`;
+    o.body.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { G.ship.mode = 'pct'; G.ship.pct = +b.dataset.p; sfx('click'); o.render(o); });
+    o.body.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const [v, g, d] = b.dataset.d.split('|'), k = v + '|' + g;
+      if (G.ship.mode === 'pct') for (const q of keys) cnt[q] = pick(q);
+      G.ship.mode = 'box'; cnt[k] = d === 'all' ? G.stock[k] : d === '0' ? 0 : clamp(cnt[k] + +d, 0, G.stock[k]); o.render(o); });
+    o.footEl.innerHTML = `<button class="btn" id="shNo">안 팔래요</button><button class="btn pri shGo" id="shGo" ${tot ? '' : 'disabled'}>🔨 경매 시작!</button>`;
     $('#shNo').onclick = () => UI.close();
     $('#shGo').onclick = () => { const q = {}; for (const k of keys) q[k] = pick(k); const ks = keys.filter(k => q[k] > 0); UI.close(); setTimeout(() => auction(ks, false, q), 160); };
   }});
 }
-// 경매
+// 경매: 2026-10-14 한 창에서 묶음이 저절로 이어져요(누를 것 없음). 끝나면 번 돈을 크게 보여 줘요
 function auction(keys, fast, qty){
   keys = keys.filter(k => G.stock[k] > 0 && (!qty || qty[k] > 0));
   if (!keys.length) return;
-  const key = keys[0], rest = keys.slice(1);
-  const [v, gk] = key.split('|'), n = qty ? Math.min(qty[key], G.stock[key]) : G.stock[key];
-  const plan = auctionPlan(key);
+  const quick = fast || AUTO, lots = [];
+  let i = 0, total = 0, boxes = 0, skip = false;
   UI.open({ic:'🔨', title:'사과 경매', noX:true, hc:'#ffd7c9', render(o){
-    o.body.innerHTML = `<div style="display:flex;align-items:center;gap:14px;font-size:22px"><span class="dot" style="background:${VARS[v].col};width:28px;height:28px"></span><b style="font-family:var(--display);font-size:28px;font-weight:400">${VARS[v].name} ${gByK(gk).name} ${n}상자</b><span style="margin-left:auto">남은 묶음 ${rest.length}</span></div>
+    o.body.innerHTML = `<div class="aHead"><span class="dot" id="aDot"></span><b id="aName"></b><span class="aProg" id="aProg"></span></div>
+      <div class="aBar"><i id="aBarI"></i></div>
       <div class="ticker" id="tick">3.0만원</div>
-      <div class="bidders">${plan.bids.map((b, i) => `<div class="bidder ${b.big ? 'big' : ''}" id="bd${i}"><canvas width="72" height="72"></canvas><div>${esc(b.n)}</div><div class="bp">?</div></div>`).join('')}</div>
-      <div class="blog" id="alog">경매사: "자, ${VARS[v].name} ${gByK(gk).name}! 값을 불러 주세요!"</div>`;
-    o.body.querySelectorAll('.bidder canvas').forEach((cv, i) => drawPortrait(cv, plan.bids[i].big ? 'chief' : 'dealer'));
-    o.footEl.innerHTML = '';
+      <div class="bidders" id="aBids"></div>
+      <div class="blog" id="alog"></div>
+      <div class="aTot">지금까지 💰 <b id="aTot">0원</b></div>`;
+    o.footEl.innerHTML = `<button class="btn" id="aFast">⏩ 빨리 보기</button>`;
+    $('#aFast').onclick = () => { skip = true; $('#aFast').disabled = true; };
   }});
-  const o = UI.modal, dur = fast || AUTO ? 1600 : 3200, t0 = performance.now();
-  const order = plan.bids.map((b, i) => i).sort((a, b) => plan.bids[a].p - plan.bids[b].p);
-  const step = () => {
+  const o = UI.modal;
+  const lot = () => {
     if (UI.modal !== o) return;
-    const u = clamp((performance.now() - t0) / dur, 0, 1);
-    const shown = Math.floor(u * 10);
-    order.slice(0, shown).forEach(i => { const el = $('#bd' + i + ' .bp'); if (el) el.textContent = plan.bids[i].p.toFixed(1) + '만'; });
-    $('#tick').textContent = (3 + (plan.bids[plan.win].p - 3) * Math.pow(u, .7)).toFixed(1) + '만원';
-    if (u < 1) return requestAnimationFrame(step);
-    $('#bd' + plan.win).classList.add('win');
-    const total = sellLot(key, plan, n);
-    $('#alog').innerHTML = plan.big ? `💎 큰손 상인이 상자당 10만원에 몽땅 사 갔어요! +${won(total)}` : `🎉 ${esc(plan.bids[plan.win].n)}에 낙찰! 상자당 ${plan.bids[plan.win].p.toFixed(1)}만원, 모두 +${won(total)}`;
-    floats.push({x:P.x, y:P.y - 120, s:'+' + won(total), t:2.2, c:'#c47a00'});
-    o.footEl.innerHTML = `<button class="btn pri" id="aOk">${rest.length ? '다음 묶음' : '좋아요'}</button>`;
-    const next = () => { UI.close(); if (rest.length) setTimeout(() => auction(rest, fast, qty), 150); };
-    $('#aOk').onclick = next;
-    if (AUTO || fast) o.timer = setTimeout(() => UI.modal === o && next(), AUTO ? 1500 : 900);
+    const key = keys[i], [v, gk] = key.split('|'), n = qty ? Math.min(qty[key], G.stock[key] || 0) : G.stock[key] || 0;
+    const plan = auctionPlan(key), dur = quick || skip ? 700 : 2400, t0 = performance.now();
+    $('#aDot').style.background = VARS[v].col; $('#aName').textContent = `${VARS[v].name} ${gByK(gk).name} ${n}상자`;
+    $('#aProg').textContent = `${i + 1} / ${keys.length}`; $('#aBarI').style.width = (i / keys.length * 100) + '%';
+    $('#aBids').innerHTML = plan.bids.map((b, j) => `<div class="bidder ${b.big ? 'big' : ''}" id="bd${j}"><canvas width="72" height="72"></canvas><div>${esc(b.n)}</div><div class="bp">?</div></div>`).join('');
+    o.body.querySelectorAll('.bidder canvas').forEach((cv, j) => drawPortrait(cv, plan.bids[j].big ? 'chief' : 'dealer'));
+    $('#alog').textContent = `경매사: "자, ${VARS[v].name} ${gByK(gk).name}! 값을 불러 주세요!"`;
+    const order = plan.bids.map((b, j) => j).sort((a, b) => plan.bids[a].p - plan.bids[b].p);
+    const step = () => {
+      if (UI.modal !== o) return;
+      const u = clamp((performance.now() - t0) / (skip && !quick ? 500 : dur), 0, 1);
+      order.slice(0, Math.floor(u * 10)).forEach(j => { const el = $('#bd' + j + ' .bp'); if (el) el.textContent = plan.bids[j].p.toFixed(1) + '만'; });
+      $('#tick').textContent = (3 + (plan.bids[plan.win].p - 3) * Math.pow(u, .7)).toFixed(1) + '만원';
+      if (u < 1) return requestAnimationFrame(step);
+      $('#bd' + plan.win).classList.add('win');
+      const got = sellLot(key, plan, n); total += got; boxes += n; sfx('coin');
+      lots.push({v, gk, n, p:plan.bids[plan.win].p, got, big:plan.big});
+      $('#alog').innerHTML = plan.big ? `💎 큰손 상인이 상자당 10만원에 몽땅 사 갔어요! +${won(got)}` : `🎉 ${esc(plan.bids[plan.win].n)}에 팔았어요! 상자당 ${plan.bids[plan.win].p.toFixed(1)}만원, +${won(got)}`;
+      $('#aTot').textContent = won(total);
+      i++;
+      setTimeout(i < keys.length ? lot : done, quick || skip ? 350 : 1300);
+    };
+    requestAnimationFrame(step);
   };
-  requestAnimationFrame(step);
+  const done = () => {
+    if (UI.modal !== o) return;
+    floats.push({x:P.x, y:P.y - 120, s:'+' + won(total), t:2.2, c:'#c47a00'}); sfx('win');
+    o.body.innerHTML = `<div class="aDone"><i>🎉</i><b>사과 ${boxes}상자를 다 팔았어요!</b><span class="aMoney">+${won(total)}</span>
+      <div class="aList">${lots.map(l => `<div><span class="dot" style="background:${VARS[l.v].col}"></span>${VARS[l.v].name} <b style="color:${gByK(l.gk).col}">${gByK(l.gk).name}</b> ${l.n}상자 <small>× ${l.p.toFixed(1)}만</small><em>${l.big ? '💎 ' : ''}+${won(l.got)}</em></div>`).join('')}</div></div>`;
+    o.footEl.innerHTML = `<button class="btn pri" id="aOk">좋아요</button>`;
+    $('#aOk').onclick = () => UI.close();
+    if (quick) o.timer = setTimeout(() => UI.modal === o && UI.close(), AUTO ? 1500 : 900);
+  };
+  lot();
 }
 
 function uiBuild(tab){
