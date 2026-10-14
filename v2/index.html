@@ -3672,12 +3672,13 @@ function drawSpinGlow(c, sk, back){
 // 2026-10-14 호랑이 탈것: 타고 있으면 호랑이를 먼저 그리고 우주는 그 위(RIDE_UP)에 앉혀요
 function drawHero(c){
   if (!riding()) return drawHeroBody(c);
-  ensureHero(); const d = P.dir, fb = d === 0 || d === 1;
-  if (fb) drawRideTigerFB(c, d, 'under'); else drawRideTiger(c);
-  // 걷는 다리 대신 걸터앉은 자세, 호랑이 걸음에 맞춰 살짝 들썩여요
-  const bob = P.walk ? Math.abs(Math.sin(P.walk * .9)) * 3.5 : 0;
-  c.save(); c.translate(0, -RIDE_UP - bob); HERO_SIT = 1; try { drawHeroBody(c); } finally { HERO_SIT = 0; } c.restore();
-  if (d === 0) drawRideTigerFB(c, 0, 'over');
+  ensureHero(); const d8 = rideDir();
+  drawRideUnder(c, d8);
+  // 걷는 다리 대신 걸터앉은 자세, 호랑이 걸음에 맞춰 살짝 들썩여요. 주인공은 8방향 중 가까운 4방향 그림으로
+  const bob = P.walk ? Math.abs(Math.sin(P.walk * .9)) * 3.5 : 0, od = P.dir, of = P.face;
+  P.dir = RIDER_DIR[d8]; if (d8 !== 2 && d8 !== 6) P.face = [0, 1, 7].includes(d8) ? 1 : -1;
+  c.save(); c.translate(0, -RIDE_UP - bob); HERO_SIT = 1; try { drawHeroBody(c); } finally { HERO_SIT = 0; P.dir = od; P.face = of; } c.restore();
+  drawRideOver(c, d8);
 }
 function drawHeroBody(c){
   ensureHero();
@@ -5300,9 +5301,61 @@ function mountBind(o){
   };
 }
 // 우주 밑에 깔리는 호랑이 (오른쪽 보는 그림을 face에 맞춰 뒤집어요)
-function drawRideTiger(c){
+function drawRideTiger(c, left = P.face < 0){
   c.save(); c.translate(P.x, P.y); c.scale(RIDE_SC, RIDE_SC);
-  drawAnimal(c, 'tiger', 0, 0, P.walk / 11, P.face < 0, TIGER);
+  drawAnimal(c, 'tiger', 0, 0, P.walk / 11, left, TIGER);
+  c.restore();
+}
+// 2026-10-14 달 요청: 8방향. P.d8 = 0 오른쪽, 1 오른아래, 2 아래, 3 왼아래, 4 왼쪽, 5 왼위, 6 위, 7 오른위
+function rideDir(){ return P.d8 != null ? P.d8 : [2, 6, 4, 0][P.dir] || 0; }
+// 주인공은 4방향 그림이라 가장 가까운 쪽으로: 아래 대각선 = 앞모습, 위 대각선 = 뒷모습
+const RIDER_DIR = [3, 0, 0, 0, 2, 1, 1, 1];
+function drawRideUnder(c, d8){
+  if (d8 === 2 || d8 === 6) drawRideTigerFB(c, d8 === 2 ? 0 : 1, 'under');
+  else if (d8 === 0 || d8 === 4) drawRideTiger(c, d8 === 4);
+  else drawRideTiger34(c, d8, 'under');
+}
+function drawRideOver(c, d8){
+  if (d8 === 2) drawRideTigerFB(c, 0, 'over');
+  else if (d8 === 1 || d8 === 3) drawRideTiger34(c, d8, 'over');
+}
+// 대각선(3/4) 모습: 오른쪽 기준으로 그리고 왼쪽은 뒤집어요. 아래 대각선은 얼굴이 보이고, 위 대각선은 엉덩이·꼬리가 보여요
+function drawRideTiger34(c, d8, layer){
+  const B = '#f2922c', S = '#c4661a', W = '#fff8ec', t = P.walk / 11, leg = Math.sin(t * 10) * 4;
+  const front = d8 === 1 || d8 === 3, left = d8 === 3 || d8 === 5;
+  c.save(); c.translate(P.x, P.y); c.scale(RIDE_SC * (left ? -1 : 1), RIDE_SC);
+  const legs = pts => pts.forEach(([lx, o, h, dk]) => cel(c, cc => rr(cc, lx - 7, -h + o, 14, h - o * .3, 4), dk ? S : B, S, 1, 0, 2.4));
+  if (layer === 'under') {
+    shadow(c, 0, 0, 50, 13, .3);
+    if (!front) { // 머리는 몸 너머 오른쪽 위
+      for (const ex of [22, 42]) cel(c, cc => ell(cc, ex, -84, 8, 8), B, S, 1, 1, 2.4);
+      cel(c, cc => ell(cc, 32, -66, 22, 18), B, S, 3, 3, 3);
+      for (const x of [26, 33, 40]) line(c, [x, -80, x - 1, -71], 3, INK);
+    } else { // 꼬리는 몸 너머 왼쪽 위
+      c.beginPath(); c.moveTo(-34, -52); c.quadraticCurveTo(-62, -58, -58, -90 + Math.sin(T * 3) * 5); c.lineWidth = 11; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 7; c.strokeStyle = B; c.stroke();
+      for (const k of [.4, .75]) { c.beginPath(); ell(c, -34 - 26 * k, -55 - 28 * k, 4, 2.6); c.fillStyle = INK; c.fill(); }
+    }
+    legs(front ? [[-24, -leg, 38, 1], [20, leg, 38, 1]] : [[-18, -leg, 38, 1], [26, leg, 38, 1]]); // 먼 다리
+    c.save(); c.translate(0, -44); c.rotate(front ? .2 : -.2);
+    cel(c, cc => ell(cc, 0, 0, 42, 26), B, S, 4, 6, 3.2);
+    c.beginPath(); ell(c, front ? 4 : -2, 14, 28, 7); c.fillStyle = W; c.fill();
+    for (let k = -2; k <= 2; k++) { const x = k * 13; c.beginPath(); c.moveTo(x - 4, -22); c.quadraticCurveTo(x + 4, -10, x - 2, 2); c.lineWidth = 4.2; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); }
+    c.restore();
+    if (!front) { // 엉덩이 쪽 꼬리 (화면 앞, 왼쪽 아래)
+      c.beginPath(); c.moveTo(-32, -30); c.quadraticCurveTo(-52, -8, -60, -26 + Math.sin(T * 3) * 4); c.quadraticCurveTo(-66, -40, -58, -50); c.lineWidth = 11; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 7; c.strokeStyle = B; c.stroke();
+      for (const [x, y] of [[-44, -14], [-58, -26]]) { c.beginPath(); ell(c, x, y, 3.4, 2.4); c.fillStyle = INK; c.fill(); }
+    }
+    legs(front ? [[-12, leg, 32], [32, -leg, 30]] : [[-30, leg, 30], [12, -leg, 32]]); // 가까운 다리
+  } else if (front) { // 얼굴: 오른쪽 아래 앞, 우주 다리 앞
+    c.translate(34, 4); c.scale(.92, .92);
+    for (const ex of [-17, 19]) { cel(c, cc => ell(cc, ex, -55, 8, 8), B, S, 1, 1, 2.4); c.beginPath(); ell(c, ex, -54, 4, 4); c.fillStyle = W; c.fill(); }
+    cel(c, cc => ell(cc, 2, -34, 26, 22), B, S, 3, 4, 3);
+    cel(c, cc => ell(cc, 8, -23, 15, 9), W, '#e0d4c0', 1, 2, 2.2);
+    for (const [x1, y1, x2, y2] of [[-4, -52, -3, -45], [2, -54, 2, -46], [8, -52, 7, -45], [-22, -36, -14, -35], [-21, -28, -14, -29]]) line(c, [x1, y1, x2, y2], 3, INK);
+    for (const ex of [-6, 14]) { c.beginPath(); ell(c, ex, -38, 4.4, 4.2); c.fillStyle = '#ffd23a'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); c.beginPath(); ell(c, ex + .8, -38, 1.5, 3.4); c.fillStyle = INK; c.fill(); }
+    cel(c, cc => { cc.moveTo(4, -28); cc.lineTo(14, -28); cc.lineTo(9, -23); cc.closePath(); }, '#e86a7a', '#b84a5a', 0, 1, 1.8);
+    line(c, [9, -23, 9, -19], 2, INK);
+  }
   c.restore();
 }
 // 2026-10-14 달 요청: 위·아래로 갈 때도 호랑이가 몸을 틀어요. 아래(dir 0) = 앞모습, 위(dir 1) = 뒷모습
@@ -6976,6 +7029,11 @@ function update(dt){
     moveBy(P, nx * sp * dt, ny * sp * dt);
     P.walk += dt * 11;
     P.dir = Math.abs(nx) > Math.abs(ny) ? (nx < 0 ? 2 : 3) : (ny < 0 ? 1 : 0);
+    { // 탈것 8방향: 대각선에서 키를 떼는 순간 한쪽 키만 남아도 안 바뀌게 0.08초 이어져야 바꿔요
+      const n8 = (Math.round(Math.atan2(ny, nx) / (Math.PI / 4)) + 8) % 8;
+      if (P.d8 == null) P.d8 = n8;
+      if (n8 === P.d8) P.d8T = 0; else if (n8 === P.d8P) { P.d8T = (P.d8T || 0) + dt; if (P.d8T > .08) { P.d8 = n8; P.d8T = 0; } } else { P.d8P = n8; P.d8T = 0; }
+    }
     if (Math.abs(nx) > .2) P.face = nx < 0 ? -1 : 1;
     const moved = Math.hypot(P.x - ox, P.y - oy);
     if (P.tgt && moved < .5) { P.stuck = (P.stuck || 0) + dt; if (P.stuck > .4) { P.stuck = 0; detour(); } } else P.stuck = 0;
