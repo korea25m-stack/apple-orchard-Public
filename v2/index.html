@@ -328,7 +328,8 @@ const WORKER_PAY = 130000;
 const DAY_SEC = 10;                 // 1배속 하루 10초
 // 2026-10-12 과수원이 맵 한가운데. 집·마을 둘레(HOME) 바깥은 사방이 사냥터
 // 2026-10-13 맵 4배(가로·세로 2배, 17200×19600). 가운데 = 과수원 한가운데(1600, 2180)
-const WX0 = -7000, WY0 = -7620, WX1 = 10200, WY1 = 11980;
+// 2026-10-14 달 요청: 다시 4배(34400×39200). 가운데는 그대로, 바깥으로 갈수록 ★7까지 세져요
+const WX0 = -15600, WY0 = -17420, WX1 = 18800, WY1 = 21780;
 const WORLD_W = WX1 - WX0, WORLD_H = WY1 - WY0;
 const HOME = {x0:-2100, y0:440, x1:2880, y1:5600}; // 2026-10-13 과수원 20줄이 들어가게 남쪽으로 1000 넓힘
 const worldH = rows => OY + rows * ROW_H + 520;
@@ -499,6 +500,7 @@ const ORDERS = [
 const ACH = {
   plant1:  ['🌱','첫 묘목','묘목을 처음 심었어요'],
   tiger:   ['🐯','호랑이를 이긴 농부','전설의 호랑이를 이겼어요'],
+  pbear:   ['🐻‍❄️','설산의 영웅','설산의 전설의 흰곰을 이겼어요'],
   orchard: ['🌳','과수원 완성','빈 자리 없이 다 심었어요'],
   harvest1:['🍎','첫 수확','사과를 처음 땄어요'],
   gradeS:  ['🏅','특 등급','특 등급 사과를 땄어요'],
@@ -1431,10 +1433,10 @@ const HEROES = [
 ];
 const heroSpec = () => HEROES.find(h => h.id === (G && G.hero && G.hero.look)) || HEROES[0];
 const HN = () => (G && G.hero && G.hero.name) || '우주';
-function wjTrim(){ return {cloth:null, denim:null, leather:'#5a3a22', guard:'#e8f0f4', tarmor:'#3a2a20'}[ensureGear().armor] || null; }
+function wjTrim(){ return {cloth:null, denim:null, leather:'#5a3a22', guard:'#e8f0f4', tarmor:'#3a2a20', pcoat:'#b4c4d2'}[ensureGear().armor] || null; }
 // 2026-10-13 장비마다 주인공 모습(스킨)이 바뀌어요: 작업복=겉옷, 신발=신발 색, 모자=머리에 쓰는 것
 const ARMOR_SKIN = {denim:{outer:'overall', oc:'#2c5596', top:'#fbfaf6'}, leather:{outer:'vest', oc:'#8a5a3a'}, guard:{outer:'jacket', oc:'#f08a2a', top:'#fff4c8', bc:'#4a4f5a'},
-  tarmor:{outer:'coat', oc:'#f2922c', top:'#fff8ec', bc:'#3a2a20', tstripe:1}};
+  tarmor:{outer:'coat', oc:'#f2922c', top:'#fff8ec', bc:'#3a2a20', tstripe:1}, pcoat:{outer:'coat', oc:'#f4f7fa', top:'#dfe9f2', bc:'#4a5a6a'}};
 const BOOT_SKIN = {rainboot:'#f2c230', sneaker:'#ffffff', wind:'#4ac8e8', tboots:'#f2922c'};
 function heroGearSpec(){
   const g = ensureGear(), S = {...heroSpec(), ...(ARMOR_SKIN[g.armor] || {})};
@@ -1992,24 +1994,32 @@ function nearRoad(x, y, d){
   }
   return false;
 }
+// 2026-10-14 맵 4배: 풀·꽃·얼룩도 4배. 땅 조각(TILE)마다 나눠 담아서 그 조각 것만 그려요
 function buildFeats(){
   const R = srand(4242), WH = WORLD_H;
-  feats = {blobs:[], tufts:[], flw:[]};
-  for (let i = 0; i < 10400; i++) {
+  feats = {blobs:new Map(), tufts:new Map(), flw:new Map()};
+  const put = (m, x, y, v) => { const k = Math.floor(x / TILE) + ',' + Math.floor(y / TILE); let L = m.get(k); if (!L) m.set(k, L = []); L.push(v); };
+  for (let i = 0; i < 41600; i++) {
     const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH, r = 40 + R() * 110, pts = [];
     const n = 9; for (let k = 0; k < n; k++) { const a = k / n * 6.283, rr2 = r * (.7 + R() * .45); pts.push([x + Math.cos(a) * rr2, y + Math.sin(a) * rr2 * .55]); }
-    feats.blobs.push({x, y, r, pts, dark:R() < .55});
+    put(feats.blobs, x, y, {x, y, r, pts, dark:R() < .55});
   }
-  for (let i = 0; i < 104000; i++) {
-    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH;
-    if (inOrchard(x, y) || nearRoad(x, y, 70) || inYard(x, y) || inDen(x, y, 40)) continue;
-    feats.tufts.push([x, y, R()]);
+  for (let i = 0; i < 416000; i++) {
+    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH, v = R();
+    if (nearHome(x, y) && (inOrchard(x, y) || nearRoad(x, y, 70) || inYard(x, y)) || inDen(x, y, 40)) continue;
+    put(feats.tufts, x, y, [x, y, v]);
   }
-  for (let i = 0; i < 24000; i++) {
-    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH;
-    if (inOrchard(x, y, 20) || nearRoad(x, y, 80) || inYard(x, y) || inDen(x, y, 40)) continue;
-    feats.flw.push([x, y, Math.floor(R() * 4)]);
+  for (let i = 0; i < 96000; i++) {
+    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH, k = Math.floor(R() * 4);
+    if (y > SNOW_Y + 300 || nearHome(x, y) && (inOrchard(x, y, 20) || nearRoad(x, y, 80) || inYard(x, y)) || inDen(x, y, 40)) continue;
+    put(feats.flw, x, y, [x, y, k]);
   }
+}
+// 과수원·마당·마을 길은 모두 집 둘레(HOME) 안에 있어요
+const nearHome = (x, y) => x > HOME.x0 - 300 && x < HOME.x1 + 300 && y > HOME.y0 - 300 && y < HOME.y1 + 300;
+// 이 땅 조각과 이웃 조각에 담긴 것만 꺼내요 (가장자리에 걸친 것도 그려지게)
+function* featsNear(m, x0, y0, w, h){
+  for (let ty = Math.floor(y0 / TILE) - 1; ty <= Math.floor((y0 + h) / TILE) + 1; ty++) for (let tx = Math.floor(x0 / TILE) - 1; tx <= Math.floor((x0 + w) / TILE) + 1; tx++) { const L = m.get(tx + ',' + ty); if (L) yield* L; }
 }
 function inYard(x, y){ return ((x - YARD.x) / (YARD.rx + 30)) ** 2 + ((y - YARD.y) / (YARD.ry + 30)) ** 2 < 1 || ((x - HYARD.x) / (HYARD.rx + 30)) ** 2 + ((y - HYARD.y) / (HYARD.ry + 30)) ** 2 < 1 || (x > 300 && x < 760 && y > 400 && y < 860) || (x > -680 && x < -220 && y > 600 && y < 940); }
 function checkGround(){
@@ -2030,7 +2040,7 @@ function drawGround(c, x0, y0, w, h){
   const S = seasonOf(G.week), pal = PAL[S], win = S === 'winter';
   const inB = (x, y, m) => x > x0 - m && x < x0 + w + m && y > y0 - m && y < y0 + h + m;
   c.fillStyle = pal.g; c.fillRect(x0, y0, w, h);
-  for (const b of feats.blobs) {
+  for (const b of featsNear(feats.blobs, x0, y0, w, h)) {
     if (!inB(b.x, b.y, b.r * 1.3)) continue;
     c.beginPath(); b.pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath();
     c.fillStyle = b.dark ? pal.g2 : pal.g3; c.fill();
@@ -2068,13 +2078,13 @@ function drawGround(c, x0, y0, w, h){
   c.fillStyle = pal.track; c.fillRect(OX - 100, top + 18, ORCH_W + 200, 20);
   // 풀
   c.lineCap = 'round';
-  for (const [x, y, s] of feats.tufts) {
+  for (const [x, y, s] of featsNear(feats.tufts, x0, y0, w, h)) {
     if (!inB(x, y, 12)) continue;
-    c.strokeStyle = win ? '#c9d7e2' : pal.g2; c.lineWidth = 2.4;
+    c.strokeStyle = win || y > SNOW_Y + 800 ? '#c9d7e2' : pal.g2; c.lineWidth = 2.4;
     c.beginPath(); c.moveTo(x - 5, y - 6 - s * 3); c.lineTo(x - 1, y); c.lineTo(x + 2, y - 8 - s * 4); c.moveTo(x + 1, y); c.lineTo(x + 7, y - 5); c.stroke();
   }
-  if (!win) for (const [x, y, k] of feats.flw) {
-    if (!inB(x, y, 8)) continue;
+  if (!win) for (const [x, y, k] of featsNear(feats.flw, x0, y0, w, h)) {
+    if (!inB(x, y, 8) || y > SNOW_Y + 300) continue;
     const col = ['#ffffff', '#ffe066', '#ff9ec4', '#b9a2ff'][k];
     for (let p = 0; p < 5; p++) { const a = p * 1.256; c.beginPath(); c.arc(x + Math.cos(a) * 3.4, y + Math.sin(a) * 3.4, 2.8, 0, 7); c.fillStyle = col; c.fill(); }
     c.beginPath(); c.arc(x, y, 2, 0, 7); c.fillStyle = k === 1 ? '#ff9a3a' : '#ffd23a'; c.fill();
@@ -2248,14 +2258,15 @@ function drawFactory(c, x, y){
 function drawPine(c, x, y, s){
   c.save(); c.translate(x, y); c.scale(s, s); shadow(c, 0, 2, 34, 9);
   cel(c, cc => rr(cc, -6, -40, 12, 42, 3), '#8a5a3a', '#5e3a22', 2, 0, 2.2);
-  const S = seasonOf(G.week);
+  const S = snowK(y) > .4 ? 'winter' : seasonOf(G.week); // 2026-10-14 설산 소나무는 늘 눈이 쌓여 있어요
   const col = S === 'winter' ? '#5d8f6a' : '#3f8f5a', sh = S === 'winter' ? '#3c6448' : '#246640';
   [[0, -60, 40, 34], [0, -98, 32, 30], [0, -132, 22, 26]].forEach(([tx, ty, w2, h2]) => cel(c, cc => { cc.moveTo(tx - w2, ty + h2 * .5); cc.quadraticCurveTo(tx, ty + h2 * .8, tx + w2, ty + h2 * .5); cc.lineTo(tx, ty - h2); cc.closePath(); }, col, sh, 6, 5, 2.6));
   if (S === 'winter') [[0, -76], [0, -112], [0, -146]].forEach(([tx, ty]) => { c.beginPath(); ell(c, tx - 4, ty, 14, 4); c.fillStyle = '#fff'; c.fill(); });
+  if (snowK(y) > .4) [[0, -150, 12, 10], [-14, -110, 16, 6], [-18, -72, 20, 7]].forEach(([tx, ty, rx, ry]) => { c.beginPath(); ell(c, tx, ty, rx, ry); c.fillStyle = '#fbfdff'; c.fill(); });
   c.restore();
 }
 function drawBush(c, x, y, s, R){
-  const S = seasonOf(G.week), pal = PAL[S];
+  const S = snowK(y) > .4 ? 'winter' : seasonOf(G.week), pal = PAL[S];
   c.save(); c.translate(x, y); c.scale(s, s); shadow(c, 0, 2, 30, 8);
   celBlob(c, [[-16, -16, 17], [14, -16, 17], [0, -28, 20]], S === 'winter' ? '#e9f1f5' : mix(pal.leaf, '#3f9a4a', .4), S === 'winter' ? '#c4d4de' : pal.leafS, 5, 5, 2.4);
   if (S === 'spring' || S === 'summer') for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(-14 + k * 9, -24 + (k % 2) * 10, 3.5, 0, 7); c.fillStyle = k % 2 ? '#ff9ec4' : '#fff'; c.fill(); }
@@ -2918,10 +2929,17 @@ const GATES = [{x:HOME.x1, y:1200}, {x:1600, y:HOME.y1}, {x:2400, y:HOME.y0}, {x
 function inHunt(x, y){ return x < HOME.x0 || x > HOME.x1 || y < HOME.y0 || y > HOME.y1; }
 function gateDist(x, y){ return Math.min(...GATES.map(g => Math.hypot(x - g.x, y - g.y))); }
 function homeDist(x, y){ return Math.hypot(Math.max(HOME.x0 - x, 0, x - HOME.x1), Math.max(HOME.y0 - y, 0, y - HOME.y1)); }
-function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = homeDist(x, y); return d < 1600 ? 0 : d < 3400 ? 1 : d < 5200 ? 2 : 3; } // 2026-10-13 맵 4배라 구역도 두 배 넓게
+// 2026-10-14 맵 4배: 집에서 멀어질수록 ★1~★7. 남쪽 끝(눈 덮인 설산)에 흰곰 굴
+const ZONE_D = [1600, 3400, 5200, 7400, 9800, 12400];
+function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = homeDist(x, y); let z = 0; while (z < ZONE_D.length && d >= ZONE_D[z]) z++; return z; }
 const ZONES = [
-  {name:'얕은 숲', stars:'★'}, {name:'깊은 숲', stars:'★★'}, {name:'골짜기', stars:'★★★'}, {name:'전설의 산', stars:'★★★★'}
+  {name:'얕은 숲', stars:'★'}, {name:'깊은 숲', stars:'★★'}, {name:'골짜기', stars:'★★★'}, {name:'전설의 산', stars:'★★★★'},
+  {name:'험한 봉우리', stars:'★★★★★'}, {name:'구름 산맥', stars:'★★★★★★'}, {name:'끝없는 산맥', stars:'★★★★★★★'}
 ];
+// 눈 덮인 설산: 남쪽으로 갈수록 눈이 쌓여요(0~1)
+const SNOW_Y = 13000;
+function snowK(y){ return clamp((y - SNOW_Y) / 1600, 0, 1); }
+const zoneName = (z, x, y) => (snowK(y) > .5 && z >= 4 ? '눈 덮인 설산' : ZONES[z].name);
 const TRAILS = [ // 2026-10-13 맵 4배에 맞춰 새로 낸 숲길
   [[2880, 1200], [4400, 1300], [5800, 800], [7400, 1500], [9200, 1000]],
   [[4400, 1300], [5000, 3200], [6400, 4800], [7800, 6600], [8800, 9200]],
@@ -2930,7 +2948,21 @@ const TRAILS = [ // 2026-10-13 맵 4배에 맞춰 새로 낸 숲길
   [[2400, 440], [2300, -900], [1300, -2400], [-200, -3600], [-2000, -5000], [-4200, -6400]],
   [[2300, -900], [4400, -2000], [6200, -3400], [7800, -5800]], [[1300, -2400], [1700, -4800], [2400, -6600]], [[4400, -2000], [5800, 800]],
   [[-2100, 2500], [-3300, 2300], [-4600, 3600], [-5400, 5600], [-4600, 7800], [-2600, 9000], [-600, 9800]],
-  [[-3300, 2300], [-4400, 600], [-5600, -1200], [-4200, -3200], [-2000, -5000]]
+  [[-3300, 2300], [-4400, 600], [-5600, -1200], [-4200, -3200], [-2000, -5000]],
+  // 2026-10-14 새로 넓힌 바깥 숲길 (★5~★7)
+  [[9200, 1000], [11400, 1800], [13600, 800], [16000, 1600], [17600, 600]],
+  [[11400, 1800], [12400, -2000], [12000, -5400], [12000, -9400]],
+  [[7800, -5800], [9600, -8200], [12000, -9400], [14400, -12000], [16200, -14800]],
+  [[2400, -6600], [2000, -9000], [3000, -11400], [1800, -13800], [2600, -16000]], [[3000, -11400], [6200, -12600], [9600, -8200]],
+  [[-5600, -1200], [-8200, -2600], [-9800, -5600], [-11800, -8800], [-13400, -12600]],
+  [[-9800, -5600], [-7200, -9400], [-4400, -11200], [-1200, -12800], [1800, -13800]],
+  [[-5400, 5600], [-8000, 4800], [-10400, 6200], [-12600, 4400], [-14200, 5600]], [[-8000, 4800], [-8200, 1400], [-8200, -2600]],
+  [[-2600, 9000], [-5800, 11000], [-8600, 12800], [-11200, 15600], [-13400, 18800]], [[-10400, 6200], [-9800, 9600], [-8600, 12800]],
+  [[16000, 1600], [15400, 5200], [16200, 8800], [13400, 13200]], [[11400, 1800], [11600, 5600], [8800, 9200]],
+  [[8800, 9200], [11000, 11600], [13400, 13200], [15600, 16400], [17000, 19600]],
+  [[3600, 10400], [6200, 12600], [8600, 15400], [11000, 11600]],
+  // 흰곰 굴로 가는 남쪽 설산 길
+  [[1400, 11000], [2200, 12800], [1200, 14600], [2400, 16200], [3000, 17500]], [[6200, 12600], [4400, 14200], [1200, 14600]], [[-5800, 11000], [-2600, 13400], [1200, 14600]]
 ];
 const CLEARINGS = TRAILS.flat().filter(([x, y]) => inHunt(x, y) && gateDist(x, y) > 500).map(([x, y]) => ({x, y, r:230}));
 function nearTrail(x, y, d){
@@ -2954,24 +2986,28 @@ const LOOT = {
   songi:{name:'송이버섯', ic:'🍄', lo:40000, hi:100000, desc:'살아 있는 소나무 뿌리랑 함께 살아서 사람이 기르기가 아주 어려워요.'},
   sanghwang:{name:'상황버섯', ic:'🍄', lo:50000, hi:120000, desc:'뽕나무 같은 나무에서 몇 해에 걸쳐 아주 천천히 자라요.'},
   sansam:{name:'산삼', ic:'🌿', lo:80000, hi:150000, desc:'깊은 산에서 오래오래 자란 귀한 삼이에요. 잎이 다섯 갈래로 갈라져요.'},
-  tskin:{name:'호랑이 가죽', ic:'🐯', lo:600000, hi:900000, desc:'전설의 호랑이를 이기면 얻어요. 팔거나 든든철물에서 호랑이 가죽 장비를 만들 수 있어요.'}
+  tskin:{name:'호랑이 가죽', ic:'🐯', lo:600000, hi:900000, desc:'전설의 호랑이를 이기면 얻어요. 팔거나 든든철물에서 호랑이 가죽 장비를 만들 수 있어요.'},
+  pfur:{name:'흰곰 털가죽', ic:'🐻‍❄️', lo:900000, hi:1300000, desc:'설산의 전설의 흰곰을 이기면 얻어요. 아주 귀해서 비싸게 팔 수 있어요.'}
 };
+const BOSS_LOOT = {tskin:1, pfur:1}; // 보스 전리품은 많이 팔아도 값이 안 내려가요
 const LOOT_KEYS = Object.keys(LOOT);
 // 구역별로 나오는 전리품 (숫자 = 잘 나오는 정도)
 const LOOT_TABLE = [
   {pyogo:5, deodeok:4, cheonma:3, yeongji:1},
   {deodeok:3, cheonma:3, yeongji:3, seokcheong:2, neungi:2, songi:1},
   {yeongji:2, seokcheong:3, neungi:3, songi:3, sanghwang:2, sansam:.6},
-  {neungi:2, songi:3, sanghwang:3, sansam:2}
+  {neungi:2, songi:3, sanghwang:3, sansam:2},
+  {songi:3, sanghwang:3, sansam:3}, {songi:2, sanghwang:3, sansam:4}, {sanghwang:3, sansam:6}
 ];
-const FORAGE_TABLE = [{pyogo:5, deodeok:3}, {pyogo:2, deodeok:3, cheonma:3}, {cheonma:3, yeongji:3, seokcheong:1}, {yeongji:3, seokcheong:2, neungi:1}];
+const FORAGE_TABLE = [{pyogo:5, deodeok:3}, {pyogo:2, deodeok:3, cheonma:3}, {cheonma:3, yeongji:3, seokcheong:1}, {yeongji:3, seokcheong:2, neungi:1},
+  {seokcheong:2, neungi:3, songi:1}, {neungi:3, songi:2, sanghwang:1}, {songi:3, sanghwang:2, sansam:1}];
 function rollLoot(tab){ let s = 0; for (const k in tab) s += tab[k]; let r = Math.random() * s; for (const k in tab) { r -= tab[k]; if (r <= 0) return k; } return Object.keys(tab)[0]; }
 function lootPrice(id){ const L = LOOT[id], i = LOOT_KEYS.indexOf(id); const f = srand(absDay() * 31 + i * 7 + 3)(); return Math.round((L.lo + (L.hi - L.lo) * f) / 10000) * 10000; }
 function addLoot(id, n = 1){ ensureGear(); G.bag[id] = (G.bag[id] || 0) + n; G.stats.loot = (G.stats.loot || 0) + n; }
 // 2026-10-13 판매 제한 없앰. 대신 한 주에 많이 팔수록 시세가 5%씩 내려가요(최저 50%, 다음 주에 회복). 드랍 확률은 레벨에 따라 34%~72%
 const weekKey = () => G.year * 100 + G.week;
 function lootWk(){ if (!G.lootWk || G.lootWk.w !== weekKey()) G.lootWk = {w:weekKey(), n:0}; return G.lootWk; }
-const lootSat = (k, extra = 0) => k === 'tskin' ? 1 : Math.max(.5, 1 - .05 * (lootWk().n + extra));
+const lootSat = (k, extra = 0) => BOSS_LOOT[k] ? 1 : Math.max(.5, 1 - .05 * (lootWk().n + extra));
 const lootSell = (k, extra = 0) => Math.round(lootPrice(k) * lootSat(k, extra) / 1000) * 1000;
 const lootDropP = () => Math.min(.72, .3 + .02 * (((G.fm && G.fm.lv) || 1) - 1));
 const bagCount = () => { ensureGear(); return Object.values(G.bag).reduce((a, b) => a + b, 0); };
@@ -2987,11 +3023,22 @@ function buildForest(){
     if (!inHunt(x, y) || homeDist(x, y) < 70) continue;
     if (nearTrail(x, y, 120) || inClearing(x, y, 40) || inDen(x, y, 260)) continue;
     if (R() < .18) continue;
-    const kind = k < .45 ? 'pine' : k < .85 ? 'oak' : k < .95 ? 'bush' : 'rock';
+    let kind = k < .45 ? 'pine' : k < .85 ? 'oak' : k < .95 ? 'bush' : 'rock';
+    if (kind === 'oak' && snowK(y) > .3) kind = 'pine'; // 설산엔 눈 쌓인 소나무만
     // 2026-10-14 달 요청: 부딪히는 나무·바위를 지금의 60%로 (덤불은 그대로). 남는 나무 자리는 예전과 같아요
     if (kind !== 'bush' && R3() < FOREST_THIN) continue;
     FOREST.push({x, y, k:kind, s});
   }
+  // 2026-10-14 설산 봉우리: 눈 덮인 바위산. 길·굴·빈터는 비워 둬요. 맨 남쪽 끝은 봉우리가 줄지어 있어요
+  PEAKS = [];
+  const R4 = srand(7171);
+  for (let gy = SNOW_Y + 900; gy < WY1 - 500; gy += 950) for (let gx = WX0 + 500; gx < WX1 - 400; gx += 950) {
+    const x = gx + (R4() - .5) * 600, y = gy + (R4() - .5) * 500, s = 1 + R4() * .8;
+    if (R4() < .5 || nearTrail(x, y, 330 * s) || inDen(x, y, 500 * s) || inClearing(x, y, 300 * s)) continue;
+    PEAKS.push({x, y, s, v:R4()});
+  }
+  for (let x = WX0 + 300; x < WX1; x += 520) { const s = 1.3 + R4() * .7; PEAKS.push({x:x + R4() * 120, y:WY1 - 60 - R4() * 60, s, v:R4()}); }
+  FOREST = FOREST.filter(o => !PEAKS.some(p => ((o.x - p.x) / (230 * p.s)) ** 2 + ((o.y - p.y) / (110 * p.s)) ** 2 < 1));
   // 사냥터 경계 소나무 줄 (입구는 비워 둬요)
   BORDER = [];
   const R2 = srand(4040), gap = (x, y) => GATES.some(g => Math.hypot(x - g.x, y - g.y) < 150);
@@ -3003,15 +3050,32 @@ function buildForest(){
   const put = o => { const k = Math.floor(o.x / 400) + ',' + Math.floor(o.y / 400); if (!SOLID_G.has(k)) SOLID_G.set(k, []); SOLID_G.get(k).push(o); };
   for (const o of FOREST) if (o.k === 'pine') put({x:o.x, y:o.y, rx:15 * o.s, ry:9 * o.s}); else if (o.k === 'oak') put({x:o.x, y:o.y, rx:17 * o.s, ry:10 * o.s}); else if (o.k === 'rock') put({x:o.x, y:o.y - 4 * o.s, rx:36 * o.s, ry:13 * o.s});
   for (const o of BORDER) put({x:o.x, y:o.y, rx:14 * o.s, ry:8 * o.s});
+  for (const p of PEAKS) put({x:p.x, y:p.y - 10 * p.s, rx:175 * p.s, ry:55 * p.s});
 }
-let BORDER = [], SOLID_G = null;
+let BORDER = [], SOLID_G = null, PEAKS = [];
+// 눈 덮인 바위산 (발 밑 가운데가 0,0)
+function drawPeak(c, x, y, s, v){
+  c.save(); c.translate(x, y); c.scale(s, s);
+  shadow(c, 0, 4, 200, 40, .2);
+  const h = 300 + v * 90, lx = -10 + v * 40;
+  cel(c, cc => { cc.moveTo(-210, 0); cc.lineTo(-120, -h * .5); cc.lineTo(lx, -h); cc.lineTo(110, -h * .62); cc.lineTo(205, 0); cc.closePath(); }, '#8a9cae', '#5e7286', 30, 0, 3.4);
+  cel(c, cc => { cc.moveTo(lx, -h); cc.lineTo(110, -h * .62); cc.lineTo(205, 0); cc.lineTo(40, 0); cc.closePath(); }, '#6e8296', '#5e7286', 0, 0, 0);
+  // 눈 덮인 꼭대기
+  cel(c, cc => { cc.moveTo(-126, -h * .47); cc.lineTo(lx, -h); cc.lineTo(104, -h * .6); cc.lineTo(70, -h * .52); cc.lineTo(40, -h * .6); cc.lineTo(10, -h * .5); cc.lineTo(-30, -h * .58); cc.lineTo(-70, -h * .46); cc.closePath(); }, '#fbfdff', '#d2e0ea', 10, 6, 3);
+  // 발치에 쌓인 눈
+  cel(c, cc => { cc.moveTo(-214, 0); cc.quadraticCurveTo(-150, -46, -80, -18); cc.quadraticCurveTo(-10, -50, 60, -16); cc.quadraticCurveTo(140, -44, 210, 0); cc.closePath(); }, '#f4f8fb', '#d2e0ea', 4, 4, 3);
+  hl(c, lx - 30, -h * .8, 16, 5, .5);
+  c.restore();
+}
 function huntBlocked(x, y){
   if (!FOREST) buildForest();
   const cx = Math.floor(x / 400), cy = Math.floor(y / 400);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = SOLID_G.get((cx + i) + ',' + (cy + j)); if (L) for (const o of L) if (((x - o.x) / o.rx) ** 2 + ((y - o.y) / o.ry) ** 2 < 1) return true; }
-  // 호랑이 굴 바위 벽: 그린 바위 고리와 같은 자리. 숲길 쪽 입구와 북쪽 동굴 옆은 열려 있어요
-  const ux = (x - DEN.x) / (DEN.rx + 30), uy = (y - DEN.y) / (DEN.ry + 26), q = Math.hypot(ux, uy);
-  if (Math.abs(q - 1) < .05) { let a = Math.atan2(uy, ux); if (a < 0) a += 6.283; let da = Math.abs(a - DEN_GATE); da = Math.min(da, 6.283 - da); if (!(da < .24 || Math.abs(a - 4.712) < .26)) return true; }
+  // 보스 굴 바위 벽: 그린 바위 고리와 같은 자리. 숲길 쪽 입구와 북쪽 동굴 옆은 열려 있어요
+  for (const D of DENS) {
+    const ux = (x - D.x) / (D.rx + 30), uy = (y - D.y) / (D.ry + 26), q = Math.hypot(ux, uy);
+    if (Math.abs(q - 1) < .05) { let a = Math.atan2(uy, ux); if (a < 0) a += 6.283; let da = Math.abs(a - D.gate); da = Math.min(da, 6.283 - da); if (!(da < .24 || Math.abs(a - 4.712) < .26)) return true; }
+  }
   return false;
 }
 function drawOak(c, x, y, s){
@@ -3028,7 +3092,8 @@ function drawRock(c, x, y, s){
   c.save(); c.translate(x, y); c.scale(s, s);
   shadow(c, 0, 2, 40, 10, .22);
   cel(c, cc => { cc.moveTo(-40, 0); cc.quadraticCurveTo(-44, -36, -6, -44); cc.quadraticCurveTo(38, -48, 42, -8); cc.lineTo(38, 0); cc.closePath(); }, '#b2aca8', '#7d7772', 8, 7, 3);
-  hl(c, -14, -30, 10, 4, .4);
+  if (snowK(y) > .4) cel(c, cc => { cc.moveTo(-38, -24); cc.quadraticCurveTo(-36, -44, -6, -46); cc.quadraticCurveTo(34, -50, 40, -16); cc.quadraticCurveTo(20, -26, 4, -22); cc.quadraticCurveTo(-18, -30, -38, -24); cc.closePath(); }, '#fbfdff', '#d2e0ea', 4, 3, 2.4);
+  else hl(c, -14, -30, 10, 4, .4);
   c.restore();
 }
 function drawHuntGround(c, x0, y0, w, h, win){
@@ -3037,9 +3102,11 @@ function drawHuntGround(c, x0, y0, w, h, win){
   // 숲 바닥: 깊이 들어갈수록 조금씩 짙어져요
   for (let cy = y0; cy < y0 + h; cy += 64) for (let cx = x0; cx < x0 + w; cx += 64) {
     if (!inHunt(cx + 32, cy + 32)) continue;
-    const t = clamp(homeDist(cx + 32, cy + 32) / 7000, 0, 1);
-    c.fillStyle = mix(base, dark, .1 + t * .35); c.fillRect(cx, cy, 65, 65);
+    const t = clamp(homeDist(cx + 32, cy + 32) / 7000, 0, 1), sk = snowK(cy + 32);
+    const t2 = clamp((homeDist(cx + 32, cy + 32) - 7000) / 7000, 0, 1); // ★5~★7은 더 짙은 숲
+    c.fillStyle = mix(mix(base, dark, .1 + t * .35 + t2 * .22), '#eef4f8', sk * .94); c.fillRect(cx, cy, 65, 65);
   }
+  const sn = snowK(y0 + h / 2) > .5; win = win || sn;
   const R = srand((x0 / 512 | 0) * 977 + (y0 / 512 | 0) * 131 + 5);
   for (let k = 0; k < 14; k++) { const x = x0 + R() * w, y = y0 + R() * h; if (!inHunt(x, y)) continue; c.beginPath(); ell(c, x, y, 40 + R() * 70, 16 + R() * 26); c.fillStyle = win ? '#e9eff3' : 'rgba(30,70,25,.16)'; c.fill(); }
   // 빈터 + 오솔길
@@ -3133,18 +3200,18 @@ function drawHurtVignette(c){
 const AOE_LV = 5;
 // 2026-10-13 공격력 - 방어도 상쇄: 산짐승마다 방어도가 있어요(단계 0/3/7/12 + 종류 보정)
 const KIND_DEF = {boar:2, badger:3, hare:-2, snake:-1, raccoon:0, deer:0, lynx:0, wdog:0, wolf:1, bear:4};
-function monDef(m){ return m.V.def != null ? m.V.def : Math.max(0, [0, 1, 7, 12][m.tier] + (m.tier >= 2 ? KIND_DEF[m.kind] || 0 : 0)); }
+function monDef(m){ return m.V.def != null ? m.V.def : Math.max(0, [0, 1, 7, 12, 15, 18, 21][m.tier] + (m.tier >= 2 ? KIND_DEF[m.kind] || 0 : 0)); }
 const TIGER_NEED = 27; // 호랑이는 도구 데미지가 27 이상이어야 상처가 나요(황금 꽹과리채 +5 정도)
 function weaponUp(){ const g = ensureGear(); return g.own[g.weapon] || 0; }
 function hitMon(m, dmg, f, main){
   const bd = Math.max(1, Math.hypot(m.x - P.x, (m.y - P.y) * 1.2));
   const crit = main && Math.random() < .15; if (crit) dmg = Math.round(dmg * 1.6);
   dmg = Math.max(Math.ceil(dmg * .1), dmg - monDef(m)); // 방어도만큼 깎여요(최소 10%)
-  if (m.kind === 'tiger' && !tigerReady()) { dmg = 1; if (main && !(m.warnT > 0)) { m.warnT = 2.5; floats.push({x:m.x, y:m.y - 200, s:`끄떡없다! 도구 데미지 ${TIGER_NEED} 이상이 필요해요`, t:1.8, c:'#b2332b'}); } }
+  if (m.boss && !bossReady(m)) { dmg = 1; if (main && !(m.warnT > 0)) { m.warnT = 2.5; floats.push({x:m.x, y:m.y - 200, s:`끄떡없다! 도구 데미지 ${m.den.need} 이상이 필요해요`, t:1.8, c:'#b2332b'}); } }
   m.hp -= dmg; m.hitT = 4; m.eng = true; m.flash = .12;
-  if (main) { sfx(crit ? 'crit' : 'hit'); setTimeout(() => sfx({boar:'oink', badger:'oink', tiger:'roar', snake:'hiss', hare:'squeak', lynx:'growl', wdog:'growl', wolf:'growl', bear:'roar'}[m.kind] || 'bleat'), 60); FX.stop = Math.max(FX.stop, crit ? .1 : .055); FX.shake = Math.max(FX.shake, crit ? .55 : .28); }
+  if (main) { sfx(crit ? 'crit' : 'hit'); setTimeout(() => sfx({boar:'oink', badger:'oink', tiger:'roar', pbear:'roar', snake:'hiss', hare:'squeak', lynx:'growl', wdog:'growl', wolf:'growl', bear:'roar'}[m.kind] || 'bleat'), 60); FX.stop = Math.max(FX.stop, crit ? .1 : .055); FX.shake = Math.max(FX.shake, crit ? .55 : .28); }
   burst(m.x, m.y - 50 * m.V.sc, crit ? 14 : 8, crit ? ['#ffd23a', '#ff6b57', '#fffaf1'] : ['#fffaf1', '#ffe36a'], crit ? 520 : 380, .45);
-  if (!['wind', 'charge', 'kick'].includes(m.st) && m.kind !== 'tiger') {
+  if (!['wind', 'charge', 'kick'].includes(m.st) && !m.boss) {
     m.stun = f.reach >= 1.25 ? .35 : .2;
     const k = Math.max(1, bd); m.kb = {x:(m.x - P.x) / k * 520, y:(m.y - P.y) / k * 520, t:.18};
     if (m.st === 'eat') { m.eat = 0; floats.push({x:m.x, y:m.y - 120, s:'먹지 마!', t:1, c:'#2f6fb8'}); }
@@ -3159,7 +3226,7 @@ function heroGong(){
   ensureHero(); if (P.gong > 0) return;
   P.gong = 9; sfx('gong');
   floats.push({x:P.x, y:P.y - 140, s:'🥁 쩌렁쩌렁!', t:1.2, c:'#b2332b'});
-  for (const m of MONS) if (!m.dead && Math.hypot(m.x - P.x, m.y - P.y) < 420) { m.stun = m.kind === 'tiger' ? .5 : 1.8; m.eat = 0; if (['wind', 'charge', 'kick'].includes(m.st)) m.st = 'chase'; floats.push({x:m.x, y:m.y - 120, s:'💫', t:1.2, c:'#ffb13b'}); }
+  for (const m of MONS) if (!m.dead && Math.hypot(m.x - P.x, m.y - P.y) < 420) { m.stun = m.boss ? .5 : 1.8; m.eat = 0; if (['wind', 'charge', 'kick'].includes(m.st)) m.st = 'chase'; floats.push({x:m.x, y:m.y - 120, s:'💫', t:1.2, c:'#ffb13b'}); }
 }
 function heroHurt(m, base){
   const f = farmer(), d = Math.hypot(P.x - m.x, P.y - m.y) || 1;
@@ -3196,7 +3263,7 @@ const EASY_DMG = [.45, .55], EASY_HP = [.7, .8];
 function makeMon(kind, tier, x, y, raid){
   const V = {...BEAST[kind][tier], tier};
   // 2026-10-13 처음 하는 사람도 할 만하게: ★1·★2는 덜 아프게 물고 체력도 낮아요(★3·★4·호랑이는 그대로)
-  if (tier < 2 && kind !== 'tiger') { V.dmg *= EASY_DMG[tier] * (CHARGER[kind] ? .75 : 1); V.hp = Math.round(V.hp * EASY_HP[tier] * (CHARGER[kind] ? .8 : 1)); }
+  if (tier < 2 && !BEAST[kind][tier].boss) { V.dmg *= EASY_DMG[tier] * (CHARGER[kind] ? .75 : 1); V.hp = Math.round(V.hp * EASY_HP[tier] * (CHARGER[kind] ? .8 : 1)); }
   return {id:monId++, kind, V, tier, x, y, hx:x, hy:y, hp:V.hp, max:V.hp, st:raid ? 'raid' : 'wander', tm:0, stun:0, flip:false, cc:1, kb:null,
     tx:x, ty:y, wait:rnd(0, 2), hitT:0, raid, eng:false, eat:0, bites:0, dead:false, deadT:0, t:rnd(0, 9)};
 }
@@ -3204,8 +3271,8 @@ function spawnHuntMon(){
   for (let k = 0; k < 20; k++) {
     const a = rnd(0, 6.28), d = rnd(1150, 2600), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
     if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 700 || homeDist(x, y) < 300 || restAt(x, y, 500) || inDen(x, y, 350)) continue;
-    const z = zoneAt(x, y), tier = Math.max(0, Math.min(3, z - (Math.random() < .3 ? 1 : 0)));
-    MONS.push(makeMon(pickKind(SPAWN_MIX[Math.max(0, z)]), tier, x, y, false));
+    const z = zoneAt(x, y), tier = Math.max(0, Math.min(6, z - (Math.random() < .3 ? 1 : 0)));
+    MONS.push(makeMon(pickKind(snowK(y) > .5 ? SPAWN_SNOW : SPAWN_MIX[Math.max(0, z)]), tier, x, y, false));
     return;
   }
 }
@@ -3229,14 +3296,14 @@ function killMon(m){
     toast(`🎉 ${m.V.name}를 쫓아냈어요! 이장님 포상금 ${won(m.V.pay)}, 평판 +${m.V.rep}`, 'good');
     gainXp(m.V.xp);
     const dr = raidDrop(m.tier); if (dr) setTimeout(() => toast(`🎁 ${dr}`, 'good'), 700);
-  } else if (m.kind === 'tiger') { killTiger(m);
+  } else if (m.boss) { killTiger(m);
   } else {
     const z = Math.max(0, zoneAt(m.x, m.y)), n = Math.random() < lootDropP() ? 1 : 0, got = [];
     for (let k = 0; k < n; k++) { const id = rollLoot(LOOT_TABLE[Math.max(z, m.tier)]); addLoot(id); got.push(LOOT[id].ic + ' ' + LOOT[id].name); }
     if (got.length) { floats.push({x:m.x, y:m.y - 150, s:got.join(' · '), t:2.2, c:'#2f8a3e'}); toast(`🧺 ${m.V.name}가 도망가면서 떨어뜨렸어요: ${got.join(', ')}`, 'good'); }
     else floats.push({x:m.x, y:m.y - 150, s:'도망갔다!', t:1.6, c:'#2f8a3e'});
     gainXp(Math.round(m.V.xp * .6));
-    if (Math.random() < [.006, .01, .016, .024][m.tier]) { const dr = huntDrop(m.tier); if (dr) setTimeout(() => toast(`🎁 ${dr}`, 'good'), 700); }
+    if (Math.random() < [.006, .01, .016, .024, .03, .036, .042][m.tier]) { const dr = huntDrop(m.tier); if (dr) setTimeout(() => toast(`🎁 ${dr}`, 'good'), 700); }
   }
   todoSig = '';
   if (f0.lv !== farmer().lv) ensureHero();
@@ -3256,13 +3323,13 @@ function updateMon(m, dt){
   if (m.flash > 0) m.flash -= dt;
   if (m.kb) { m.x += m.kb.x * dt; m.y += m.kb.y * dt; m.kb.t -= dt; if (m.kb.t <= 0) m.kb = null; }
   if (m.stun > 0) { m.stun -= dt; return; }
-  const pd = Math.hypot(P.x - m.x, P.y - m.y), boar = !!CHARGER[m.kind], tig = m.kind === 'tiger', sp = m.V.spd;
+  const pd = Math.hypot(P.x - m.x, P.y - m.y), boar = !!CHARGER[m.kind], tig = !!m.boss, D = m.den, sp = m.V.spd;
   if (m.warnT > 0) m.warnT -= dt;
   m.cc -= dt * (P.hp < P.max * .3 ? .5 : 1); // 우주가 힘들면 덜 덤벼요
   const ox = m.x, oy = m.y;
   const moveTo = (tx, ty, s) => { const dx = tx - m.x, dy = ty - m.y, d = Math.hypot(dx, dy) || 1; const st = Math.min(d, s * dt); m.x += dx / d * st; m.y += dy / d * st; if (Math.abs(dx) > 4) m.flip = dx < 0; return d; };
   if (m.raid && G.b.fence && m.st !== 'leave') { m.st = 'leave'; m.eng = false; } // 2026-10-13 전기 울타리가 있으면 습격 산짐승은 돌아가요
-  const canSee = tig ? inDen(P.x, P.y, 60) : (m.raid || inHunt(P.x, P.y));
+  const canSee = tig ? inDenOf(D, P.x, P.y, 60) : (m.raid || inHunt(P.x, P.y));
   // 2026-10-13 ★1·★2(tier 0·1)는 비선공: 먼저 때려야(m.eng) 덤벼요
   if ((m.st === 'wander' || m.st === 'raid' || m.st === 'eat') && canSee && (m.raid || tig || m.tier >= 2 || m.eng) && (tig || pd < (m.raid ? 430 : 360))) { m.st = 'chase'; m.eng = true; m.eat = 0; }
   if (m.st === 'wander') {
@@ -3282,7 +3349,7 @@ function updateMon(m, dt){
     moveTo(m.from.x < OX ? HOME.x0 - 600 : HOME.x1 + 600, m.from.y, 260 * sp);
     if (Math.hypot(m.x - m.from.x, m.y - m.from.y) > 1300) { m.dead = true; m.deadT = 2; }
   } else if (m.st === 'chase') {
-    const far = tig ? !inDen(P.x, P.y, 60) : m.raid ? pd > 900 : (pd > 750 || Math.hypot(m.x - m.hx, m.y - m.hy) > 1500 || !inHunt(P.x, P.y));
+    const far = tig ? !inDenOf(D, P.x, P.y, 60) : m.raid ? pd > 900 : (pd > 750 || Math.hypot(m.x - m.hx, m.y - m.hy) > 1500 || !inHunt(P.x, P.y));
     if (far) { m.eng = false; m.st = m.raid ? (m.bites >= 3 ? 'leave' : 'raid') : 'wander'; m.tx = m.hx; m.ty = m.hy; }
     else if (boar && pd < 330 && pd > (tig ? 170 : 0) && m.cc <= 0) { m.st = 'wind'; m.tm = tig ? .7 : .6; m.flip = P.x < m.x; if (tig) sfx('roar'); }
     else if ((!boar || tig) && pd < (tig ? 170 : 125) && m.cc <= 0) { m.st = 'kick'; m.tm = tig ? .45 : .35; m.flip = P.x < m.x; }
@@ -3305,7 +3372,7 @@ function updateMon(m, dt){
   // 2026-10-13 굴 경계 무적 틈 수정: 예전엔 호랑이는 굴 안쪽(-80)까지, 다른 짐승은 굴 바깥(+120)까지만 와서 경계에 아무도 못 닿는 띠가 있었어요.
   // 이제 호랑이는 굴 밖 DEN_LEASH까지 쫓아오고, 다른 짐승은 굴 가장자리 안쪽까지 들어와요(둘이 겹쳐서 빈틈 없음).
   // 2026-10-13: 호랑이는 플레이어가 굴(+60)을 벗어나면 굴 한가운데로 돌아가요(밖에서 멈춰 서 있지 않게). 굴 밖 60까지만 나와요
-  if (!m.raid && (!inHunt(m.x, m.y) || restAt(m.x, m.y, 120) || (tig ? !inDen(m.x, m.y, 60) : inDen(m.x, m.y, -120)))) { if (tig && !inDen(m.x, m.y, 60)) { const d = Math.hypot(DEN.x - m.x, DEN.y - m.y) || 1; m.x = ox + (DEN.x - ox) / d * 6; m.y = oy + (DEN.y - oy) / d * 6; m.st = 'wander'; m.tx = m.hx; m.ty = m.hy; m.eng = false; } else { m.x = ox; m.y = oy; if (m.st === 'wander') { m.tx = m.hx; m.ty = m.hy; } } }
+  if (!m.raid && (!inHunt(m.x, m.y) || restAt(m.x, m.y, 120) || (tig ? !inDenOf(D, m.x, m.y, 60) : inDen(m.x, m.y, -120)))) { if (tig && !inDenOf(D, m.x, m.y, 60)) { const d = Math.hypot(D.x - m.x, D.y - m.y) || 1; m.x = ox + (D.x - ox) / d * 6; m.y = oy + (D.y - oy) / d * 6; m.st = 'wander'; m.tx = m.hx; m.ty = m.hy; m.eng = false; } else { m.x = ox; m.y = oy; if (m.st === 'wander') { m.tx = m.hx; m.ty = m.hy; } } }
   m.x = clamp(m.x, WX0 + 60, WX1 - 60); m.y = clamp(m.y, WY0 + 160, WY1 - 30);
 }
 
@@ -3354,7 +3421,7 @@ function uiRest(r){
   if (first) unlockRestToast(r);
   UI.open({ic:'⛺', title:r.name, w:860, render(o){
     o.body.innerHTML = `<p style="margin-top:0">모닥불 옆에서 쉬었더니 <b>체력이 가득 찼어요!</b> ❤️ ${Math.round(P.hp)}/${P.max}</p>
-      <p>${ZONES[Math.max(0, zoneAt(r.x, r.y))].stars} ${ZONES[Math.max(0, zoneAt(r.x, r.y))].name} 한가운데예요. 쉼터 안에는 산짐승이 못 들어와요.</p>
+      <p>${ZONES[Math.max(0, zoneAt(r.x, r.y))].stars} ${zoneName(Math.max(0, zoneAt(r.x, r.y)), r.x, r.y)} 한가운데예요. 쉼터 안에는 산짐승이 못 들어와요.</p>
       <p class="gnote">찾은 쉼터 ${restsFound().length}/${RESTS.length}곳 · 찾은 쉼터끼리, 그리고 마을의 🌀 순간이동 포탈(이장님 아래)에서 바로 오갈 수 있어요.</p>`;
     o.footEl.innerHTML = `${warpButtons(r)}<button class="btn" data-home="1">🌀 마을 포탈로</button><button class="btn pri" id="rsOk">더 둘러보기</button>`;
     bindWarp(o);
@@ -3405,8 +3472,8 @@ function updateHunt(dt){
     if ((m.dead && m.deadT > 1.2) || (!m.raid && Math.hypot(m.x - P.x, m.y - P.y) > 4200)) MONS.splice(i, 1);
   }
   for (let i = FORAGE.length - 1; i >= 0; i--) { FORAGE[i].t += dt; if (Math.hypot(FORAGE[i].x - P.x, FORAGE[i].y - P.y) > 4800) FORAGE.splice(i, 1); }
-  const z = inDen(P.x, P.y) ? 'den' : zoneAt(P.x, P.y);
-  if (z !== zoneShow.z) { zoneShow = {z, t:3}; }
+  const dn = denAt(P.x, P.y), z = dn ? 'den' : zoneAt(P.x, P.y), zn = typeof z === 'number' && z >= 0 ? zoneName(z, P.x, P.y) : '';
+  if (z !== zoneShow.z || zn !== zoneShow.n) { zoneShow = {z, n:zn, d:dn, t:3}; }
   if (zoneShow.t > 0) zoneShow.t -= dt;
 }
 
@@ -3515,6 +3582,7 @@ function huntEntities(ctx, add, vis, T){
   if (vis(gW.x + 130, gW.y - 120)) add(gW.y - 120, () => drawSign(ctx, gW.x + 130, gW.y - 120, '← 서쪽 사냥터 🌲'));
   for (const r of RESTS) if (vis(r.x, r.y, 400)) { add(r.y, () => drawRest(ctx, r, T)); }
   denEntities(ctx, add, vis, T);
+  for (const p of PEAKS) if (vis(p.x, p.y - 150 * p.s, 420 * p.s)) add(p.y, () => drawPeak(ctx, p.x, p.y, p.s, p.v));
   for (const o of FOREST) if (vis(o.x, o.y)) add(o.y, () => o.k === 'pine' ? drawPine(ctx, o.x, o.y, o.s * 1.1) : o.k === 'oak' ? drawOak(ctx, o.x, o.y, o.s) : o.k === 'rock' ? drawRock(ctx, o.x, o.y, o.s) : drawBush(ctx, o.x, o.y, o.s * 1.2));
   for (const f of FORAGE) if (vis(f.x, f.y)) add(f.y - 1, () => drawForage(ctx, f));
   for (const m of MONS) if (vis(m.x, m.y)) add(m.y, () => drawMon(ctx, m));
@@ -3526,7 +3594,7 @@ function buildMiniBase(){
   miniBase = mk(MM.w, MM.h); const c = miniBase.getContext('2d'), s = MM.w / WORLD_W;
   for (let y = 0; y < MM.h; y += 4) for (let x = 0; x < MM.w; x += 4) {
     const wx = WX0 + x / s, wy = WY0 + y / s;
-    c.fillStyle = inHunt(wx, wy) ? mix('#7fbf5a', '#2f5a2a', clamp(homeDist(wx, wy) / 7000, 0, 1) * .8) : '#a6dc78'; c.fillRect(x, y, 4, 4);
+    c.fillStyle = inHunt(wx, wy) ? mix(mix('#7fbf5a', '#2f5a2a', clamp(homeDist(wx, wy) / 14000, 0, 1) * .85), '#eef4f8', snowK(wy)) : '#a6dc78'; c.fillRect(x, y, 4, 4);
   }
   c.translate(-WX0 * s, -WY0 * s);
   c.strokeStyle = '#c99d62'; c.lineWidth = 2; c.lineCap = 'round';
@@ -3535,7 +3603,9 @@ function buildMiniBase(){
   c.fillStyle = '#e8634a'; for (const b of VB) c.fillRect(b.x * s - 2, b.y * s - 3, 5, 4);
   c.font = '11px Jua'; c.fillStyle = INK; c.textAlign = 'center';
   c.fillText('과수원', (OX + ORCH_W / 2) * s, OY * s - 2); c.fillText('마을', VNEW.x * s, (VNEW.y - 1100) * s);
-  [['얕은 숲', 4300, 2600], ['깊은 숲', 6600, 3600], ['골짜기', -4800, -1600], ['전설의 산', 1600, -6200]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
+  c.fillStyle = 'rgba(255,255,255,.35)'; for (const p of PEAKS) { c.beginPath(); c.moveTo((p.x - 160 * p.s) * s, p.y * s); c.lineTo(p.x * s, (p.y - 300 * p.s) * s); c.lineTo((p.x + 160 * p.s) * s, p.y * s); c.fill(); }
+  c.fillStyle = INK;
+  [['전설의 산 ★4', 1600, -6200], ['★5', 11000, -1200], ['★6', -10600, -6600], ['★7', 13600, -13400], ['눈 덮인 설산', 1600, 15600]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
 }
 function drawHuntOverlay(ctx, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3548,7 +3618,7 @@ function drawHuntOverlay(ctx, T){
   ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(mx(cam.x - vw / 2), my(cam.y - vh / 2), vw * s, vh * s);
   ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🛖', mx(SPOT.nongmak.x), my(SPOT.nongmak.y) + 4);
   for (const r of RESTS) { const f = G.rests && G.rests[r.id]; ctx.globalAlpha = f ? 1 : .55; ctx.font = f ? '12px sans-serif' : 'bold 11px Jua'; ctx.fillStyle = INK; ctx.fillText(f ? '⛺' : '?', mx(r.x), my(r.y) + 4); }
-  ctx.globalAlpha = 1; ctx.font = '13px sans-serif'; ctx.fillText('🐯', mx(DEN.x), my(DEN.y) + 4);
+  ctx.globalAlpha = 1; ctx.font = '13px sans-serif'; for (const D of DENS) ctx.fillText(D.ic, mx(D.x), my(D.y) + 4);
   for (const m of MONS) if (!m.dead) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), m.raid ? 4.5 : 2.2, 0, 7); ctx.fillStyle = m.raid ? '#ff3b30' : '#7a2a1a'; ctx.fill(); }
   ctx.beginPath(); ctx.arc(mx(P.x), my(P.y), 4.5, 0, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
   ctx.restore();
@@ -3566,7 +3636,7 @@ function drawHuntOverlay(ctx, T){
   // 구역 안내
   if (zoneShow.t > 0) {
     ctx.globalAlpha = clamp(zoneShow.t, 0, 1);
-    const txt = zoneShow.z === 'den' ? '⚠️ 호랑이 굴 · 전설 보스가 살아요' : zoneShow.z < 0 ? '🏡 집 근처 · 시간이 원래대로 흘러요' : `🌲 ${ZONES[zoneShow.z].name} ${ZONES[zoneShow.z].stars} · 사냥터에선 시간이 천천히 흘러요`;
+    const txt = zoneShow.z === 'den' ? zoneShow.d.label : zoneShow.z < 0 ? '🏡 집 근처 · 시간이 원래대로 흘러요' : `${zoneShow.n === '눈 덮인 설산' ? '🏔️' : '🌲'} ${zoneShow.n} ${ZONES[zoneShow.z].stars} · 사냥터에선 시간이 천천히 흘러요`;
     ctx.font = '34px Jua'; ctx.textAlign = 'center'; const tw = ctx.measureText(txt).width + 60;
     ctx.beginPath(); rr(ctx, W / 2 - tw / 2, 210, tw, 60, 20); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3.5; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.fillText(txt, W / 2, 252);
@@ -3584,14 +3654,14 @@ function uiSellLoot(){
   ensureGear();
   UI.open({ic:'🧺', title:'금비상회 · 산나물·버섯 삽니다', w:1000, render(o){
     const have = LOOT_KEYS.filter(k => G.bag[k] > 0);
-    let total = 0, ex = 0; for (const k of [...have].sort((a, b) => lootPrice(b) - lootPrice(a))) for (let i = 0; i < G.bag[k]; i++) { total += lootSell(k, ex); if (k !== 'tskin') ex++; }
+    let total = 0, ex = 0; for (const k of [...have].sort((a, b) => lootPrice(b) - lootPrice(a))) for (let i = 0; i < G.bag[k]; i++) { total += lootSell(k, ex); if (!BOSS_LOOT[k]) ex++; }
     const sat = Math.round(lootSat('x') * 100);
     o.body.innerHTML = `<p style="margin-top:0">값은 날마다 조금씩 바뀌어요(오늘 시세). 사냥터에서 산짐승을 쫓아내거나 반짝이는 자리를 캐면 얻어요.<br>🧺 가진 건 몇 개든 다 팔 수 있어요. 다만 한 주에 많이 팔면 금비상회 창고가 차서 값이 조금씩 내려가요(1개마다 5%, 최저 절반, 다음 주에 다시 올라요). 지금 값: <b class="gs">시세의 ${sat}%</b><br>📒 올해 사냥 수입 <b>${won(incBook().hunt)}</b> · 과수원 수입 <b>${won(incBook().apple)}</b></p>
       ${have.length ? `<div class="ggrid">${have.map(k => { const L = LOOT[k]; return `<div class="gslot"><div class="gh">${L.ic} ${L.name} <small>× ${G.bag[k]}</small></div>
         <div class="gd">💡 ${esc(L.desc)}</div><div class="gi"><span>지금 파는 값 <b class="gs">${won(lootSell(k))}</b> <span class="gd">(시세 ${won(L.lo)}~${won(L.hi)})</span></span>
         <span><button class="btn" data-s1="${k}">1개 팔기</button> <button class="btn pri" data-sa="${k}">전부</button></span></div></div>`; }).join('')}</div>`
         : '<div class="fact">아직 가방이 비었어요. 과수원 동쪽·남쪽 사냥터에 가 보세요! 🌲</div>'}`;
-    const sellN = (k, n) => { let p = 0; for (let i = 0; i < n; i++) { p += lootSell(k); if (k !== 'tskin') lootWk().n++; } G.bag[k] -= n; if (!G.bag[k]) delete G.bag[k]; addInc('hunt', p); G.money += p; G.stats.lootSold = (G.stats.lootSold || 0) + p; return p; };
+    const sellN = (k, n) => { let p = 0; for (let i = 0; i < n; i++) { p += lootSell(k); if (!BOSS_LOOT[k]) lootWk().n++; } G.bag[k] -= n; if (!G.bag[k]) delete G.bag[k]; addInc('hunt', p); G.money += p; G.stats.lootSold = (G.stats.lootSold || 0) + p; return p; };
     const sell = (k, n) => { n = Math.min(n, G.bag[k] || 0); if (n <= 0) return; const p = sellN(k, n); toast(`💰 ${LOOT[k].name} ${n}개를 ${won(p)}에 팔았어요!`, 'good'); updateHUD(true); todoSig = ''; o.render(o); };
     o.body.querySelectorAll('[data-s1]').forEach(b => b.onclick = () => sell(b.dataset.s1, 1));
     o.body.querySelectorAll('[data-sa]').forEach(b => b.onclick = () => sell(b.dataset.sa, G.bag[b.dataset.sa]));
@@ -3713,12 +3783,15 @@ function drawRoom(cv){
 }
 
 // ===== 2026-10-13 새 산짐승(산토끼·뱀·너구리·오소리) + 전설 보스 호랑이 =====
-const MON_IC = {boar:'🐗', deer:'🦌', hare:'🐇', snake:'🐍', raccoon:'🦝', badger:'🦡', tiger:'🐯', lynx:'🐆', wdog:'🐕', wolf:'🐺', bear:'🐻'};
-const CHARGER = {boar:1, badger:1, tiger:1, bear:1};      // 돌진하는 녀석들 (나머지는 가까이 와서 할퀴기·물기)
-const CHASE_SP = {boar:150, badger:140, tiger:185, deer:190, hare:220, raccoon:170, snake:115, lynx:215, wdog:200, wolf:205, bear:130};
+const MON_IC = {boar:'🐗', deer:'🦌', hare:'🐇', snake:'🐍', raccoon:'🦝', badger:'🦡', tiger:'🐯', lynx:'🐆', wdog:'🐕', wolf:'🐺', bear:'🐻', pbear:'🐻‍❄️'};
+const CHARGER = {boar:1, badger:1, tiger:1, bear:1, pbear:1};      // 돌진하는 녀석들 (나머지는 가까이 와서 할퀴기·물기)
+const CHASE_SP = {boar:150, badger:140, tiger:185, pbear:175, deer:190, hare:220, raccoon:170, snake:115, lynx:215, wdog:200, wolf:205, bear:130};
 // 2026-10-13 구역마다 새 짐승: 얕은 숲 들개 · 깊은 숲 삵·들개 · 골짜기 늑대·삵 · 전설의 산 반달가슴곰·늑대
 const SPAWN_MIX = [{hare:3, snake:2, raccoon:3, deer:2, boar:1, badger:1, wdog:1}, {hare:2, snake:2, raccoon:2, deer:2, boar:2, badger:2, wdog:2, lynx:1},
-  {hare:1, snake:2, raccoon:2, deer:2, boar:3, badger:3, wolf:2, lynx:2, wdog:1}, {hare:1, snake:2, raccoon:1, deer:2, boar:3, badger:3, wolf:2, bear:2, lynx:1}];
+  {hare:1, snake:2, raccoon:2, deer:2, boar:3, badger:3, wolf:2, lynx:2, wdog:1}, {hare:1, snake:2, raccoon:1, deer:2, boar:3, badger:3, wolf:2, bear:2, lynx:1},
+  {snake:1, deer:2, boar:3, badger:3, wolf:3, bear:3, lynx:2}, {deer:1, boar:3, badger:2, wolf:3, bear:3, lynx:2}, {boar:3, badger:2, wolf:4, bear:4, lynx:2}];
+// 2026-10-14 눈 덮인 설산: 뱀·너구리는 없고 늑대·곰·삵·산토끼가 많아요
+const SPAWN_SNOW = {hare:2, deer:1, boar:2, wolf:4, bear:3, lynx:3, wdog:1};
 const NEW_BEAST = {
   hare:[{name:'산토끼', hp:40, dmg:.7, spd:1.1, sc:.75, xp:30}, {name:'날쌘 산토끼', hp:70, dmg:1, spd:1.2, sc:.8, xp:50},
     {name:'산토끼 대장', hp:110, dmg:1.4, spd:1.25, sc:.9, b:'#9a6a3a', bs:'#6a4422', xp:80}, {name:'전설의 달토끼', hp:170, dmg:1.9, spd:1.3, sc:1, b:'#f4f2ee', bs:'#c8c2d4', crown:1, xp:120}],
@@ -3739,20 +3812,34 @@ Object.assign(NEW_BEAST, {
   bear:[{name:'어린 반달가슴곰', hp:180, dmg:2, spd:.9, sc:1.15, xp:110}, {name:'반달가슴곰', hp:280, dmg:2.6, spd:.95, sc:1.3, xp:160},
     {name:'큰 반달가슴곰', hp:400, dmg:3.2, spd:1, sc:1.45, xp:230}, {name:'전설의 반달가슴곰 왕', hp:560, dmg:3.9, spd:1.05, sc:1.6, crown:1, xp:320}]
 });
-// 호랑이: 전설의 산 깊은 곳 '호랑이 굴'에만 1마리. 최고 장비 4종 + 도구·작업복 +6 이상이어야 상처를 낼 수 있어요
+// 호랑이: 전설의 산 깊은 곳 '호랑이 굴'에만 1마리. 도구 데미지 27 이상이어야 상처를 낼 수 있어요
 const TIGER = {name:'전설의 호랑이', hp:1600, def:15, dmg:4.2, spd:1.25, sc:1.7, xp:500, boss:1};
-NEW_BEAST.tiger = [TIGER, TIGER, TIGER, TIGER];
-const DEN = {x:-4200, y:-6250, rx:900, ry:680}, DEN_LEASH = 260;
-const inDen = (x, y, pad = 0) => ((x - DEN.x) / (DEN.rx + pad)) ** 2 + ((y - DEN.y) / (DEN.ry + pad)) ** 2 < 1;
-const DEN_GATE = Math.atan2((-5000 - DEN.y) / DEN.ry, (-2000 - DEN.x) / DEN.rx); // 숲길이 들어오는 쪽(남동)
+NEW_BEAST.tiger = Array(7).fill(TIGER);
+// 2026-10-14 흰곰: 남쪽 끝 설산 '흰곰 굴'에 1마리. 호랑이보다 한 단계 세요(도구 데미지 34 이상 = 호랑이 발톱 갈퀴 +3)
+const PBEAR = {name:'전설의 흰곰', hp:2600, def:20, dmg:5.2, spd:1.15, sc:1.95, xp:800, boss:1};
+NEW_BEAST.pbear = Array(7).fill(PBEAR);
+const PBEAR_NEED = 34;
+const DEN = {x:-4200, y:-6250, rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', sign:'⚠️ 호랑이 굴 · 최고 장비 +6', ic:'🐯'};
+DEN.gate = Math.atan2((-5000 - DEN.y) / DEN.ry, (-2000 - DEN.x) / DEN.rx); // 숲길이 들어오는 쪽(남동)
+const BDEN = {x:1700, y:18700, rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 설산의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
+BDEN.gate = Math.atan2((17500 - BDEN.y) / BDEN.ry, (3000 - BDEN.x) / BDEN.rx); // 북동쪽 설산 길
+const DENS = [DEN, BDEN], DEN_LEASH = 260;
+const DEN_GATE = DEN.gate;
+const inDenOf = (D, x, y, pad = 0) => ((x - D.x) / (D.rx + pad)) ** 2 + ((y - D.y) / (D.ry + pad)) ** 2 < 1;
+const inDen = (x, y, pad = 0) => DENS.some(D => inDenOf(D, x, y, pad));
+const denAt = (x, y, pad = 0) => DENS.find(D => inDenOf(D, x, y, pad));
 function tigerReady(){ return weaponDmg() >= TIGER_NEED; } // 2026-10-13 도구 데미지만으로 판정
+const bossReady = m => weaponDmg() >= m.den.need;
 function updateTiger(){
-  const alive = MONS.find(m => m.kind === 'tiger' && !m.dead);
-  if (!alive && absDay() >= (G.tigerDay || 0) && Math.hypot(P.x - DEN.x, P.y - DEN.y) < 2600) {
-    const m = makeMon('tiger', 3, DEN.x, DEN.y - 160, false); m.boss = 1; MONS.push(m);
+  for (const D of DENS) {
+    const alive = MONS.find(m => m.kind === D.kind && !m.dead);
+    if (!alive && absDay() >= (G[D.day] || 0) && Math.hypot(P.x - D.x, P.y - D.y) < 2600) {
+      const m = makeMon(D.kind, 3, D.x, D.y - 160, false); m.boss = 1; m.den = D; MONS.push(m);
+    }
   }
 }
 function killTiger(m){
+  if (m.kind === 'pbear') return killPbear(m);
   ensureGear(); G.tigerDay = absDay() + 7; G.stats.tiger = (G.stats.tiger || 0) + 1;
   gainXp(TIGER.xp); unlock('tiger'); sfx('fanfare');
   let msg;
@@ -3762,52 +3849,69 @@ function killTiger(m){
   floats.push({x:m.x, y:m.y - 220, s:'🏆 전설의 호랑이를 이겼다!', t:3, c:'#ff7a1a', sz:44, pop:.3});
   setTimeout(() => popup('🐯', '전설의 호랑이를 이겼어요!', `${HN()}의 이름이 온 산에 퍼졌어요. ${msg} 호랑이는 7일 뒤 다시 굴로 돌아와요.`), 900);
 }
+function killPbear(m){
+  ensureGear(); G.pbearDay = absDay() + 7; G.stats.pbear = (G.stats.pbear || 0) + 1;
+  gainXp(PBEAR.xp); unlock('pbear'); sfx('fanfare');
+  let msg;
+  if (!('pcoat' in G.gear.own)) { G.gear.own.pcoat = 0; msg = '🐻‍❄️ 단 하나뿐인 <흰곰 털 외투>를 얻었어요! 장비 창에서 입을 수 있어요.'; }
+  else { G.gear.stones = (G.gear.stones || 0) + 4; msg = '💎 강화석 4개를 얻었어요!'; }
+  addLoot('pfur', 1); msg += ' 🐻‍❄️ 흰곰 털가죽도 1장 얻었어요(금비상회에 비싸게 팔 수 있어요).';
+  floats.push({x:m.x, y:m.y - 240, s:'🏆 전설의 흰곰을 이겼다!', t:3, c:'#4aa8e8', sz:44, pop:.3});
+  setTimeout(() => popup('🐻‍❄️', '전설의 흰곰을 이겼어요!', `설산 꼭대기까지 ${HN()}의 이름이 울려 퍼졌어요. ${msg} 흰곰은 7일 뒤 다시 굴로 돌아와요.`), 900);
+}
 
-// ----- 호랑이 굴 그림: 어두운 돌바닥 + 바위 벽 + 횃불 + 동굴 입구 -----
-function drawDenGround(c, x0, y0, w, h){
-  if (DEN.x + DEN.rx + 200 < x0 || DEN.x - DEN.rx - 200 > x0 + w || DEN.y + DEN.ry + 200 < y0 || DEN.y - DEN.ry - 200 > y0 + h) return;
+// ----- 보스 굴 그림: 어두운 돌바닥(흰곰 굴은 얼음 바닥) + 바위 벽 + 횃불 + 동굴 입구 -----
+const DEN_PAL = {rock:['#2f3a2a', '#4a423a', '#5a5046', '#3c352e', '#665b50', '#2a2420', 'rgba(30,24,20,.55)'],
+  snow:['#c8d6e2', '#a9bccc', '#d6e4ee', '#93a8ba', '#e8f0f6', '#7a90a4', 'rgba(70,90,110,.45)']};
+function drawDenGround(c, x0, y0, w, h){ for (const D of DENS) drawDenGround1(c, D, x0, y0, w, h); }
+function drawDenGround1(c, D, x0, y0, w, h){
+  if (D.x + D.rx + 200 < x0 || D.x - D.rx - 200 > x0 + w || D.y + D.ry + 200 < y0 || D.y - D.ry - 200 > y0 + h) return;
+  const pl = DEN_PAL[D.snow ? 'snow' : 'rock'];
   c.save();
-  c.beginPath(); ell(c, DEN.x, DEN.y, DEN.rx + 120, DEN.ry + 100); c.fillStyle = '#2f3a2a'; c.fill();
-  c.beginPath(); ell(c, DEN.x, DEN.y, DEN.rx, DEN.ry); c.fillStyle = '#4a423a'; c.fill();
-  c.beginPath(); ell(c, DEN.x, DEN.y + 30, DEN.rx * .7, DEN.ry * .62); c.fillStyle = '#5a5046'; c.fill();
-  const R = srand(9191);
-  for (let k = 0; k < 90; k++) { const a = R() * 6.283, d = Math.sqrt(R()) * .95; const x = DEN.x + Math.cos(a) * DEN.rx * d, y = DEN.y + Math.sin(a) * DEN.ry * d;
-    c.beginPath(); ell(c, x, y, 14 + R() * 30, 6 + R() * 10); c.fillStyle = R() < .5 ? '#3c352e' : '#665b50'; c.fill(); }
-  c.strokeStyle = '#2a2420'; c.lineWidth = 3; c.lineCap = 'round';
-  for (let k = 0; k < 26; k++) { let x = DEN.x + (R() - .5) * DEN.rx * 1.6, y = DEN.y + (R() - .5) * DEN.ry * 1.6; if (!inDen(x, y, -40)) continue;
+  c.beginPath(); ell(c, D.x, D.y, D.rx + 120, D.ry + 100); c.fillStyle = pl[0]; c.fill();
+  c.beginPath(); ell(c, D.x, D.y, D.rx, D.ry); c.fillStyle = pl[1]; c.fill();
+  c.beginPath(); ell(c, D.x, D.y + 30, D.rx * .7, D.ry * .62); c.fillStyle = pl[2]; c.fill();
+  const R = srand(D.snow ? 9393 : 9191);
+  for (let k = 0; k < 90; k++) { const a = R() * 6.283, d = Math.sqrt(R()) * .95; const x = D.x + Math.cos(a) * D.rx * d, y = D.y + Math.sin(a) * D.ry * d;
+    c.beginPath(); ell(c, x, y, 14 + R() * 30, 6 + R() * 10); c.fillStyle = R() < .5 ? pl[3] : pl[4]; c.fill(); }
+  c.strokeStyle = pl[5]; c.lineWidth = 3; c.lineCap = 'round';
+  for (let k = 0; k < 26; k++) { let x = D.x + (R() - .5) * D.rx * 1.6, y = D.y + (R() - .5) * D.ry * 1.6; if (!inDenOf(D, x, y, -40)) continue;
     c.beginPath(); c.moveTo(x, y); for (let j = 0; j < 4; j++) { x += (R() - .5) * 70; y += (R() - .5) * 40; c.lineTo(x, y); } c.stroke(); }
   // 큰 발자국
-  c.fillStyle = 'rgba(30,24,20,.55)';
-  for (let k = 0; k < 7; k++) { const x = DEN.x + 120 + k * 70, y = DEN.y + 160 + (k % 2) * 40 + k * 28; c.beginPath(); ell(c, x, y, 16, 12); c.fill(); for (let j = -1; j <= 2; j++) { c.beginPath(); ell(c, x - 14 + j * 9, y - 16, 5, 6); c.fill(); } }
+  c.fillStyle = pl[6];
+  for (let k = 0; k < 7; k++) { const x = D.x + 120 + k * 70, y = D.y + 160 + (k % 2) * 40 + k * 28; c.beginPath(); ell(c, x, y, 16, 12); c.fill(); for (let j = -1; j <= 2; j++) { c.beginPath(); ell(c, x - 14 + j * 9, y - 16, 5, 6); c.fill(); } }
   c.restore();
 }
-function denEntities(ctx, add, vis, T){
-  if (!vis(DEN.x, DEN.y, DEN.rx + 400)) return;
+function denEntities(ctx, add, vis, T){ for (const D of DENS) denEntities1(ctx, D, add, vis, T); }
+function denEntities1(ctx, D, add, vis, T){
+  if (!vis(D.x, D.y, D.rx + 400)) return;
   // 동굴 입구 (북쪽)
-  const cx = DEN.x, cy = DEN.y - DEN.ry + 40;
-  if (vis(cx, cy, 400)) add(cy, () => drawCave(ctx, cx, cy));
+  const cx = D.x, cy = D.y - D.ry + 40;
+  if (vis(cx, cy, 400)) add(cy, () => drawCave(ctx, cx, cy, D.snow));
   // 바위 벽 (숲길 쪽은 비워 둬요)
   const R = srand(5150);
   for (let k = 0; k < 46; k++) {
-    const a = k / 46 * 6.283; let da = Math.abs(a - DEN_GATE); da = Math.min(da, 6.283 - da);
+    const a = k / 46 * 6.283; let da = Math.abs(a - D.gate); da = Math.min(da, 6.283 - da);
     if (da < .3 || Math.abs(a - 4.712) < .32) { R(); R(); continue; }
-    const x = DEN.x + Math.cos(a) * (DEN.rx + 30), y = DEN.y + Math.sin(a) * (DEN.ry + 26), s = 1.5 + R() * .8; R();
+    const x = D.x + Math.cos(a) * (D.rx + 30), y = D.y + Math.sin(a) * (D.ry + 26), s = 1.5 + R() * .8; R();
     if (vis(x, y, 200)) add(y, () => drawRock(ctx, x, y, s));
   }
   // 횃불
   for (let k = 0; k < 8; k++) {
-    const a = DEN_GATE + .55 + k * .72, x = DEN.x + Math.cos(a) * DEN.rx * .86, y = DEN.y + Math.sin(a) * DEN.ry * .86;
+    const a = D.gate + .55 + k * .72, x = D.x + Math.cos(a) * D.rx * .86, y = D.y + Math.sin(a) * D.ry * .86;
     if (vis(x, y, 200)) add(y, () => drawTorch(ctx, x, y, T + k));
   }
-  const gx = DEN.x + Math.cos(DEN_GATE) * (DEN.rx + 220), gy = DEN.y + Math.sin(DEN_GATE) * (DEN.ry + 200);
-  if (vis(gx, gy)) add(gy, () => drawSign(ctx, gx, gy, '⚠️ 호랑이 굴 · 최고 장비 +6'));
+  const gx = D.x + Math.cos(D.gate) * (D.rx + 220), gy = D.y + Math.sin(D.gate) * (D.ry + 200);
+  if (vis(gx, gy)) add(gy, () => drawSign(ctx, gx, gy, D.sign));
 }
-function drawCave(c, x, y){
+function drawCave(c, x, y, snow){
   c.save(); c.translate(x, y);
-  celBlob(c, [[-170, -40, 90], [-80, -120, 110], [40, -150, 120], [150, -90, 100], [210, -20, 70], [-230, -10, 60]], '#6a6058', '#46403a', 10, 10, 3);
+  celBlob(c, [[-170, -40, 90], [-80, -120, 110], [40, -150, 120], [150, -90, 100], [210, -20, 70], [-230, -10, 60]], snow ? '#b4c4d2' : '#6a6058', snow ? '#8296a8' : '#46403a', 10, 10, 3);
+  if (snow) celBlob(c, [[-80, -160, 60], [40, -200, 70], [150, -130, 50], [-170, -90, 40]], '#fbfdff', '#d6e4ee', 6, 6, 2.6); // 동굴 위에 쌓인 눈
   c.beginPath(); c.moveTo(-110, 0); c.quadraticCurveTo(-110, -150, 0, -160); c.quadraticCurveTo(110, -150, 110, 0); c.closePath();
-  const g = c.createLinearGradient(0, -160, 0, 0); g.addColorStop(0, '#0a0806'); g.addColorStop(1, '#2a221c'); c.fillStyle = g; c.fill(); c.lineWidth = 4; c.strokeStyle = INK; c.stroke();
-  for (const [ex, ey] of [[-26, -80], [26, -80]]) { c.beginPath(); ell(c, ex, ey, 7, 4); c.fillStyle = '#ffd23a'; c.fill(); } // 어둠 속 눈빛
+  const g = c.createLinearGradient(0, -160, 0, 0); g.addColorStop(0, snow ? '#0a1420' : '#0a0806'); g.addColorStop(1, snow ? '#24384a' : '#2a221c'); c.fillStyle = g; c.fill(); c.lineWidth = 4; c.strokeStyle = INK; c.stroke();
+  if (snow) for (let k = -3; k <= 3; k++) { const ix = k * 28, il = 22 + (k * k % 3) * 10; c.beginPath(); c.moveTo(ix - 8, -150 + Math.abs(k) * 6); c.lineTo(ix, -150 + Math.abs(k) * 6 + il); c.lineTo(ix + 8, -150 + Math.abs(k) * 6); c.closePath(); c.fillStyle = '#e8f6ff'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); } // 고드름
+  for (const [ex, ey] of [[-26, -80], [26, -80]]) { c.beginPath(); ell(c, ex, ey, 7, 4); c.fillStyle = snow ? '#8fe0ff' : '#ffd23a'; c.fill(); } // 어둠 속 눈빛
   c.restore();
 }
 function drawTorch(c, x, y, T){
@@ -3820,25 +3924,34 @@ function drawTorch(c, x, y, T){
   c.beginPath(); c.moveTo(-5, -62); c.quadraticCurveTo(-6, -74, f * .6, -84); c.quadraticCurveTo(6, -74, 5, -62); c.closePath(); c.fillStyle = '#ffe36a'; c.fill();
   c.restore();
 }
-// 굴 안에선 어둑어둑 + 먼지 + 보스 체력바
-const denDust = [];
+// 굴 안에선 어둑어둑 + 먼지(흰곰 굴은 눈보라) + 보스 체력바
+const denDust = [], snowFl = [];
+// 2026-10-14 설산에선 눈이 펑펑 내려요(남쪽으로 갈수록 더 많이)
+function drawSnowFx(c, dt){
+  const k = snowK(P.y); if (k <= 0) { snowFl.length = 0; return; }
+  const n = Math.round(110 * k);
+  while (snowFl.length < n) snowFl.push({x:rnd(-100, W), y:rnd(-40, H), v:rnd(50, 120), r:rnd(2, 5), a:rnd(.5, .95), w:rnd(0, 6)});
+  if (snowFl.length > n) snowFl.length = n;
+  c.fillStyle = `rgba(230,240,250,${.12 * k})`; c.fillRect(0, 0, W, H);
+  for (const d of snowFl) { d.y += d.v * dt; d.w += dt; d.x += Math.sin(d.w) * 20 * dt + 18 * dt; if (d.y > H + 10) { d.y = -10; d.x = rnd(-100, W); } c.beginPath(); c.arc(d.x, d.y, d.r, 0, 7); c.fillStyle = `rgba(255,255,255,${d.a})`; c.fill(); }
+}
 function drawDenFx(c, dt){
-  const near = inDen(P.x, P.y, 250); if (!near) { denDust.length = 0; return; }
-  const k = inDen(P.x, P.y) ? 1 : .5;
+  const D = denAt(P.x, P.y, 250); if (!D) { denDust.length = 0; drawSnowFx(c, dt); return; }
+  const k = inDenOf(D, P.x, P.y) ? 1 : .5, sn = D.snow;
   const g = c.createRadialGradient(W / 2, H / 2, H * .22, W / 2, H / 2, H * .95);
-  g.addColorStop(0, 'rgba(10,6,4,0)'); g.addColorStop(1, `rgba(10,6,4,${.78 * k})`);
+  g.addColorStop(0, sn ? 'rgba(10,20,40,0)' : 'rgba(10,6,4,0)'); g.addColorStop(1, sn ? `rgba(10,24,48,${.7 * k})` : `rgba(10,6,4,${.78 * k})`);
   c.fillStyle = g; c.fillRect(0, 0, W, H);
-  c.fillStyle = `rgba(20,10,30,${.18 * k})`; c.fillRect(0, 0, W, H);
-  const tg = MONS.find(m => m.kind === 'tiger' && !m.dead);
-  if (tg && tg.eng) { c.fillStyle = `rgba(180,20,10,${(.06 + Math.sin(performance.now() / 300) * .04) * k})`; c.fillRect(0, 0, W, H); }
-  if (denDust.length < 40) denDust.push({x:rnd(0, W), y:rnd(-40, H), v:rnd(20, 50), r:rnd(1.5, 3.5), a:rnd(.2, .5)});
-  for (const d of denDust) { d.y += d.v * dt; d.x += Math.sin(d.y / 60) * .4; if (d.y > H + 10) { d.y = -10; d.x = rnd(0, W); } c.beginPath(); c.arc(d.x, d.y, d.r, 0, 7); c.fillStyle = `rgba(230,210,180,${d.a * k})`; c.fill(); }
+  c.fillStyle = sn ? `rgba(40,70,110,${.16 * k})` : `rgba(20,10,30,${.18 * k})`; c.fillRect(0, 0, W, H);
+  const tg = MONS.find(m => m.boss && m.den === D && !m.dead);
+  if (tg && tg.eng) { c.fillStyle = sn ? `rgba(60,140,220,${(.06 + Math.sin(performance.now() / 300) * .04) * k})` : `rgba(180,20,10,${(.06 + Math.sin(performance.now() / 300) * .04) * k})`; c.fillRect(0, 0, W, H); }
+  if (denDust.length < (sn ? 90 : 40)) denDust.push({x:rnd(0, W), y:rnd(-40, H), v:rnd(20, 50) * (sn ? 3 : 1), r:rnd(1.5, 3.5) * (sn ? 1.4 : 1), a:rnd(.2, .5) + (sn ? .3 : 0)});
+  for (const d of denDust) { d.y += d.v * dt; d.x += Math.sin(d.y / 60) * .4 + (sn ? 70 * dt : 0); if (d.y > H + 10 || d.x > W + 10) { d.y = -10; d.x = rnd(-200, W); } c.beginPath(); c.arc(d.x, d.y, d.r, 0, 7); c.fillStyle = sn ? `rgba(255,255,255,${d.a * k})` : `rgba(230,210,180,${d.a * k})`; c.fill(); }
   if (tg && (tg.eng || Math.hypot(tg.x - P.x, tg.y - P.y) < 900)) {
     const w = 760, x = W / 2 - w / 2, y = 330;
-    c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = INK; c.strokeText('🐯 전설의 호랑이', W / 2, y - 12); c.fillStyle = '#ffd23a'; c.fillText('🐯 전설의 호랑이', W / 2, y - 12);
+    c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = INK; c.strokeText(D.title, W / 2, y - 12); c.fillStyle = sn ? '#bfe8ff' : '#ffd23a'; c.fillText(D.title, W / 2, y - 12);
     c.beginPath(); rr(c, x, y, w, 26, 13); c.fillStyle = '#2a1c17'; c.fill(); c.lineWidth = 3; c.strokeStyle = '#fffaf1'; c.stroke();
-    c.beginPath(); rr(c, x + 4, y + 4, (w - 8) * clamp(tg.hp / tg.max, 0, 1), 18, 9); c.fillStyle = '#ff5a2a'; c.fill();
-    if (!tigerReady()) { c.font = '22px Jua'; c.lineWidth = 5; c.strokeStyle = INK; const t = `⚠️ 지금 도구로는 상처를 못 내요 (도구 데미지 ${weaponDmg()} / ${TIGER_NEED} 필요)`; c.strokeText(t, W / 2, y + 58); c.fillStyle = '#ffb3a8'; c.fillText(t, W / 2, y + 58); }
+    c.beginPath(); rr(c, x + 4, y + 4, (w - 8) * clamp(tg.hp / tg.max, 0, 1), 18, 9); c.fillStyle = sn ? '#4ab0f0' : '#ff5a2a'; c.fill();
+    if (!bossReady(tg)) { c.font = '22px Jua'; c.lineWidth = 5; c.strokeStyle = INK; const t = `⚠️ 지금 도구로는 상처를 못 내요 (도구 데미지 ${weaponDmg()} / ${D.need} 필요)`; c.strokeText(t, W / 2, y + 58); c.fillStyle = '#ffb3a8'; c.fillText(t, W / 2, y + 58); }
   }
 }
 
@@ -3940,6 +4053,21 @@ function drawNewBeast(c, kind, t, V){
     c.beginPath(); ell(c, 53, -54, 4, 3); c.fillStyle = INK; c.fill();
     c.beginPath(); c.arc(36, -62, 2.6, 0, 7); c.fillStyle = '#fff'; c.fill(); c.beginPath(); c.arc(36.5, -62, 1.5, 0, 7); c.fillStyle = INK; c.fill();
     if (V.crown) crown(34, -86);
+  } else if (kind === 'pbear') { // 2026-10-14 전설의 흰곰: 하얀 털 + 까만 코·눈 + 얼음빛 기운
+    const B = '#f6f9fc', S = '#c4d4e2';
+    c.save(); c.globalAlpha = .25 + Math.sin(t * 3) * .08; c.beginPath(); ell(c, 4, -50, 78, 50); c.fillStyle = '#9ad7ff'; c.fill(); c.restore();
+    shadow(c, 0, 0, 62, 13, .3);
+    legs([[-32, leg], [-14, -leg], [16, leg], [34, -leg]], 18, 20, B, S);
+    cel(c, cc => ell(cc, 0, -42, 52, 31), B, S, 7, 7, 3.2);
+    c.beginPath(); c.moveTo(-36, -58); c.quadraticCurveTo(-20, -74, 0, -70); c.lineWidth = 2; c.strokeStyle = S; c.stroke();
+    c.beginPath(); c.moveTo(-26, -40); c.quadraticCurveTo(-10, -50, 8, -44); c.stroke();
+    cel(c, cc => ell(cc, 46, -64, 24, 21), B, S, 3, 3, 3);
+    for (const ex of [32, 54]) { cel(c, cc => ell(cc, ex, -82, 7, 7), B, S, 1, 1, 2.4); c.beginPath(); ell(c, ex, -81, 3.5, 3.5); c.fillStyle = '#e8b8c4'; c.fill(); }
+    cel(c, cc => ell(cc, 62, -56, 14, 10), '#ffffff', S, 1, 1, 2.4);
+    c.beginPath(); ell(c, 72, -58, 5, 4); c.fillStyle = INK; c.fill();
+    c.beginPath(); c.arc(48, -70, 3, 0, 7); c.fillStyle = INK; c.fill(); c.beginPath(); c.arc(47.2, -71, 1.1, 0, 7); c.fillStyle = '#fff'; c.fill();
+    line(c, [42, -77, 53, -75], 2.6, INK);
+    line(c, [64, -50, 70, -49], 1.8, INK);
   } else if (kind === 'tiger') {
     const B = '#f2922c', S = '#c4661a';
     shadow(c, 0, 0, 62, 13, .3);
@@ -4942,7 +5070,8 @@ const GEAR = {
     {id:'denim', name:'두꺼운 멜빵 작업복', base:3, rep:5, price:250000, desc:'질긴 천이라 덜 아파요.'},
     {id:'leather', name:'가죽 조끼', base:6, rep:20, price:800000, desc:'멧돼지 박치기도 버텨요.'},
     {id:'guard', name:'든든 보호복', base:10, rep:45, price:2000000, desc:'든든철물 특제 보호복.'},
-    {id:'tarmor', name:'호랑이 가죽 갑옷', base:16, rep:60, price:500000, craft:{tskin:2}, desc:'호랑이 가죽 2장으로 만든 갑옷. 가장 튼튼해요.'}]},
+    {id:'tarmor', name:'호랑이 가죽 갑옷', base:16, rep:60, price:500000, craft:{tskin:2}, desc:'호랑이 가죽 2장으로 만든 갑옷. 아주 튼튼해요.'},
+    {id:'pcoat', name:'흰곰 털 외투', base:22, rep:70, price:4000000, unique:'🐻‍❄️ 흰곰을 이기면 얻어요', desc:'설산의 전설의 흰곰만 떨어뜨리는 단 하나뿐인 외투. 가장 튼튼하고 따뜻해요.'}]},
   boots:{name:'신발', ic:'👢', stat:'spd', unit:'% 빠르게', per:2, items:[
     {id:'rubber', name:'고무신', base:0, rep:0, price:0, desc:'할아버지가 물려주신 고무신.'},
     {id:'rainboot', name:'장화', base:6, rep:5, price:150000, desc:'진흙길도 척척.'},
@@ -5025,6 +5154,7 @@ function haruLook(){
   if (g.armor === 'leather') { L.outfit = 'vest'; L.o2 = '#8a5a3a'; L.top = '#fffaf0'; L.pants = '#3f5f8a'; }
   if (g.armor === 'guard') { L.outfit = 'jacket'; L.o2 = '#f08a2a'; L.top = '#fff4c8'; L.pants = '#4a4f5a'; }
   if (g.armor === 'tarmor') { L.outfit = 'jacket'; L.o2 = '#f2922c'; L.top = '#fff8ec'; L.pants = '#3a2a20'; L.tstripe = 1; }
+  if (g.armor === 'pcoat') { L.outfit = 'jacket'; L.o2 = '#f4f7fa'; L.top = '#dfe9f2'; L.pants = '#4a5a6a'; }
   L.shoe = {rubber:'#8a5232', rainboot:'#f2c230', sneaker:'#ffffff', wind:'#4ac8e8', tboots:'#f2922c'}[g.boots];
   if (g.hat === 'that') { L.hat = 'cap'; L.capCol = '#f2922c'; L.tstripe = 1; }
   if (g.hat === 'helmet') { L.hat = 'cap'; L.capCol = '#ffd23a'; }
@@ -5064,7 +5194,7 @@ function uiGear(){
           if (on && lv < MAX_UP && g.stones > 0) btn = `<button class="btn pri" data-st="${slot}|${it.id}">💎 강화석으로 (${g.stones}개)</button> ${moneyBtn()}`; // 2026-10-13 강화석/돈 중 골라요
           else if (on) btn = lv >= MAX_UP ? `<button class="btn" disabled>최고 강화</button>` : moneyBtn();
           else if (own) btn = `<button class="btn" data-eq="${slot}|${it.id}">끼기</button>`;
-          else if (it.unique) btn = `<button class="btn" disabled>🐯 호랑이를 이기면 얻어요</button>`;
+          else if (it.unique) btn = `<button class="btn" disabled>${it.unique === 1 ? '🐯 호랑이를 이기면 얻어요' : it.unique}</button>`;
           else if (it.craft) { const need = it.craft.tskin, have = G.bag.tskin || 0; btn = `<button class="btn" data-craft="${slot}|${it.id}" ${have < need || G.money < it.price || lock ? 'disabled' : ''}>🐯 가죽 ${need}장(${have}) + ${won(it.price)}로 만들기</button>`; }
           else btn = `<button class="btn" data-buy="${slot}|${it.id}" ${lock || G.money < it.price ? 'disabled' : ''}>${lock ? `⭐ 평판 ${it.rep}` : `사기 ${won(it.price)}`}</button>`;
           return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}">${gearImg(it.id, 56)}<div class="gtx"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 전방 180° 베기' : '+5부터 전방 베기'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span>${own ? gearSellBtns(slot, it) : ''}</div><div class="gact">${btn}</div></div>`;
@@ -5226,6 +5356,15 @@ function drawGearIcon(c, id){
       cel(c, P([30, 14, 42, 10, 50, 18, 58, 10, 70, 14, 92, 36, 82, 50, 74, 44, 74, 92, 26, 92, 26, 44, 18, 50, 8, 36]), '#f2922c', '#c4661a', 5, 4, lw);
       for (const [x, y] of [[34, 34], [62, 30], [40, 58], [60, 62], [36, 80], [64, 82]]) { c.beginPath(); c.moveTo(x - 6, y - 4); c.quadraticCurveTo(x + 2, y, x - 3, y + 6); c.lineWidth = 4; c.strokeStyle = I; c.lineCap = 'round'; c.stroke(); }
       cel(c, cc => rr(cc, 26, 66, 48, 6, 1), '#fff8ec', '#e0d4c0', 0, 1, 2);
+      break;
+    case 'pcoat': // 2026-10-14 흰곰 털 외투: 하얀 털 + 푹신한 털 깃 + 하늘색 단추
+      c.save(); c.globalAlpha = .3; c.beginPath(); ell(c, 50, 50, 46, 46); c.fillStyle = '#9ad7ff'; c.fill(); c.restore();
+      cel(c, P([30, 14, 42, 10, 50, 18, 58, 10, 70, 14, 92, 36, 82, 50, 74, 44, 76, 94, 24, 94, 26, 44, 18, 50, 8, 36]), '#f6f9fc', '#c8d6e2', 5, 4, lw);
+      celBlob(c, [[36, 16, 9], [46, 20, 9], [56, 20, 9], [66, 16, 9]], '#ffffff', '#d2e0ea', 2, 2, 2.4);
+      for (const [x, y] of [[30, 40], [70, 40], [34, 70], [66, 72], [50, 86]]) { c.beginPath(); c.moveTo(x - 5, y); c.quadraticCurveTo(x, y - 4, x + 5, y); c.lineWidth = 2; c.strokeStyle = '#b4c4d2'; c.stroke(); }
+      line(c, [50, 26, 50, 94], 2.5, I);
+      for (const y of [40, 56, 72]) dot(56, y, 3.2, '#6ac0f0');
+      shine([34, 30, 32, 52]);
       break;
     case 'guard':
       cel(c, P([30, 14, 42, 10, 50, 18, 58, 10, 70, 14, 92, 36, 82, 50, 74, 44, 74, 92, 26, 92, 26, 44, 18, 50, 8, 36]), '#f08a2a', '#c8641a', 5, 4, lw);
@@ -5686,6 +5825,10 @@ const BEAST = {
     {name:'전설의 은빛 고라니', hp:240, dmg:2.5, spd:1.22, sc:1.3, b:'#d8dce4', bs:'#9aa2b0', antler:1, crown:1, pay:600000, rep:6, xp:150}]
 };
 for (const k in NEW_BEAST) BEAST[k] = NEW_BEAST[k].map(v => ({pay:0, rep:0, ...v})); // 2026-10-13 산토끼·뱀·너구리·오소리·호랑이
+// 2026-10-14 맵 4배: ★5~★7 산짐승. ★4(전설) 녀석을 바탕으로 체력·힘·크기를 키워요 (습격은 ★4까지만)
+const BEAST_NOUN = {boar:'멧돼지', deer:'고라니', hare:'산토끼', snake:'구렁이', raccoon:'너구리', badger:'오소리', lynx:'삵', wdog:'들개', wolf:'늑대', bear:'반달가슴곰'};
+const UP_TIER = [{pre:'바위산 ', hp:1.35, dmg:1.1, sc:1.06, xp:1.3}, {pre:'구름산 ', hp:1.7, dmg:1.2, sc:1.12, xp:1.65}, {pre:'산의 왕 ', hp:2.1, dmg:1.3, sc:1.18, xp:2}];
+for (const k in BEAST_NOUN) { const v = BEAST[k][3]; for (const u of UP_TIER) BEAST[k].push({...v, name:u.pre + BEAST_NOUN[k], hp:Math.round(v.hp * u.hp), dmg:+(v.dmg * u.dmg).toFixed(2), sc:+(v.sc * u.sc).toFixed(2), xp:Math.round(v.xp * u.xp), pay:0, rep:0, crown:1}); }
 const TIER_POWER = [0, 28, 55, 95];
 function farmerPower(){ const f = farmer(); return f.atk + f.def * 1.5 + (f.hp - 100) / 5 + f.lv * 2; }
 function raidTier(){
