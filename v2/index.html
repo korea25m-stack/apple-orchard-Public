@@ -278,6 +278,9 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
 .pkCard{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:2.5px solid var(--ink);border-radius:14px;background:#fff;padding:9px 12px;font-family:var(--body,inherit);font-size:16px}
 .pkCard .t{font-family:var(--display);font-size:20px}.pkCard.on{background:#fff3c4;box-shadow:0 0 0 4px #ffd25e}.pkCard:disabled{opacity:.5;cursor:default}.pkCard small{color:#6a5a4c}
 .pkAct{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}.pkAct .pkG{flex:1;font-size:17px}
+.hqList{display:flex;flex-direction:column;gap:8px;margin-top:10px}.hqCard{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;text-align:left;border:2.5px solid var(--ink);border-radius:14px;background:#fff;padding:8px 12px;font-size:17px}
+.hqCard:hover{background:#fff3c4}.hqCard b{font-family:var(--display);font-weight:400;font-size:20px}.hqCard small,.hqCard .hqR{grid-column:2;color:#6a5a4c;font-size:15px}.hqCard .hqR{color:#2f6f3e}
+.hqLv{grid-row:span 3;color:#fff;font-family:var(--display);border:2px solid var(--ink);border-radius:10px;padding:4px 10px;font-size:17px}.hqRew{margin-top:10px;background:#f3fbe8;border:2px solid #9fd39a;border-radius:12px;padding:8px 12px;font-size:17px}
 </style>
 
 </head><body>
@@ -1134,6 +1137,7 @@ const LOOKS = {
   worker: {skin:'#e9bd93', hair:'#2b2320', hs:'short', eye:'#3a2a20', top:'#7bb3e6', outfit:'tee', pants:'#6a6158', shoe:'#3b3b3b', hat:'band'},
   chief:  {skin:'#f1c9a6', hair:'#d4d4d4', hs:'bald', eye:'#4a3a2a', top:'#ffffff', outfit:'vest', o2:'#8b5a3c', pants:'#5c4a3e', shoe:'#3b2b22', old:1, glasses:1, beard:'#e2e2e2'},
   grandma:{skin:'#f6d3b6', hair:'#e4e4e4', hs:'bun', eye:'#4a3a2a', top:'#b48ae6', outfit:'apron', o2:'#fff6ea', pants:'#7a5fa8', shoe:'#5a4040', old:1, girl:1},
+  hunter: {skin:'#e6b48a', hair:'#2b2320', hs:'short', eye:'#3a2a20', top:'#d8c8a0', outfit:'vest', o2:'#5f6e3a', pants:'#4a4636', shoe:'#3a2a20', hat:'cap', capCol:'#f07a28', beard:'#3a2a20'},
   dealer: {skin:'#ffd9bd', hair:'#1f2a44', hs:'short', eye:'#2b3a66', top:'#ffffff', outfit:'jacket', o2:'#2f5fa8', pants:'#2a2f3a', shoe:'#222222', hat:'cap', capCol:'#e8423a'}
 };
 const shd = (col, t = .28) => mix(col, '#3a1a10', t);
@@ -1998,7 +2002,7 @@ function drawPortrait(cv, who){
 
 // ===== 과수원 세상 =====
 const SPOT = {
-  hanok:{x:-450, y:900}, shed:{x:510, y:830} /* 2026-10-13 저장하는 한옥은 왼쪽 빈 터로, 사과 창고가 한옥 자리로 크게 */, grandma:{x:480, y:1440}, chief:{x:270, y:1440},
+  hanok:{x:-450, y:900}, shed:{x:510, y:830} /* 2026-10-13 저장하는 한옥은 왼쪽 빈 터로, 사과 창고가 한옥 자리로 크게 */, grandma:{x:480, y:1440}, chief:{x:270, y:1440}, hunter:{x:110, y:1440},
   sarang:{x:170, y:820}, cold:{x:200, y:1190}, factory:{x:430, y:1160}, wondumak:{x:2340, y:780},
   hives:[[2300, 1040], [2350, 1075], [2300, 1110]], drone:{x:900, y:830},
   pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
@@ -2431,7 +2435,7 @@ function findTarget(){
   let best = null, bd = 95 * 95;
   const cands = [];
   for (let i = 0; i < G.trees.length; i++) { const p = treePos(i); cands.push({kind:'tree', i, x:p.x, y:p.y + 10}); }
-  cands.push({kind:'grandma', x:SPOT.grandma.x, y:SPOT.grandma.y}, {kind:'chief', x:SPOT.chief.x, y:SPOT.chief.y},
+  cands.push({kind:'grandma', x:SPOT.grandma.x, y:SPOT.grandma.y}, {kind:'chief', x:SPOT.chief.x, y:SPOT.chief.y}, {kind:'hunter', x:SPOT.hunter.x, y:SPOT.hunter.y},
              {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 10}, {kind:'hanok', x:SPOT.hanok.x, y:SPOT.hanok.y + 10}, {kind:'nongmak', x:SPOT.nongmak.x, y:SPOT.nongmak.y + 10}, {kind:'portal', x:SPOT.portal.x, y:SPOT.portal.y});
   huntTargets(cands);
   for (const n of NPCS) cands.push({kind:'npc', n:n.i, x:n.x, y:n.y});
@@ -2448,7 +2452,7 @@ function targetLabel(t){
   if (t.kind === 'npc') return NPCS[t.n].name;
   if (t.kind === 'forage') return '캐기: ' + LOOT[t.f.item].name;
   if (t.kind === 'rest') return '⛺ 쉬기';
-  return {grandma:'김순자 할머니', chief:'고만수 이장님', shed:carryN() ? '노란 박스 내려놓기' : '창고 들어가기', hanok:'저장하기', nongmak:'농막 들어가기', portal:'🌀 순간이동 포탈'}[t.kind];
+  return {grandma:'김순자 할머니', chief:'고만수 이장님', hunter:'🏹 ' + HUNTER_NAME, shed:carryN() ? '노란 박스 내려놓기' : '창고 들어가기', hanok:'저장하기', nongmak:'농막 들어가기', portal:'🌀 순간이동 포탈'}[t.kind];
 }
 
 // ----- 동물·나비 -----
@@ -2575,6 +2579,7 @@ function render(ctx, dt, T){
   // 사람
   add(SPOT.grandma.y, () => drawPerson(ctx, SPOT.grandma.x, SPOT.grandma.y, 'grandma', 0, 0, 0));
   add(SPOT.chief.y, () => drawPerson(ctx, SPOT.chief.x, SPOT.chief.y, 'chief', 0, 0, 0));
+  add(SPOT.hunter.y, () => drawHunterSpot(ctx, T));
   if (vis(SPOT.portal.x, SPOT.portal.y, 300)) add(SPOT.portal.y - 60, () => drawPortal(ctx, SPOT.portal.x, SPOT.portal.y, T));
   if (workerS.on) add(workerS.y, () => drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act));
   for (const c of critters) if (vis(c.x, c.y)) add(c.y, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
@@ -2653,7 +2658,7 @@ let curTarget = null;
 const mist = [];
 let raidAnim = null;
 function blockedSpot(x, y){
-  const all = [SPOT.hanok, SPOT.shed, SPOT.grandma, SPOT.chief, SPOT.portal, SPOT.sarang, SPOT.cold, SPOT.factory, SPOT.wondumak, SPOT.pond, SPOT.jangdok, SPOT.sotdae, SPOT.rabbit, SPOT.chicken, ...SPOT.blossom.map(([x2, y2]) => ({x:x2, y:y2})), ...SPOT.flowers.map(([x2, y2]) => ({x:x2, y:y2}))];
+  const all = [SPOT.hanok, SPOT.shed, SPOT.grandma, SPOT.chief, SPOT.hunter, SPOT.portal, SPOT.sarang, SPOT.cold, SPOT.factory, SPOT.wondumak, SPOT.pond, SPOT.jangdok, SPOT.sotdae, SPOT.rabbit, SPOT.chicken, ...SPOT.blossom.map(([x2, y2]) => ({x:x2, y:y2})), ...SPOT.flowers.map(([x2, y2]) => ({x:x2, y:y2}))];
   return all.some(s => Math.abs(s.x - x) < 200 && Math.abs(s.y - y) < 150);
 }
 function drawFlowerBed(c, x, y){
@@ -3417,7 +3422,7 @@ function spawnRaid(kind){
   todoSig = '';
 }
 function killMon(m){
-  m.dead = true; m.deadT = 0; m.st = 'dead'; sfx('kill');
+  m.dead = true; m.deadT = 0; m.st = 'dead'; sfx('kill'); hqOnKill(m);
   FX.stop = Math.max(FX.stop, .13); FX.shake = Math.max(FX.shake, .6); burst(m.x, m.y - 40, 22, ['#ffd23a', '#ff6b57', '#7fcf5a', '#fffaf1'], 620, .7);
   const f0 = farmer();
   if (m.raid) {
@@ -4453,6 +4458,7 @@ function renderTodo(needSpray){
   if (quizReady('chief')) items.push({ic:'👴', t:'이장님 사과 퀴즈', n:'지금 가능', go:'chief'});
   const upcoming = VAR_KEYS.filter(v => G.trees.some(t => t && t.v === v && t.fr) && G.week < VARS[v].hv[0]);
   for (const v of upcoming) items.push({ic:'⏳', t:`${VARS[v].name} 수확은 ${VARS[v].hv[0]}주부터`, n:`${VARS[v].hv[0] - G.week}주 뒤`, done:true});
+  hqTodo(items);
   huntTodo(items);
   if (G.worker > 0) items.push({ic:'👷', t:'인부 아저씨 일하는 중', n:`남은 ${workerLeftTxt()}`, done:true});
   if (!items.filter(i => !i.done).length) items.push({ic:'☕', t:'급한 일은 없어요. 농막에서 자면 다음 할 일까지 시간이 가요.', n:'', done:true});
@@ -4470,7 +4476,7 @@ function goTo(what){
   if (what === 'raid') { const m = MONS.find(m => m.raid && !m.dead); if (m) { P.tgt = {x:m.x, y:m.y}; P.pendMon = m; } return; }
   if (what === 'shop') { const n = NPCS.find(n => n.buyer); if (n) { P.tgt = {x:n.x + 55, y:n.y + 20}; P.pend = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20}; } return; }
   if (what === 'shed') { P.tgt = {x:SPOT.shed.x, y:SPOT.shed.y + 40}; P.pend = {kind:'shed'}; return; }
-  if (what === 'chief' || what === 'grandma') { P.tgt = {x:SPOT[what].x + 50, y:SPOT[what].y + 30}; return; }
+  if (what === 'chief' || what === 'grandma' || what === 'hunter') { P.tgt = {x:SPOT[what].x + 50, y:SPOT[what].y + 30}; return; }
   const i = nearestOf(what);
   if (i >= 0) { const p = treePos(i); P.tgt = {x:p.x, y:p.y + 50}; }
 }
@@ -4839,7 +4845,7 @@ function uiSave(){
 // ----- 마을 사람 -----
 function talk(who, html, foot){
   const npc = typeof who !== 'string';
-  const name = npc ? who.name : {grandma:'김순자 할머니', chief:'고만수 이장님', haru:HN(), worker:'인부 아저씨'}[who];
+  const name = npc ? who.name : {grandma:'김순자 할머니', chief:'고만수 이장님', hunter:HUNTER_NAME, haru:HN(), worker:'인부 아저씨'}[who];
   return UI.open({ic:'💬', title:name, w:900, render(o){
     o.body.innerHTML = `<div class="talk"><canvas width="200" height="200" id="ptr"></canvas><div class="bubble"><div class="who">${name}${npc ? ` <small style="opacity:.6">· ${who.role}</small>` : ''}</div>${html}</div></div><div id="talkX"></div>`;
     drawPortrait($('#ptr'), npc ? who.look : who);
@@ -4947,6 +4953,106 @@ function bindUI(){
   const fold = store.get('haru-todo', '0') === '1';
   $('#todo').classList.toggle('fold', fold); $('#todoArrow').textContent = fold ? '▸' : '▾';
   $('#todoH').onclick = () => { const f = !$('#todo').classList.contains('fold'); $('#todo').classList.toggle('fold', f); $('#todoArrow').textContent = f ? '▸' : '▾'; store.set('haru-todo', f ? '1' : '0'); };
+}
+
+// ===== 사냥꾼 윤산들 · 사냥 의뢰 (2026-10-14) =====
+// 이장님 왼쪽에 서 있어요. 지금 장비·레벨(farmerPower)로 이길 만한 ★을 골라 의뢰 3개(쉬움·알맞음·도전)를 줘요.
+// 기준: 장비 묶음별 싸움 시뮬(test/hqcal.js)에서 이길 확률 90% 넘는 가장 높은 ★
+const HQ_PW = [0, 30, 95, 125, 165, 195, 260];
+const HQ_MONEY = [150000, 300000, 600000, 1000000, 1600000, 2400000, 3500000];
+const HQ_XP = [80, 150, 250, 400, 600, 850, 1200];
+const HQ_LV = {easy:{name:'쉬움', d:-1, n:5, mul:.7, col:'#5cc46c'}, fit:{name:'알맞음', d:0, n:4, mul:1, col:'#ffb13b'}, hard:{name:'도전', d:1, n:3, mul:1.4, col:'#ff6b57'}};
+const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'전설의 산 호랑이 굴'}, pbear:{min:5, money:8000000, xp:900, stones:4, rep:6, where:'남쪽 눈 덮인 설산 흰곰 굴'}};
+const HUNTER_NAME = '윤산들 사냥꾼';
+
+function hqTier(){ const pw = farmerPower(); let t = 0; HQ_PW.forEach((v, i) => { if (pw >= v) t = i; }); return t; }
+function hqKind(t){
+  const tab = {...SPAWN_MIX[t]}; if (seasonOf(G.week) === 'winter') delete tab.snake;
+  return rollLoot(tab);
+}
+function hqMake(lv){
+  if (HQ_BOSS[lv]) { const B = HQ_BOSS[lv]; return {lv, kind:lv, tier:9, n:1, got:0, money:B.money, xp:B.xp, stones:B.stones, rep:B.rep}; }
+  const L = HQ_LV[lv], T = hqTier(), t = clamp(T + L.d, 0, 6);
+  return {lv, kind:hqKind(t), tier:t, n:L.n, got:0, money:Math.round(HQ_MONEY[t] * L.mul / 10000) * 10000, xp:Math.round(HQ_XP[t] * L.mul),
+    stones:(t >= 2 ? 1 : 0) + (t >= 4 ? 1 : 0) + (t >= 6 ? 1 : 0) + (lv === 'hard' ? 1 : 0), rep:1 + (lv === 'hard' ? 1 : 0) + (t >= 3 ? 1 : 0)};
+}
+// 사냥꾼이 이번에 내놓는 의뢰(받기 전까지는 같은 날 같은 의뢰)
+function hqOffers(){
+  const day = absDay();
+  if (!G.hqOff || G.hqOff.day !== day || G.hqOff.T !== hqTier()) {
+    const list = ['easy', 'fit', 'hard'].map(hqMake), T = hqTier();
+    for (const k in HQ_BOSS) if (T >= HQ_BOSS[k].min) list.push(hqMake(k));
+    if (T === 0) list.shift();
+    G.hqOff = {day, T, list};
+  }
+  return G.hqOff.list;
+}
+const hqName = q => HQ_BOSS[q.kind] ? (q.kind === 'tiger' ? '전설의 호랑이' : '전설의 흰곰') : `${'★'.repeat(q.tier + 1)} ${BEAST_NOUN[q.kind]}`;
+const hqWhere = q => HQ_BOSS[q.kind] ? HQ_BOSS[q.kind].where : `${ZONES[q.tier].name}(${ZONES[q.tier].stars}) 근처`;
+function hqReward(q){ return `💰 ${won(q.money)} · ⭐ 경험치 ${q.xp}${q.stones ? ` · 💎 강화석 ${q.stones}` : ''} · 평판 +${q.rep}`; }
+function hqDone(){ return G.hq && G.hq.got >= G.hq.n; }
+// killMon에서 불러요: 의뢰한 짐승(같은 종류, ★이 같거나 높으면)을 이기면 한 마리
+function hqOnKill(m){
+  const q = G.hq; if (!q || q.got >= q.n) return;
+  const ok = HQ_BOSS[q.kind] ? m.kind === q.kind : m.kind === q.kind && m.tier >= q.tier;
+  if (!ok) return;
+  q.got++; todoSig = '';
+  floats.push({x:m.x, y:m.y - 190, s:`🏹 의뢰 ${q.got}/${q.n}`, t:1.8, c:'#2f6fb8'});
+  if (q.got >= q.n) setTimeout(() => toast(`🏹 사냥 의뢰 완료! 이장님 왼쪽 ${HUNTER_NAME}한테 가서 보상을 받아요.`, 'gold'), 900);
+}
+function hqClaim(){
+  const q = G.hq; if (!hqDone()) return;
+  ensureGear(); G.money += q.money; addInc('hunt', q.money); G.rep += q.rep; gainXp(q.xp);
+  if (q.stones) G.gear.stones = (G.gear.stones || 0) + q.stones;
+  G.stats.hq = (G.stats.hq || 0) + 1; G.hq = null; G.hqOff = null; todoSig = ''; sfx('fanfare'); checkRich();
+  toast(`🏹 의뢰 보상! ${hqReward(q)}`, 'gold');
+}
+function talkHunter(){
+  const n = HN(), q = G.hq;
+  if (q && hqDone()) {
+    const o = talk('hunter', `허, ${jo(hqName(q), '을', '를')} ${q.n}마리나! ${n}, 솜씨 좋은데? 약속한 보상이야.<div class="hqRew">${hqReward(q)}</div>`, `<button class="btn pri" id="hqGet">🎁 보상 받기</button>`);
+    $('#hqGet').onclick = () => { hqClaim(); UI.close(); setTimeout(talkHunter, 200); };
+    return o;
+  }
+  if (q) {
+    const o = talk('hunter', `${jo(hqName(q), '은', '는')} ${hqWhere(q)}에 많아. 지금 <b>${q.got}/${q.n}마리</b>야. ${HQ_BOSS[q.kind] ? '굴 앞에서 몸 상태부터 챙기라고.' : '★이 더 많은 녀석을 이겨도 쳐 줄게.'}<div class="hqRew">${hqReward(q)}</div>`,
+      `<button class="btn" id="hqDrop">의뢰 그만두기</button><button class="btn pri" id="tOk">다녀올게요</button>`);
+    $('#tOk').onclick = () => UI.close();
+    $('#hqDrop').onclick = () => { G.hq = null; todoSig = ''; UI.close(); toast('사냥 의뢰를 그만뒀어요.'); };
+    return o;
+  }
+  const T = hqTier(), L = hqOffers(), f = farmer();
+  const cards = L.map((x, i) => { const lv = HQ_LV[x.lv], boss = HQ_BOSS[x.lv];
+    return `<button class="hqCard" data-hq="${i}"><span class="hqLv" style="background:${boss ? '#7a4ab8' : lv.col}">${boss ? '전설' : lv.name}</span>
+      <b>${MON_IC[x.kind] || '🐾'} ${hqName(x)} ${x.n}마리</b><small>📍 ${hqWhere(x)}</small><span class="hqR">${hqReward(x)}</span></button>`; }).join('');
+  const o = talk('hunter', `산에 들어갈 거야? ${n} 장비를 보니 <b>${'★'.repeat(T + 1)}</b> 짐승까지는 거뜬하겠어. <small>(도구 ⚔️${f.atk} · 방어 ${f.def} · 체력 ${f.hp} · 레벨 ${f.lv})</small><br>하나 골라 봐. 장비가 좋아지면 더 센 의뢰를 줄게.<div class="hqList">${cards}</div>`,
+    `<button class="btn" id="tOk">다음에요</button>`);
+  $('#tOk').onclick = () => UI.close();
+  o.body.querySelectorAll('[data-hq]').forEach(b => b.onclick = () => {
+    G.hq = {...L[+b.dataset.hq]}; G.hqOff = null; todoSig = ''; sfx('pick'); UI.close();
+    toast(`🏹 사냥 의뢰를 받았어요: ${hqName(G.hq)} ${G.hq.n}마리 (${hqWhere(G.hq)})`, 'good');
+  });
+  return o;
+}
+function hqTodo(items){
+  const q = G.hq; if (!q) return;
+  items.push({ic:'🏹', t:`사냥 의뢰: ${hqName(q)}`, n:hqDone() ? '보상 받기' : `${q.got}/${q.n}`, hot:hqDone(), go:'hunter'});
+}
+// 마을 그림: 사냥꾼 + 의뢰 게시판 + 머리 위 표시
+function drawHunterSpot(c, t){
+  const s = SPOT.hunter, bx = s.x - 90, by = s.y - 4;
+  shadow(c, bx, by + 2, 46, 9);
+  for (const px of [-34, 30]) cel(c, cc => rr(cc, bx + px, by - 96, 8, 96, 2), '#8e5a34', '#5a3a1c', 1, 1, 2.2);
+  cel(c, cc => rr(cc, bx - 46, by - 106, 92, 66, 6), '#c99a68', '#9a6a40', 3, 3, 3);
+  cel(c, cc => rr(cc, bx - 50, by - 116, 100, 16, 4), '#7a4a2a', '#4a2a16', 2, 2, 2.4);
+  c.font = '13px Jua'; c.textAlign = 'center'; c.fillStyle = '#fffaf1'; c.fillText('사냥 의뢰', bx, by - 103);
+  for (const [dx, dy, rot] of [[-22, -88, -.08], [14, -84, .07], [-6, -62, .03]]) { c.save(); c.translate(bx + dx, by + dy); c.rotate(rot); cel(c, cc => rr(cc, -14, -10, 28, 20, 2), '#fffaf1', '#e5dccb', 1, 1, 1.4); c.beginPath(); c.arc(0, -10, 2.4, 0, 7); c.fillStyle = '#d6372c'; c.fill(); c.restore(); }
+  drawPerson(c, s.x, s.y, 'hunter', 0, 0, 0);
+  const mark = hqDone() ? '!' : G.hq ? '' : '?';
+  if (mark) {
+    const y = s.y - 118 + Math.sin(t * 3) * 4;
+    c.font = '40px Jua'; c.lineWidth = 7; c.strokeStyle = '#fffaf1'; c.strokeText(mark, s.x, y); c.fillStyle = hqDone() ? '#ff7a1a' : '#2f6fb8'; c.fillText(mark, s.x, y);
+  }
 }
 
 // ===== 2026-10-14 랭킹: 도감 창 '🏆 랭킹' 탭 =====
@@ -6500,6 +6606,7 @@ function act(t){
   }
   else if (t.kind === 'grandma') talkGrandma();
   else if (t.kind === 'chief') talkChief();
+  else if (t.kind === 'hunter') talkHunter();
   else if (t.kind === 'npc') talkNpc(NPCS[t.n]);
   else if (t.kind === 'nongmak') uiNongmak();
   else if (t.kind === 'portal') uiPortal();
@@ -6716,7 +6823,7 @@ function clickWorld(w){
     const p = treePos(i), d = (p.x - w.x) ** 2 + ((p.y - 70 - w.y) * .55) ** 2;
     if (d < bd) { bd = d; best = {kind:'tree', i, x:p.x, y:p.y + 46}; }
   }
-  for (const k of ['grandma', 'chief']) { const s = SPOT[k]; if ((s.x - w.x) ** 2 + (s.y - 40 - w.y) ** 2 < 70 * 70) best = {kind:k, x:s.x + 60, y:s.y + 30}; }
+  for (const k of ['grandma', 'chief', 'hunter']) { const s = SPOT[k]; if ((s.x - w.x) ** 2 + (s.y - 40 - w.y) ** 2 < 70 * 70) best = {kind:k, x:s.x + 60, y:s.y + 30}; }
   for (const n of NPCS) if ((n.x - w.x) ** 2 + (n.y - 45 - w.y) ** 2 < 55 * 55) best = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20};
   if ((Math.abs(w.x - SPOT.shed.x) < 80 * shedS() && w.y < SPOT.shed.y + 5 && w.y > SPOT.shed.y - 160 * shedS()) || (Math.abs(w.x - SPOT.shed.x - 70 * shedS() - 58) < 62 && w.y < SPOT.shed.y + 10 && w.y > SPOT.shed.y - 170)) best = {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 40};
   for (const m of MONS) if (m.hp > 0 && (m.x - w.x) ** 2 + (m.y - 40 - w.y) ** 2 < 90 * 90) { if (Math.hypot(m.x - P.x, m.y - P.y) < 170) { P.face = m.x < P.x ? -1 : 1; heroAttack(); P.tgt = null; } else { P.tgt = {x:m.x, y:m.y}; P.pendMon = m; } P.pend = null; return; }
