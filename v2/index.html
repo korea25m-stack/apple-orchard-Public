@@ -3378,7 +3378,8 @@ function heroGong(){
   ensureHero(); if (P.gong > 0) return;
   P.gong = 9; sfx('gong');
   floats.push({x:P.x, y:P.y - 140, s:'🥁 쩌렁쩌렁!', t:1.2, c:'#b2332b'});
-  for (const m of MONS) if (!m.dead && Math.hypot(m.x - P.x, m.y - P.y) < 420) { m.stun = m.boss ? .5 : 1.8; m.eat = 0; if (['wind', 'charge', 'kick'].includes(m.st)) m.st = 'chase'; floats.push({x:m.x, y:m.y - 120, s:'💫', t:1.2, c:'#ffb13b'}); }
+  // 2026-10-14 달 요청: 보스도 1.5초 기절하고, 쓰던 특수공격(바닥 표시 포함)이 끊겨요
+  for (const m of MONS) if (!m.dead && Math.hypot(m.x - P.x, m.y - P.y) < (m.boss ? 520 : 420)) { if (m.boss) bossInterrupt(m); m.stun = m.boss ? 1.5 : 1.8; m.eat = 0; if (['wind', 'charge', 'kick'].includes(m.st)) m.st = 'chase'; floats.push({x:m.x, y:m.y - 120, s:'💫', t:1.2, c:'#ffb13b'}); }
 }
 function heroHurt(m, base){
   const f = farmer(), d = Math.hypot(P.x - m.x, P.y - m.y) || 1;
@@ -4358,6 +4359,13 @@ function bossSkillUpdate(m, dt){
     }
   }
 }
+// 꽹과리(Q)로 끊기: 쓰던 기술과 아직 안 터진 바닥 표시를 지워요
+function bossInterrupt(m){
+  for (let i = BFX.length - 1; i >= 0; i--) if (BFX[i].m === m && !BFX[i].done) BFX.splice(i, 1);
+  const was = m.st === 'skill' || m.st === 'wind' || m.st === 'charge';
+  m.st = 'chase'; m.sk = null; m.jz = 0; m.cc = 1.2; m.skCd = Math.max(m.skCd || 0, BOSS_CD[m.hp < m.max * .5 ? 1 : 0]);
+  if (was) floats.push({x:m.x, y:m.y - 220, s:'🥁 기술 끊었다!', t:1.6, c:'#2f6fb8', sz:30});
+}
 // updateMon(chase)에서 불러요: 쿨다운이 끝나면 기술을 써요
 function bossTrySkill(m, dt, pd){
   if (m.skCd == null) m.skCd = 2.5;
@@ -5107,9 +5115,15 @@ const HQ_XP = [80, 150, 250, 400, 600, 850, 1200];
 const HQ_LV = {easy:{name:'쉬움', d:-1, n:5, mul:.7, col:'#5cc46c'}, fit:{name:'알맞음', d:0, n:4, mul:1, col:'#ffb13b'}, hard:{name:'도전', d:1, n:3, mul:1.4, col:'#ff6b57'}};
 const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'전설의 산 호랑이 굴'}, pbear:{min:5, money:8000000, xp:900, stones:4, rep:6, where:'남쪽 눈 덮인 설산 흰곰 굴'}};
 const HUNTER_NAME = '윤산들 사냥꾼';
-// 2026-10-14 달 요청: 난이도마다 한 번 끝내면 1년(364일) 뒤에 다시 받을 수 있어요
-const HQ_REST = 364;
-const hqUntil = lv => (G.hqUsed || {})[lv] || 0;
+// 2026-10-14 달 요청: 난이도마다 한 번 끝내면 한 달(28일, 4주) 뒤에 다시 받을 수 있어요 (처음엔 1년이었어요)
+const HQ_REST = 28;
+// 보상은 처음 값의 1/10 (2026-10-14 달 요청). 강화석은 전설 의뢰에서만 1개
+const HQ_PAY = .1;
+function hqUntil(lv){
+  const u = G.hqUsed || {};
+  if (u.v !== 2) { for (const k in u) if (k !== 'v') u[k] -= 364 - HQ_REST; u.v = 2; G.hqUsed = u; } // 1년 쉬던 예전 저장도 한 달로
+  return u[lv] || 0;
+}
 const hqLocked = lv => hqUntil(lv) > absDay();
 function hqWhenTxt(lv){ const d = hqUntil(lv), y = Math.floor(d / 364) + 1, w = Math.floor((d % 364) / 7) + 1, L = weekLabel(w); return `${y}년차 ${L.m}월 ${L.wk}주`; }
 
@@ -5119,19 +5133,18 @@ function hqKind(t){
   return rollLoot(tab);
 }
 function hqMake(lv){
-  if (HQ_BOSS[lv]) { const B = HQ_BOSS[lv]; return {lv, kind:lv, tier:9, n:1, got:0, money:B.money, xp:B.xp, stones:B.stones, rep:B.rep}; }
+  if (HQ_BOSS[lv]) { const B = HQ_BOSS[lv]; return {lv, kind:lv, tier:9, n:1, got:0, money:Math.round(B.money * HQ_PAY / 10000) * 10000, xp:Math.round(B.xp * HQ_PAY), stones:1, rep:1}; }
   const L = HQ_LV[lv], T = hqTier(), t = clamp(T + L.d, 0, 6);
-  return {lv, kind:hqKind(t), tier:t, n:L.n, got:0, money:Math.round(HQ_MONEY[t] * L.mul / 10000) * 10000, xp:Math.round(HQ_XP[t] * L.mul),
-    stones:(t >= 2 ? 1 : 0) + (t >= 4 ? 1 : 0) + (t >= 6 ? 1 : 0) + (lv === 'hard' ? 1 : 0), rep:1 + (lv === 'hard' ? 1 : 0) + (t >= 3 ? 1 : 0)};
+  return {lv, kind:hqKind(t), tier:t, n:L.n, got:0, money:Math.max(10000, Math.round(HQ_MONEY[t] * L.mul * HQ_PAY / 10000) * 10000), xp:Math.max(5, Math.round(HQ_XP[t] * L.mul * HQ_PAY)), stones:0, rep:1};
 }
 // 사냥꾼이 이번에 내놓는 의뢰(받기 전까지는 같은 날 같은 의뢰)
 function hqOffers(){
   const day = absDay();
-  if (!G.hqOff || G.hqOff.day !== day || G.hqOff.T !== hqTier()) {
+  if (!G.hqOff || G.hqOff.day !== day || G.hqOff.T !== hqTier() || G.hqOff.p !== HQ_PAY) {
     const list = ['easy', 'fit', 'hard'].map(hqMake), T = hqTier();
     for (const k in HQ_BOSS) if (T >= HQ_BOSS[k].min) list.push(hqMake(k));
     if (T === 0) list.shift();
-    G.hqOff = {day, T, list};
+    G.hqOff = {day, T, list, p:HQ_PAY};
   }
   return G.hqOff.list;
 }
@@ -5172,10 +5185,10 @@ function talkHunter(){
   }
   const T = hqTier(), L = hqOffers(), f = farmer();
   const cards = L.map((x, i) => { const lv = HQ_LV[x.lv], boss = HQ_BOSS[x.lv], lock = hqLocked(x.lv);
-    if (lock) return `<div class="hqCard off"><span class="hqLv" style="background:#a89a8c">${boss ? '전설' : lv.name}</span><b>✔ 올해는 끝냈어요</b><small>🔒 ${hqWhenTxt(x.lv)}부터 다시 받을 수 있어요</small><span class="hqR"></span></div>`;
+    if (lock) return `<div class="hqCard off"><span class="hqLv" style="background:#a89a8c">${boss ? '전설' : lv.name}</span><b>✔ 이번 달은 끝냈어요</b><small>🔒 ${hqWhenTxt(x.lv)}부터 다시 받을 수 있어요</small><span class="hqR"></span></div>`;
     return `<button class="hqCard" data-hq="${i}"><span class="hqLv" style="background:${boss ? '#7a4ab8' : lv.col}">${boss ? '전설' : lv.name}</span>
       <b>${MON_IC[x.kind] || '🐾'} ${hqName(x)} ${x.n}마리</b><small>📍 ${hqWhere(x)}</small><span class="hqR">${hqReward(x)}</span></button>`; }).join('');
-  const o = talk('hunter', `산에 들어갈 거야? ${n} 장비를 보니 <b>Lv${T ? TIER_LV[T] + 1 : 1}</b> 짐승까지는 거뜬하겠어. <small>(도구 ⚔️${f.atk} · 방어 ${f.def} · 체력 ${f.hp} · 레벨 ${f.lv})</small><br>하나 골라 봐. 난이도마다 1년에 한 번씩만 줄 수 있어.<div class="hqList">${cards}</div>`,
+  const o = talk('hunter', `산에 들어갈 거야? ${n} 장비를 보니 <b>Lv${T ? TIER_LV[T] + 1 : 1}</b> 짐승까지는 거뜬하겠어. <small>(도구 ⚔️${f.atk} · 방어 ${f.def} · 체력 ${f.hp} · 레벨 ${f.lv})</small><br>하나 골라 봐. 난이도마다 한 달에 한 번씩만 줄 수 있어.<div class="hqList">${cards}</div>`,
     `<button class="btn" id="tOk">다음에요</button>`);
   $('#tOk').onclick = () => UI.close();
   o.body.querySelectorAll('[data-hq]').forEach(b => b.onclick = () => {
