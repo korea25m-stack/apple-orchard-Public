@@ -3553,10 +3553,10 @@ function huntTargets(cands){ for (const f of FORAGE) cands.push({kind:'forage', 
 
 // ----- 숲속 쉼터 (2026-10-13): 체력 회복, 한 번 찾으면 마을 포탈·다른 쉼터로 바로 이동 -----
 const RESTS = [
-  // 2026-10-13 마을에서 더 멀리(마을 둘레에서 3300~4500), 서로 6000 넘게 떨어지게 다시 놓았어요. id는 그대로라 찾은 기록이 남아요
-  {id:'e', name:'동쪽 숲 쉼터', x:7400, y:1500}, {id:'s', name:'남쪽 숲 쉼터', x:-600, y:9800},
-  {id:'n', name:'북서쪽 숲 쉼터', x:-5600, y:-1200}, {id:'w', name:'서쪽 숲 쉼터', x:-5400, y:5600},
-  {id:'v', name:'남동쪽 골짜기 쉼터', x:6800, y:7800}, {id:'m', name:'전설의 산 쉼터', x:2400, y:-6600}
+  // 2026-10-14 달 요청: 마을(광장 -1000,2500)에서 지금보다 1.4~1.6배 멀리, 같은 방향의 숲길 갈림길(빈터)로 옮겼어요. id는 그대로라 찾은 기록이 남아요
+  {id:'e', name:'동쪽 숲 쉼터', x:11400, y:1800}, {id:'s', name:'남쪽 숲 쉼터', x:-2600, y:13400},
+  {id:'n', name:'북서쪽 숲 쉼터', x:-8200, y:-2600}, {id:'w', name:'서쪽 숲 쉼터', x:-8000, y:4800},
+  {id:'v', name:'남동쪽 골짜기 쉼터', x:11000, y:11600}, {id:'m', name:'전설의 산 쉼터', x:3000, y:-11400}
 ];
 function restAt(x, y, pad = 0){ return RESTS.find(r => Math.hypot(x - r.x, (y - r.y) * 1.2) < 160 + pad); }
 function restsFound(){ if (!G.rests) G.rests = {}; return RESTS.filter(r => G.rests[r.id]); }
