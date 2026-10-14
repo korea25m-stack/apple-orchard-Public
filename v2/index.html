@@ -3274,6 +3274,7 @@ function inCombat(){ return MONS.some(m => !m.dead && m.eng && Math.hypot(m.x - 
 function heroAttack(){
   ensureHero();
   if (P.acd > 0 || P.blk || ssAnim) return;
+  fightDismount();
   const f = farmer(), aoe = weaponUp() >= AOE_LV;
   const reach = 125 * f.reach + 40;
   let best = null, bd = 1e9;
@@ -3382,12 +3383,13 @@ function hitMon(m, dmg, f, main){
 }
 function heroGong(){
   ensureHero(); if (P.gong > 0) return;
-  P.gong = 9; sfx('gong');
+  P.gong = 9; sfx('gong'); fightDismount();
   floats.push({x:P.x, y:P.y - 140, s:'🥁 쩌렁쩌렁!', t:1.2, c:'#b2332b'});
   // 2026-10-14 달 요청: 보스도 1.5초 기절하고, 쓰던 특수공격(바닥 표시 포함)이 끊겨요
   for (const m of MONS) if (!m.dead && Math.hypot(m.x - P.x, m.y - P.y) < (m.boss ? 520 : 420)) { if (m.boss) bossInterrupt(m); m.stun = m.boss ? 1.5 : 1.8; m.eat = 0; if (['wind', 'charge', 'kick'].includes(m.st)) m.st = 'chase'; floats.push({x:m.x, y:m.y - 120, s:'💫', t:1.2, c:'#ffb13b'}); }
 }
 function heroHurt(m, base){
+  fightDismount();
   const f = farmer(), d = Math.hypot(P.x - m.x, P.y - m.y) || 1;
   let dmg, txt, col = '#d6372c';
   if (P.blk) {
@@ -4306,6 +4308,7 @@ const SKILL_TXT = {claws:'🐾 발톱 자국이 따라와요! 계속 움직여�
 
 function bossHit(m, base, txt){
   if (P.inv > 0 || P.hp <= 0) return;
+  fightDismount();
   const f = farmer(), half = P.blk;
   const dmg = Math.max(2, Math.round((base * m.V.dmg - f.def) * (half ? .5 : 1)));
   P.hp -= dmg; P.inv = .9; P.hurtT = 0; sfx(half ? 'block' : 'hurt');
@@ -5237,26 +5240,35 @@ const riding = () => !!G.ride;
 function toggleRide(){
   if (!hasMount()) { toast(`🐯 호랑이 탈것이 없어요. 호랑이 가죽 ${MOUNT_SKIN}장으로 장비 창에서 만들 수 있어요.`); return; }
   if (!G.ride && inTown()) { toast('🌲 호랑이는 숲(사냥터)에서만 탈 수 있어요.', 'bad'); return; }
+  if (!G.ride && inCombat()) { toast('⚔️ 싸우는 중엔 탈 수 없어요. 산짐승을 떼어 내고 타요.', 'bad'); return; }
   G.ride = !G.ride; sfx(G.ride ? 'roar' : 'pick');
   burst(P.x, P.y - 20, 10, ['#f2922c', '#fff2c4', '#fffaf1'], 300, .4);
   floats.push({x:P.x, y:P.y - 160, s:G.ride ? '🐯 호랑이를 탔어요! 빠르기 +30%' : '🐯 호랑이에서 내렸어요', t:1.4, c:'#c4661a'});
   rideBtnSync(true);
 }
-// 매 프레임: 마을에 들어오면 내리고, 버튼 모양을 맞춰요
+// 2026-10-14 달 요청: 마을에 들어오거나 싸움이 시작되면(때리기·맞기·짐승이 덤벼 옴) 저절로 내려요
+function dismount(msg){
+  if (!G.ride) return; G.ride = false; sfx('pick');
+  burst(P.x, P.y - 20, 8, ['#f2922c', '#fffaf1'], 260, .35);
+  if (msg) toast(msg); rideBtnSync(true);
+}
+const fightDismount = () => dismount('⚔️ 싸움이 시작돼서 호랑이에서 내렸어요.');
+// 매 프레임: 버튼 모양을 맞추고, 마을·싸움이면 내려요
 let rideSig = '';
 function updateMount(){
-  if (G.ride && (!hasMount() || inTown())) { G.ride = false; toast('🏡 마을에서는 호랑이에서 내려요.'); }
+  if (G.ride && (!hasMount() || inTown())) dismount('🏡 마을에서는 호랑이에서 내려요.');
+  else if (G.ride && inCombat()) fightDismount();
   rideBtnSync();
 }
 function rideBtnSync(force){
   const b = $('#rideBtn'); if (!b) return;
-  const sig = [hasMount(), inTown(), riding(), KB.ride.join()].join();
+  const fight = inCombat(), sig = [hasMount(), inTown(), riding(), fight, KB.ride.join()].join();
   if (sig === rideSig && !force) return; rideSig = sig;
   b.style.display = hasMount() ? '' : 'none';
-  b.disabled = inTown();
+  b.disabled = inTown() || (fight && !riding());
   b.classList.toggle('on', riding());
   const k = KB.ride.filter(Boolean).map(keyName).join('/');
-  b.innerHTML = `🐯<small>${inTown() ? '숲에서만' : riding() ? '내리기' : '타기'}${k ? ` (${esc(k)})` : ''}</small>`;
+  b.innerHTML = `🐯<small>${inTown() ? '숲에서만' : riding() ? '내리기' : fight ? '싸우는 중' : '타기'}${k ? ` (${esc(k)})` : ''}</small>`;
   b.title = inTown() ? '호랑이는 숲(사냥터)에서만 탈 수 있어요' : '';
 }
 // 장비 창 맨 아래 탈것 칸
