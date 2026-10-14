@@ -81,7 +81,7 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 #todo li .ic{font-size:22px}
 #todo.fold ul{display:none}
 
-#bar{left:50%;transform:translateX(-50%);bottom:14px;display:flex;gap:8px;padding:9px 12px}
+#bar{left:50%;transform:translateX(-50%) scale(.9);transform-origin:50% 100%;bottom:14px;display:flex;gap:8px;padding:9px 12px}
 .tb{width:104px;height:92px;border-radius:16px;border:2.5px solid var(--ink);background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:18px;box-shadow:0 4px 0 var(--ink);transition:transform .08s}
 .tb b{font-size:36px;font-weight:400;line-height:1}
 .tb:hover{background:#fff6d6}
@@ -286,6 +286,7 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
     <button class="tb" data-ui="gear"><b>🔨</b>장비</button>
     <button class="tb" data-ui="book"><b>📖</b>도감</button>
     <button class="tb" data-ui="save"><b>💾</b>저장</button>
+    <button class="tb" data-ui="rank"><b>🏆</b>랭킹</button>
   </div>
 
   <div id="touchUI">
@@ -4218,7 +4219,7 @@ function nearestOf(k){
 }
 
 // ----- 아래 도구 창들 -----
-function openUI(k){ if (!UI.free()) return; ({plant:uiPlant, spray:uiSpray, worker:uiWorker, store:uiStore, retail:() => uiStore('retail'), build:uiBuild, land:uiLand, book:uiBook, save:uiSave, gear:uiGear, inv:uiInv, sound:uiSound})[k](); }
+function openUI(k){ if (!UI.free()) return; ({plant:uiPlant, spray:uiSpray, worker:uiWorker, store:uiStore, retail:() => uiStore('retail'), build:uiBuild, land:uiLand, book:uiBook, rank:() => uiBook('rank'), save:uiSave, gear:uiGear, inv:uiInv, sound:uiSound})[k](); }
 
 function uiPlant(){
   UI.open({ic:'🌱', title:'묘목 고르기', render(o){
