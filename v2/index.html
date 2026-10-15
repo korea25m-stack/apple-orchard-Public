@@ -999,10 +999,10 @@ function decodeSave(code){
 
 // ===== 창고 사과 신선도 (2026-10-15 달 요청: 빨리 팔게) =====
 // 부사는 수확 뒤 4개월(120일), 나머지 품종은 2개월(60일)까지 그대로예요.
-// 그날부터 한 달(30일)마다 등급이 한 단계씩 떨어져요(특→상→보통→하, 하는 그대로).
+// 그날, 그리고 그 뒤 한 달(30일)마다 확인해서 상자마다 40%(FRESH_P, 2026-10-15 달 요청 '50% 미만') 확률로 한 단계 떨어져요(특→상→보통→하, 하는 그대로).
 // G.stock은 여러 곳(경매·납품·소매·가공)에서 줄어들어서, 상자 묶음(G.lots)은 날마다 G.stock에 맞춰요:
 // 늘어난 상자 = 오늘 새로 들어온 묶음, 줄어든 상자 = 오래된 묶음부터 나간 걸로 봐요.
-const FRESH_DAYS = {fuji:120}, FRESH_DEF = 60, FRESH_STEP = 30;
+const FRESH_DAYS = {fuji:120}, FRESH_DEF = 60, FRESH_STEP = 30, FRESH_P = .4;
 const freshLimit = v => FRESH_DAYS[v] || FRESH_DEF;
 const GRADE_DOWN = {S:'A', A:'B', B:'C'};
 function syncLots(){
@@ -1016,26 +1016,30 @@ function syncLots(){
   }
   G.lots = G.lots.filter(x => x.n > 0);
 }
-// 하루에 한 번: 맞추고, 때가 된 묶음은 한 단계 내려요
+// 하루에 한 번: 맞추고, 확인할 날이 된 묶음은 상자마다 주사위를 굴려 떨어진 상자만 한 단계 내려요
 function ageStock(){
   syncLots();
   const now = absDay(), moved = {};
-  for (const L of G.lots) {
-    const [v, g] = L.k.split('|'), age = now - L.t, lim = freshLimit(v);
+  for (const L of [...G.lots]) {
+    const [v] = L.k.split('|'), lim = freshLimit(v), age = now - L.t;
     const due = age >= lim ? Math.floor((age - lim) / FRESH_STEP) + 1 : 0;
-    let g2 = g; while (L.d < due && GRADE_DOWN[g2]) { g2 = GRADE_DOWN[g2]; L.d++; }
-    if (L.d < due) L.d = due; // 하는 더 안 떨어져요
-    if (g2 === g) continue;
-    const k2 = v + '|' + g2;
-    G.stock[L.k] -= L.n; if (G.stock[L.k] <= 0) delete G.stock[L.k];
-    G.stock[k2] = (G.stock[k2] || 0) + L.n;
-    const key = `${VARS[v].name} ${gByK(g).name}→${gByK(g2).name}`; moved[key] = (moved[key] || 0) + L.n;
-    L.k = k2;
+    while (L.d < due) {
+      L.d++;
+      const g = L.k.split('|')[1], g2 = GRADE_DOWN[g]; if (!g2) continue; // 하는 그대로
+      let m = 0; for (let i = 0; i < L.n; i++) if (Math.random() < FRESH_P) m++;
+      if (!m) continue;
+      const k2 = v + '|' + g2;
+      G.stock[L.k] -= m; if (G.stock[L.k] <= 0) delete G.stock[L.k];
+      G.stock[k2] = (G.stock[k2] || 0) + m;
+      G.lots.push({k:k2, n:m, t:L.t, d:L.d}); L.n -= m;
+      const key = `${VARS[v].name} ${gByK(g).name}→${gByK(g2).name}`; moved[key] = (moved[key] || 0) + m;
+    }
   }
+  G.lots = G.lots.filter(x => x.n > 0);
   const msg = Object.entries(moved).map(([k, n]) => `${k} ${n}상자`).join(', ');
-  if (msg) { toast(`🍂 오래된 사과 등급이 떨어졌어요: ${msg}`, 'bad'); todoSig = ''; }
+  if (msg) { toast(`🍂 오래된 사과 일부가 등급이 떨어졌어요: ${msg}`, 'bad'); todoSig = ''; }
 }
-// 창고 창에 보여 줄 '다음에 떨어지기까지 남은 날' (그 칸에서 가장 빠른 묶음)
+// 창고 창에 보여 줄 '다음 확인까지 남은 날' (그 칸에서 가장 빠른 묶음)
 function freshLeft(k){
   const [v, g] = k.split('|'); if (!GRADE_DOWN[g]) return null;
   const now = absDay(); let best = null;
@@ -4868,11 +4872,11 @@ function uiStore(tab){
         const [v, gk] = k.split('|'), g = gByK(gk), base = g.base * VARS[v].mult * (G.b.cold ? 1.1 : 1) * shedMult();
         const canP = G.b.factory && (gk === 'B' || gk === 'C');
         return `<tr><td><span class="dot" style="background:${VARS[v].col}"></span>${VARS[v].name}</td><td><b style="color:${g.col}">${g.name}</b></td><td>${G.stock[k]}</td>
-          <td>${(f => f == null ? '—' : f <= 7 ? `<b style="color:#c4402f">🍂 ${Math.max(0, f)}일 뒤 ↓</b>` : `${f}일 뒤 ↓`)(freshLeft(k))}</td>
+          <td>${(f => f == null ? '—' : f <= 7 ? `<b style="color:#c4402f">🍂 ${Math.max(0, f)}일 뒤 40%↓</b>` : `${f}일 뒤 40%↓`)(freshLeft(k))}</td>
           <td>${clamp(base * .84, 3, 10).toFixed(1)}~${clamp(base * 1.07, 3, 10).toFixed(1)}만원</td>
           <td style="text-align:right"><button class="btn y" data-sell="${k}">경매</button> ${canP ? `<button class="btn" data-proc="${k}">${gk === 'C' ? '즙' : '잼'}(${gk === 'C' ? 5 : 6}만)</button>` : ''}</td></tr>`; }).join('')}</table>`
         : `<p>창고가 비어 있어요. 사과를 따면 여기에 상자로 쌓여요.</p>`;
-      body += `<div class="fact">💡 사과는 오래 두면 등급이 떨어져요: 부사는 수확 4개월 뒤, 다른 품종은 2개월 뒤부터 한 달마다 한 단계씩. 경매에는 중도매인 10명이 와요. 가끔(10%) 큰손 상인이 와서 상자당 10만원에 사 가요.${G.b.cold ? ' 저온저장고 덕분에 10% 더 받아요.' : ''}</div>`;
+      body += `<div class="fact">💡 사과는 오래 두면 등급이 떨어질 수 있어요: 부사는 수확 4개월 뒤, 다른 품종은 2개월 뒤부터 한 달마다 상자마다 40% 확률로 한 단계씩. 경매에는 중도매인 10명이 와요. 가끔(10%) 큰손 상인이 와서 상자당 10만원에 사 가요.${G.b.cold ? ' 저온저장고 덕분에 10% 더 받아요.' : ''}</div>`;
     } else if (tab === 'retail') {
       body = retailBody();
     } else {
