@@ -3019,7 +3019,7 @@ function render3D(ctx, dt, T){
   drawSkyFx(ctx, dt, T);
   drawHuntOverlay(ctx, T);
   if (!pvLocked() && UI.free()) { // 둘러보기 안내
-    const t = '🖱️ 화면을 누르면 마우스로 둘러봐요 · Esc로 마우스 풀기'; ctx.font = '20px Jua'; const tw = ctx.measureText(t).width + 36;
+    const t = '🖱️ 마우스를 좌우로 움직이면 둘러봐요 · 화면을 누르면 마우스가 잠겨요(Esc로 풀기)'; ctx.font = '20px Jua'; const tw = ctx.measureText(t).width + 36;
     ctx.beginPath(); rr(ctx, W / 2 - tw / 2, H - 176, tw, 38, 19); ctx.fillStyle = 'rgba(255,250,241,.9)'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.fillText(t, W / 2, H - 150); ctx.textAlign = 'left';
   }
@@ -7713,7 +7713,14 @@ const fUp = () => { P.touchBlock = false; };
 $('#atkBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroAttack(); });
 // 2026-10-15 3인칭에서 화면을 누르면 마우스가 잠기고, 좌우로 움직이면 둘러봐요(Esc로 풀기)
 cv.addEventListener('pointerdown', () => { if (PV.on && UI.free() && !pvLocked() && cv.requestPointerLock) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} } });
-document.addEventListener('mousemove', e => { if (PV.on && pvLocked()) pvLook(e.movementX || 0); });
+// 잠기지 않았어도 마우스를 움직이면 돌아가요(잠기면 화면 끝에 막히지 않아요)
+let pvLastX = null;
+document.addEventListener('mousemove', e => {
+  if (!PV.on || !UI.free()) { pvLastX = null; return; }
+  if (pvLocked()) { pvLook(e.movementX || 0); return; }
+  const dx = e.movementX || (pvLastX == null ? 0 : e.clientX - pvLastX); pvLastX = e.clientX;
+  pvLook(dx * 1.3);
+});
 $('#viewBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleView(); });
 viewBtnSync();
 $('#rideBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (UI.free()) toggleRide(); });
