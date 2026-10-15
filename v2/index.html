@@ -708,7 +708,8 @@ function doTask(i, who){
   if (k === 'blossom') t.bl = true;
   if (k === 'thin') t.th = true;
   if (k === 'harvest') {
-    let q = 38 + (t.pr ? 14 : 0) + (t.bl ? 10 : 0) + (t.th ? 14 : 0) + Math.min(3, G.nutri) * 4
+    // 2026-10-15 미니게임 등급 배율(prQ·blQ·thQ, 인부·예전 저장은 1)과 익음 단계(ripeMod)를 반영해요
+    let q = 38 + Math.round((t.pr ? 14 * (t.prQ || 1) : 0) + (t.bl ? 10 * (t.blQ || 1) : 0) + (t.th ? 14 * (t.thQ || 1) : 0)) + ripeMod(t.v) + Math.min(3, G.nutri) * 4
           + t.bon - t.dmg + (t.age >= 3 ? 3 : 0) + (who === 'me' ? farmer().skill : Math.floor(farmer().skill / 2)) + rnd(-4, 4);
     q = Math.round(clamp(q, 5, 99));
     const g = gradeOf(q);
@@ -723,12 +724,15 @@ function doTask(i, who){
     if (g.k === 'S') unlock('gradeS');
     if (G.stats.boxes >= 100) unlock('box100');
     if (G.stats.boxes >= 500) unlock('box500');
+    // 열매솎기를 안 한 나무는 다음 해 해거리(열매가 확 줄어요). 다 익은 사과는 창고에서 25일 먼저 물러지기 시작해요
+    if (!t.th) t.alt = 1;
+    if (ripeStage(t.v) > RIPE_HI) (G.lotAdj = G.lotAdj || {})[t.v] = 25;
     resetCycle(t);
     return {k, g, bx, q, v:t.v};
   }
   return {k};
 }
-function resetCycle(t){ t.fr = 0; t.bx = 0; t.pr = false; t.bl = false; t.th = false; t.bon = 0; t.dmg = 0; }
+function resetCycle(t){ t.fr = 0; t.bx = 0; t.pr = false; t.bl = false; t.th = false; t.bon = 0; t.dmg = 0; delete t.prQ; delete t.blQ; delete t.thQ; }
 
 function pendingCount(k){
   let n = 0, tot = 0;
@@ -865,11 +869,14 @@ function newWeek(){
   const w = G.week;
   // 열매 맺힘
   if (w === 18) {
-    let n = 0;
+    let n = 0, na = 0;
     G.trees.forEach(t => {
-      if (t && t.age >= 1 && !t.fr) { t.fr = 1; t.bx = treeBoxes(t); t.bon += (2 + hiveLv()) * hives(); n++; }
+      if (t && t.age >= 1 && !t.fr) { t.fr = 1; t.bx = treeBoxes(t); t.bon += (2 + hiveLv()) * hives(); n++;
+        if (t.alt) { t.bx = Math.max(1, Math.round(t.bx * .55)); na++; } }
+      if (t) delete t.alt;
     });
     if (n) toast(`🍏 꽃이 지고 작은 사과가 열렸어요! (${n}그루)`, 'good');
+    if (na) toast(`🍂 작년에 열매솎기를 못 한 ${na}그루는 해거리로 사과가 적게 열렸어요.`, 'bad');
   }
   // 수확 놓침
   G.trees.forEach(t => {
@@ -1025,7 +1032,8 @@ function syncLots(){
     const have = G.stock[k] || 0, L = (by[k] || []).sort((a, b) => a.t - b.t);
     let sum = L.reduce((s, x) => s + x.n, 0);
     for (let i = 0; sum > have && i < L.length; i++) { const m = Math.min(L[i].n, sum - have); L[i].n -= m; sum -= m; }
-    if (sum < have) G.lots.push({k, n:have - sum, t:now, d:0});
+    // 2026-10-15 다 익어서 딴 사과(G.lotAdj)는 그만큼 오래된 걸로 쳐요
+    if (sum < have) { const v = k.split('|')[0], adj = (G.lotAdj || {})[v] || 0; if (adj) delete G.lotAdj[v]; G.lots.push({k, n:have - sum, t:now - adj, d:0}); }
   }
   G.lots = G.lots.filter(x => x.n > 0);
 }
@@ -5482,6 +5490,407 @@ function bindUI(){
   $('#todoH').onclick = () => { const f = !$('#todo').classList.contains('fold'); $('#todo').classList.toggle('fold', f); $('#todoArrow').textContent = f ? '▸' : '▾'; store.set('haru-todo', f ? '1' : '0'); };
 }
 
+// ===== 농사 미니게임 (2026-10-15 달 요청: 농사 재미 아이디어 1·2·3·5번) =====
+// 꽃솎기 = 왕꽃 찾기, 열매솎기 = 한 뼘 간격, 가지치기 = 자를 가지 찾기.
+// 우주가 줄의 나무 한 그루에서 F를 누르면 미니게임이 열리고, 등급이 그 줄에서 아직 안 한 나무 전체에 적용돼요.
+// 인부가 한 나무는 예전 그대로(배율 1). 수확 품질의 작업 점수(가지치기 14·꽃솎기 10·열매솎기 14)에 배율을 곱해요.
+// 수확 = 요오드 익음 검사: 품종마다 한 주에 한 번 처음 딸 때 열려요. 익음 단계는 수확 품질과 창고 신선도에 반영돼요.
+const FG_MULT = {S:1.3, A:1.1, B:.85, C:.55};
+const FG_GRADE = s => s >= 90 ? 'S' : s >= 75 ? 'A' : s >= 50 ? 'B' : 'C';
+const FG_GTXT = {S:'아주 잘했어요!', A:'잘했어요!', B:'괜찮아요', C:'아쉬워요'};
+const FG_GCOL = {S:'#ff6b57', A:'#ffb13b', B:'#7cc58a', C:'#9b8e86'};
+const FG_QKEY = {prune:'prQ', blossom:'blQ', thin:'thQ'};
+const FG_W = 860, FG_H = 430;
+let fgLast = null; // 테스트용: 마지막 미니게임 상태
+
+function fgRowTrees(row, k){
+  const a = [];
+  for (let j = 0; j < PER_ROW; j++) { const i = row * PER_ROW + j; if (i < G.trees.length && taskFor(i) === k) a.push(i); }
+  return a;
+}
+
+// 07_main act()에서 불러요. true면 미니게임·검사 창을 열었으니 바로 작업하지 않아요
+function fgHook(k, i){
+  if (AUTO) return false;
+  if (FG_DEF[k]) { farmGame(k, i); return true; }
+  if (k === 'harvest') {
+    const v = G.trees[i].v, key = G.year + '-' + G.week;
+    if ((G.ripeChk = G.ripeChk || {})[v] !== key) { uiRipe(v, i); return true; }
+  }
+  return false;
+}
+
+function fgApply(k, row, grade, S){
+  const list = fgRowTrees(row, k), qk = FG_QKEY[k];
+  for (const i of list) {
+    if (!doTask(i, 'me')) continue;
+    const t = G.trees[i]; t[qk] = FG_MULT[grade];
+    // 열매솎기를 대충 하면(C) 절반 확률로 다음 해 해거리
+    if (k === 'thin' && grade === 'C' && Math.random() < .5) t.alt = 1;
+  }
+  let spread = 0;
+  if (k === 'prune' && S.cankerMissed) {
+    for (let j = 0; j < PER_ROW && spread < 2; j++) { const t = G.trees[row * PER_ROW + j]; if (t && Math.random() < .5) { t.dmg += 6; spread++; } }
+  }
+  gainXp(Math.max(2, Math.round(list.length * 1.5)) + {S:6, A:3, B:1, C:0}[grade]);
+  const p = treePos(S.i);
+  floats.push({x:p.x, y:p.y - 160, s:`${TASKS[k].ic} ${grade} · ${list.length}그루`, t:1.6, c:FG_GCOL[grade]});
+  G.facts[k] = 1; // 상식은 결과 창에 보여 줬어요
+  return {n:list.length, spread};
+}
+
+function farmGame(k, i){
+  const D = FG_DEF[k], row = Math.floor(i / PER_ROW), n = fgRowTrees(row, k).length;
+  const S = fgLast = {k, i, row, t:D.time, T:D.time, done:false, msg:''};
+  D.init(S);
+  if (typeof sfx === 'function') sfx('click');
+  const o = UI.open({ic:TASKS[k].ic, title:`${D.title} · ${row + 1}번째 줄 ${n}그루`, w:940, noX:true, render(o){
+    o.body.innerHTML = `<p style="font-size:21px;margin:0 6px 8px;text-align:center">${D.tip}</p>
+      <div style="height:12px;border:2px solid var(--ink);border-radius:8px;overflow:hidden;margin:0 6px 8px;background:#fff"><i id="fgBar" style="display:block;height:100%;background:#7cc58a;width:100%"></i></div>
+      <canvas id="fgCv" width="${FG_W}" height="${FG_H}" style="display:block;margin:0 auto;width:${FG_W}px;max-width:100%;border:2.5px solid var(--ink);border-radius:14px;touch-action:none;cursor:pointer"></canvas>
+      <p id="fgMsg" style="font-size:20px;min-height:30px;margin:8px 6px 0;text-align:center"></p>`;
+    o.footEl.innerHTML = `<button class="btn" id="fgQuit">그만두기</button> <button class="btn go" id="fgDone">다 했어요</button>`;
+  }});
+  o.onKey = code => !S.done && (code === 'KeyF' || code === 'Space');
+  const cv = $('#fgCv'), c = cv.getContext('2d'), bar = $('#fgBar'), msg = $('#fgMsg');
+  $('#fgQuit').onclick = () => UI.close();
+  $('#fgDone').onclick = () => finish();
+  cv.onpointerdown = e => {
+    if (S.done) return;
+    const r = cv.getBoundingClientRect();
+    const p = {x:(e.clientX - r.left) * FG_W / r.width, y:(e.clientY - r.top) * FG_H / r.height};
+    D.click(S, p);
+    if (S.msg) { msg.innerHTML = S.msg; S.msg = ''; }
+    if (D.allDone && D.allDone(S)) setTimeout(finish, 350);
+  };
+  function finish(){
+    if (S.done) return; S.done = true;
+    const r = D.score(S), sc = Math.round(clamp(r.score, 0, 100)), g = FG_GRADE(sc), ap = fgApply(k, row, g, S);
+    if (typeof sfx === 'function') sfx(g === 'S' || g === 'A' ? 'good' : 'bad');
+    o.body.innerHTML = `<div style="display:flex;gap:18px;align-items:center;justify-content:center;margin:4px 0 10px">
+        <div style="font-size:84px;font-weight:900;color:${FG_GCOL[g]};-webkit-text-stroke:2px var(--ink)">${g}</div>
+        <div style="font-size:24px"><b>${FG_GTXT[g]}</b> (${sc}점)<br>${row + 1}번째 줄 ${ap.n}그루에 적용했어요.</div></div>
+      <ul style="font-size:20px;line-height:1.55;margin:0 18px 10px">${r.lines.map(x => `<li>${x}</li>`).join('')}${ap.spread ? `<li style="color:#c0392b">화상병 가지를 놓쳐서 옆 나무 ${ap.spread}그루가 병에 걸렸어요.</li>` : ''}</ul>
+      <div style="font-size:19px;background:#fff7d6;border:2px solid var(--ink);border-radius:12px;padding:10px 14px;margin:0 10px">💡 ${D.fact}</div>`;
+    o.footEl.innerHTML = `<button class="btn pri" id="popOk">좋아요</button>`;
+    $('#popOk').onclick = () => UI.close();
+  }
+  let last = performance.now();
+  (function frame(now){
+    if (UI.modal !== o) return;
+    const dt = Math.min(.1, (now - last) / 1000); last = now;
+    if (!S.done) {
+      S.t -= dt; if (S.t <= 0) { S.t = 0; finish(); }
+      bar.style.width = (100 * S.t / S.T) + '%'; bar.style.background = S.t < 6 ? '#ff6b57' : '#7cc58a';
+      c.clearRect(0, 0, FG_W, FG_H); D.draw(c, S, now / 1000);
+    }
+    requestAnimationFrame(frame);
+  })(last);
+}
+
+// ----- 그리기 도우미 -----
+function fgFlower(c, x, y, r, open, col){
+  c.lineWidth = 2; c.strokeStyle = INK;
+  if (!open) { // 아직 덜 핀 분홍 꽃봉오리
+    c.beginPath(); c.ellipse(x, y, r * .62, r * .78, 0, 0, Math.PI * 2); c.fillStyle = '#f7a8bf'; c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(x, y - r * .7); c.lineTo(x, y + r * .6); c.strokeStyle = '#d97a98'; c.stroke(); return;
+  }
+  for (let k = 0; k < 5; k++) {
+    const a = k * Math.PI * 2 / 5 - Math.PI / 2;
+    c.beginPath(); c.arc(x + Math.cos(a) * r * .55, y + Math.sin(a) * r * .55, r * .5, 0, Math.PI * 2);
+    c.fillStyle = col || '#fffafb'; c.fill(); c.strokeStyle = INK; c.stroke();
+  }
+  c.beginPath(); c.arc(x, y, r * .3, 0, Math.PI * 2); c.fillStyle = '#ffcf3a'; c.fill(); c.stroke();
+}
+function fgText(c, s, x, y, col, sz){ c.font = `bold ${sz || 18}px sans-serif`; c.textAlign = 'center'; c.lineWidth = 4; c.strokeStyle = '#fff'; c.strokeText(s, x, y); c.fillStyle = col || INK; c.fillText(s, x, y); }
+function segDist(p, a, b){
+  const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1;
+  const u = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / L, 0, 1);
+  return Math.hypot(p.x - a.x - u * dx, p.y - a.y - u * dy);
+}
+
+const FG_DEF = {
+  // ===== 2위 꽃솎기: 왕꽃 찾기 =====
+  // 근거: 꽃송이 가운데 꽃(왕꽃·중심화)이 먼저 피고 가장 큰 열매가 돼요(WSU Extension). 옆꽃은 따요.
+  blossom:{
+    title:'꽃솎기 · 왕꽃 찾기', time:22,
+    tip:'꽃송이마다 <b>가운데 활짝 핀 왕꽃</b>만 남기고, 옆꽃·꽃봉오리를 눌러서 따요.',
+    fact:'왕꽃(가운데 꽃)은 꽃송이에서 가장 먼저 피고 가장 큰 사과가 돼요. 옆꽃을 따 주면 영양이 왕꽃에 몰려요.',
+    init(S){
+      S.fl = []; S.rm = 0; S.mis = 0; S.side = 0;
+      for (let k = 0; k < 6; k++) {
+        const cx = 150 + (k % 3) * 280 + rnd(-20, 20), cy = 125 + Math.floor(k / 3) * 190 + rnd(-12, 12);
+        S.fl.push({x:cx, y:cy, r:rnd(25, 28), king:1, open:1, alive:1, cx, cy});
+        const m = rint(4, 5), a0 = rnd(0, 6.28);
+        for (let j = 0; j < m; j++) {
+          const a = a0 + j * Math.PI * 2 / m + rnd(-.2, .2), d = rnd(50, 58);
+          S.fl.push({x:cx + Math.cos(a) * d, y:cy + Math.sin(a) * d, r:rnd(17, 21), king:0, open:Math.random() < .5, alive:1, cx, cy});
+          S.side++;
+        }
+      }
+    },
+    click(S, p){
+      let best = null, bd = 1e9;
+      for (const f of S.fl) if (f.alive) { const d = Math.hypot(p.x - f.x, p.y - f.y); if (d < f.r + 6 && d < bd) { bd = d; best = f; } }
+      if (!best) return;
+      best.alive = 0;
+      if (best.king) { best.bad = 1; S.mis++; S.msg = '<span style="color:#c0392b">앗! 가운데 <b>왕꽃</b>을 땄어요. 이 송이는 작은 사과가 돼요.</span>'; if (typeof sfx === 'function') sfx('bad'); }
+      else { S.rm++; if (typeof sfx === 'function') sfx('snip'); }
+    },
+    allDone(S){ return S.rm >= S.side; },
+    score(S){
+      return {score:100 * S.rm / S.side - S.mis * 15, lines:[`옆꽃·꽃봉오리 ${S.rm}/${S.side}개를 땄어요.`, S.mis ? `왕꽃을 ${S.mis}번 잘못 땄어요.` : '왕꽃은 하나도 안 다쳤어요.']};
+    },
+    draw(c, S){
+      c.fillStyle = '#e8f6e2'; c.fillRect(0, 0, FG_W, FG_H);
+      c.lineCap = 'round';
+      c.strokeStyle = '#7a5236'; c.lineWidth = 16; c.beginPath(); c.moveTo(-10, 228); c.bezierCurveTo(250, 200, 600, 260, 870, 222); c.stroke();
+      const seen = new Set();
+      for (const f of S.fl) {
+        const id = f.cx + ',' + f.cy; if (seen.has(id)) continue; seen.add(id);
+        c.strokeStyle = '#7a5236'; c.lineWidth = 7; c.beginPath(); c.moveTo(f.cx, f.cy); c.lineTo(f.cx + 10, 226); c.stroke();
+        for (let j = 0; j < 3; j++) { const a = j * 2.1 + f.cx; c.beginPath(); c.ellipse(f.cx + Math.cos(a) * 34, f.cy + 30 + Math.sin(a) * 8, 16, 7, a, 0, Math.PI * 2); c.fillStyle = '#7cc58a'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); }
+      }
+      for (const f of S.fl) {
+        c.strokeStyle = '#5f9a20'; c.lineWidth = 3; c.beginPath(); c.moveTo(f.cx, f.cy); c.lineTo(f.x, f.y); c.stroke();
+      }
+      for (const f of S.fl) {
+        if (f.alive) fgFlower(c, f.x, f.y, f.r, f.open, f.king ? '#fff' : '#fff3f6');
+        else { c.beginPath(); c.arc(f.x, f.y, 4, 0, Math.PI * 2); c.fillStyle = '#5f9a20'; c.fill(); }
+        if (f.bad) { c.strokeStyle = '#e03b2c'; c.lineWidth = 5; c.beginPath(); c.moveTo(f.x - 14, f.y - 14); c.lineTo(f.x + 14, f.y + 14); c.moveTo(f.x + 14, f.y - 14); c.lineTo(f.x - 14, f.y + 14); c.stroke(); }
+      }
+    }
+  },
+
+  // ===== 1위 열매솎기: 한 뼘 간격 =====
+  // 근거: 가지 약 15cm(6인치)마다 열매 하나, 꽃 지고 30~40일 안에 솎아요. 너무 많이 달면 해거리(WSU Extension).
+  thin:{
+    title:'열매솎기 · 한 뼘 간격', time:35,
+    tip:'송이마다 <b>제일 크고 깨끗한 열매 하나</b>만 남겨요. 남긴 열매끼리는 <b>한 뼘(15cm)</b> 넘게 떨어지게!',
+    fact:'사과는 가지 한 뼘(약 15cm)에 열매 하나만 남겨요. 너무 많이 달면 사과가 작아지고, 다음 해 꽃이 적게 피는 해거리가 생겨요.',
+    X0:40, PX:13,
+    init(S){
+      S.cl = []; S.fr = [];
+      let p = rnd(3, 6);
+      while (p < 57) {
+        const ci = S.cl.length, m = rint(2, 4), x = this.X0 + p * this.PX;
+        S.cl.push({p, x});
+        const big = rint(0, m - 1);
+        for (let j = 0; j < m; j++) {
+          const r = j === big ? rnd(19, 21) : rnd(12, 16);
+          S.fr.push({ci, x:x + (j - (m - 1) / 2) * 27 + rnd(-3, 3), y:248 + rnd(0, 20) + (j % 2) * 30, r, dmg:Math.random() < .18, alive:1});
+        }
+        p += rnd(5, 12);
+      }
+    },
+    kept(S){
+      return S.cl.map((cl, ci) => ({cl, f:S.fr.filter(f => f.ci === ci && f.alive)})).filter(o => o.f.length);
+    },
+    click(S, p){
+      let best = null, bd = 1e9;
+      for (const f of S.fr) if (f.alive) { const d = Math.hypot(p.x - f.x, p.y - f.y); if (d < f.r + 7 && d < bd) { bd = d; best = f; } }
+      if (!best) return;
+      best.alive = 0; if (typeof sfx === 'function') sfx('snip');
+    },
+    score(S){
+      const K = this.kept(S); let pen = 0, extra = 0, dmg = 0, notBest = 0, close = 0;
+      for (const o of K) {
+        extra += o.f.length - 1;
+        dmg += o.f.filter(f => f.dmg).length;
+        if (o.f.length === 1) {
+          const all = S.fr.filter(f => f.ci === S.cl.indexOf(o.cl) && !f.dmg), mx = Math.max(0, ...all.map(f => f.r));
+          if (!o.f[0].dmg && o.f[0].r < mx - .5) notBest++;
+        }
+      }
+      for (let j = 1; j < K.length; j++) if (K[j].cl.p - K[j - 1].cl.p < 13) close++;
+      // 가장 많이 남길 수 있는 송이 수(앞에서부터 13cm 넘게 떨어진 것만 고르기)
+      let opt = 0, lp = -99; for (const cl of S.cl) if (cl.p - lp >= 13) { opt++; lp = cl.p; }
+      const over = Math.max(0, opt - 1 - K.length);
+      pen = extra * 10 + dmg * 10 + notBest * 4 + close * 12 + over * 8;
+      const lines = [`열매 ${K.reduce((s, o) => s + o.f.length, 0)}개를 남겼어요(알맞은 수는 ${opt}개쯤).`];
+      if (extra) lines.push(`한 송이에 열매를 2개 넘게 남긴 곳이 ${extra}곳 있어요.`);
+      if (close) lines.push(`한 뼘보다 가깝게 남긴 곳이 ${close}곳 있어요.`);
+      if (dmg) lines.push(`흠집 난 열매를 ${dmg}개 남겼어요.`);
+      if (notBest) lines.push(`더 큰 열매 대신 작은 걸 남긴 곳이 ${notBest}곳 있어요.`);
+      if (over) lines.push(`너무 많이 따서 빈 가지가 생겼어요.`);
+      if (lines.length === 1) lines.push('간격도 크기도 딱 좋아요!');
+      return {score:100 - pen, lines};
+    },
+    draw(c, S, now){
+      c.fillStyle = '#eef7e6'; c.fillRect(0, 0, FG_W, FG_H);
+      c.lineCap = 'round';
+      c.strokeStyle = '#7a5236'; c.lineWidth = 18; c.beginPath(); c.moveTo(10, 205); c.lineTo(850, 195); c.stroke();
+      for (const cl of S.cl) { c.strokeStyle = '#7a5236'; c.lineWidth = 6; c.beginPath(); c.moveTo(cl.x, 200); c.lineTo(cl.x, 222); c.stroke();
+        for (const s of [-1, 1]) { c.beginPath(); c.ellipse(cl.x + s * 22, 182, 18, 8, s * .5, 0, Math.PI * 2); c.fillStyle = '#7cc58a'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); } }
+      for (const f of S.fr) {
+        const cl = S.cl[f.ci];
+        if (!f.alive) { c.beginPath(); c.arc(cl.x, 224, 3, 0, Math.PI * 2); c.fillStyle = '#5f9a20'; c.fill(); continue; }
+        c.strokeStyle = '#5f9a20'; c.lineWidth = 3; c.beginPath(); c.moveTo(cl.x, 220); c.lineTo(f.x, f.y - f.r); c.stroke();
+        c.beginPath(); c.arc(f.x, f.y, f.r, 0, Math.PI * 2); c.fillStyle = '#9ad443'; c.fill(); c.lineWidth = 2.2; c.strokeStyle = INK; c.stroke();
+        c.beginPath(); c.arc(f.x - f.r * .35, f.y - f.r * .35, f.r * .25, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.6)'; c.fill();
+        if (f.dmg) { c.beginPath(); c.ellipse(f.x + f.r * .25, f.y + f.r * .2, f.r * .38, f.r * .28, .4, 0, Math.PI * 2); c.fillStyle = '#7a4a22'; c.fill(); }
+      }
+      // 자: 남긴 열매 사이 거리
+      const Y = 365; c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.moveTo(this.X0, Y); c.lineTo(this.X0 + 60 * this.PX, Y); c.stroke();
+      for (let cm = 0; cm <= 60; cm += 5) { c.beginPath(); c.moveTo(this.X0 + cm * this.PX, Y - (cm % 15 ? 5 : 10)); c.lineTo(this.X0 + cm * this.PX, Y + (cm % 15 ? 5 : 10)); c.stroke(); if (cm % 15 === 0) fgText(c, cm + 'cm', this.X0 + cm * this.PX, Y + 30, '#555', 15); }
+      const K = this.kept(S);
+      for (let j = 0; j < K.length; j++) {
+        const o = K[j]; c.beginPath(); c.arc(o.cl.x, Y, 7, 0, Math.PI * 2); c.fillStyle = o.f.length > 1 ? '#ffb13b' : '#ff6b57'; c.fill(); c.stroke();
+        if (o.f.length > 1) fgText(c, o.f.length + '개', o.cl.x, Y - 18, '#d9822b', 16);
+        if (j) {
+          const a = K[j - 1], d = o.cl.p - a.cl.p, ok = d >= 13;
+          c.strokeStyle = ok ? '#3faa55' : '#e03b2c'; c.lineWidth = 6; c.beginPath(); c.moveTo(a.cl.x + 9, Y - 2); c.lineTo(o.cl.x - 9, Y - 2); c.stroke(); c.strokeStyle = INK; c.lineWidth = 2;
+          fgText(c, Math.round(d) + 'cm', (a.cl.x + o.cl.x) / 2, Y - 14, ok ? '#2d8a43' : '#c0392b', 15);
+        }
+      }
+      c.fillStyle = '#fff'; c.strokeStyle = INK; c.lineWidth = 2; c.fillRect(640, 22, 200, 46); c.strokeRect(640, 22, 200, 46);
+      c.fillStyle = '#3faa55'; c.fillRect(652, 50, 15 * this.PX * .8, 8); fgText(c, '한 뼘 ≈ 15cm', 740, 44, INK, 16);
+    }
+  },
+
+  // ===== 5위 가지치기: 자를 가지 찾기 =====
+  // 근거: 겨울에 죽은·병든 가지, 엇갈린 가지, 웃자란 가지(도장지)·움돋이, 안쪽 약한 가지를 잘라요(Iowa State Extension).
+  //       전정 때 과수화상병 궤양 가지도 잘라 없애요(안동시 당부).
+  prune:{
+    title:'가지치기 · 자를 가지 찾기', time:35,
+    tip:'<b>위로 웃자란 가지·죽은 가지·엇갈린 가지·밑동 움돋이·까맣게 탄 가지</b>를 눌러 잘라요. 꽃눈 달린 가지는 남겨요!',
+    fact:'겨울(잎이 진 뒤)에 나쁜 가지를 잘라 주면 햇빛과 바람이 나무 안쪽까지 들어가 사과가 크고 맛있어져요. 까맣게 탄 가지는 과수화상병일 수 있어서 꼭 잘라 없애요.',
+    NAME:{water:'웃자란 가지', dead:'죽은 가지', cross:'엇갈린 가지', sucker:'밑동 움돋이', canker:'화상병 가지'},
+    WHY:{water:'위로만 뻗어서 그늘을 만들고 열매를 안 맺어요.', dead:'말라 죽어서 병균이 살기 쉬워요.', cross:'다른 가지와 비벼서 상처가 나요.', sucker:'밑동에서 나와 나무 힘을 빼앗아요.', canker:'병이 옆 나무로 번질 수 있어요!'},
+    init(S){
+      const B = S.br = [], cx = 430;
+      const hs = [372, 334, 296, 258, 220, 182, 144, 108];
+      hs.forEach((y, k) => {
+        const s = k % 2 ? 1 : -1, len = 290 - k * 28 + rnd(-15, 15);
+        B.push({t:'good', a:{x:cx, y}, b:{x:cx + s * len, y:y - rnd(10, 34)}, w:11 - k * .8});
+      });
+      const goods = B.slice();
+      const on = (g, u) => ({x:g.a.x + (g.b.x - g.a.x) * u, y:g.a.y + (g.b.y - g.a.y) * u});
+      const used = new Set(), pickG = () => { let g; do g = pick(goods.slice(0, 6)); while (used.has(g) && used.size < 6); used.add(g); return g; };
+      for (let n = rint(2, 3); n > 0; n--) { const g = pickG(), a = on(g, rnd(.35, .7)); B.push({t:'water', a, b:{x:a.x + rnd(-8, 8), y:a.y - rnd(95, 130)}, w:5, par:g}); }
+      { const g = pickG(), a = on(g, rnd(.55, .75)); B.push({t:'cross', a, b:{x:cx + (a.x < cx ? 40 : -40), y:a.y - 80}, w:5, par:g}); }
+      { const y = rnd(240, 300), s = Math.random() < .5 ? 1 : -1; B.push({t:'dead', a:{x:cx, y}, b:{x:cx + s * rnd(110, 140), y:y - rnd(30, 50)}, w:6}); }
+      B.push({t:'sucker', a:{x:cx + 8, y:404}, b:{x:cx + rnd(50, 70), y:rnd(330, 345)}, w:4});
+      if (Math.random() < .45) { const y = rnd(150, 210), s = Math.random() < .5 ? 1 : -1; B.push({t:'canker', a:{x:cx, y}, b:{x:cx + s * rnd(100, 130), y:y - rnd(10, 30)}, w:6}); }
+      S.bad = B.filter(b => b.t !== 'good').length; S.cutBad = 0; S.cutGood = 0;
+    },
+    click(S, p){
+      let best = null, bd = 1e9;
+      for (const b of S.br) {
+        if (b.cut || (b.par && b.par.cut)) continue;
+        const d = segDist(p, b.a, b.b) - (b.t === 'good' ? 0 : 3);
+        if (d < 12 && d < bd) { bd = d; best = b; }
+      }
+      if (!best) return;
+      best.cut = 1;
+      if (best.t === 'good') {
+        S.cutGood++;
+        S.br.forEach(c => { if (c.par === best && !c.cut) { c.cut = 1; S.cutBad++; } });
+        S.msg = '<span style="color:#c0392b">앗! <b>꽃눈 달린 열매 가지</b>예요. 자르면 사과가 줄어요.</span>';
+        if (typeof sfx === 'function') sfx('bad');
+      } else {
+        S.cutBad++;
+        S.msg = `✂️ <b>${this.NAME[best.t]}</b>! ${this.WHY[best.t]}`;
+        if (typeof sfx === 'function') sfx('snip');
+      }
+    },
+    allDone(S){ return S.br.every(b => b.t === 'good' || b.cut || (b.par && b.par.cut)); },
+    score(S){
+      const miss = S.br.filter(b => b.t !== 'good' && !b.cut && !(b.par && b.par.cut));
+      S.cankerMissed = miss.some(b => b.t === 'canker');
+      const lines = [`나쁜 가지 ${S.bad - miss.length}/${S.bad}개를 잘랐어요.`];
+      if (miss.length) lines.push('놓친 가지: ' + miss.map(b => this.NAME[b.t]).join(', '));
+      if (S.cutGood) lines.push(`열매 가지를 ${S.cutGood}개 잘라 버렸어요.`);
+      return {score:100 - miss.length * 14 - S.cutGood * 12, lines};
+    },
+    draw(c, S){
+      const g = c.createLinearGradient(0, 0, 0, FG_H); g.addColorStop(0, '#dfeefa'); g.addColorStop(1, '#f4f8fb'); c.fillStyle = g; c.fillRect(0, 0, FG_W, FG_H);
+      c.fillStyle = '#e9e4da'; c.fillRect(0, 404, FG_W, 30);
+      c.lineCap = 'round';
+      // 지주·철선
+      c.strokeStyle = '#b9a58a'; c.lineWidth = 3; c.beginPath(); c.moveTo(452, 410); c.lineTo(452, 30); c.stroke();
+      // 원줄기
+      c.strokeStyle = INK; c.lineWidth = 22; c.beginPath(); c.moveTo(430, 410); c.lineTo(430, 50); c.stroke();
+      c.strokeStyle = '#6b4a33'; c.lineWidth = 17; c.stroke();
+      const col = {good:'#6b4a33', water:'#6f8a3a', cross:'#6b4a33', dead:'#a59c90', sucker:'#7d9a45', canker:'#6b4a33'};
+      for (const b of S.br) {
+        if (b.par && b.par.cut) continue;
+        if (b.cut) { c.beginPath(); c.arc(b.a.x, b.a.y, b.w * .55, 0, Math.PI * 2); c.fillStyle = '#e8d3a8'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); continue; }
+        c.strokeStyle = INK; c.lineWidth = b.w + 4; c.beginPath(); c.moveTo(b.a.x, b.a.y); c.lineTo(b.b.x, b.b.y); c.stroke();
+        c.strokeStyle = col[b.t]; c.lineWidth = b.w; c.stroke();
+        if (b.t === 'good') { // 짧은 열매가지와 통통한 꽃눈
+          for (let u = .25; u < .98; u += .17) {
+            const x = b.a.x + (b.b.x - b.a.x) * u, y = b.a.y + (b.b.y - b.a.y) * u, s = (u * 10 | 0) % 2 ? -1 : 1;
+            c.strokeStyle = '#6b4a33'; c.lineWidth = 3; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 4, y + s * 12); c.stroke();
+            c.beginPath(); c.arc(x + 4, y + s * 14, 4.5, 0, Math.PI * 2); c.fillStyle = '#c98b5a'; c.fill(); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke();
+          }
+        }
+        if (b.t === 'dead') { c.strokeStyle = '#6d655b'; c.lineWidth = 1.5; for (let u = .2; u < .9; u += .2) { const x = b.a.x + (b.b.x - b.a.x) * u, y = b.a.y + (b.b.y - b.a.y) * u; c.beginPath(); c.moveTo(x - 3, y - 2); c.lineTo(x + 3, y + 2); c.stroke(); } }
+        if (b.t === 'canker') { const x = b.a.x + (b.b.x - b.a.x) * .55, y = b.a.y + (b.b.y - b.a.y) * .55; c.strokeStyle = '#1c1310'; c.lineWidth = b.w + 1; c.beginPath(); c.moveTo(x, y); c.lineTo(b.b.x, b.b.y); c.stroke();
+          c.beginPath(); c.arc(b.b.x, b.b.y, 6, 0, Math.PI * 2); c.fillStyle = '#1c1310'; c.fill(); }
+      }
+    }
+  }
+};
+
+// ===== 3위 수확: 요오드 익음 검사 =====
+// 근거: 가로로 자른 사과에 요오드를 바르면 녹말이 있는 곳이 검푸르게 변해요. 1(녹말 가득)~6(녹말 없음) 단계,
+//       생과용은 대략 4.5~6, 당도 13°Bx 이상(WSU Tree Fruit). 단계·당도 숫자는 게임 속 값이에요.
+const RIPE_BRIX = {aori:-1, gamhong:1.5, shinano:1, yangkwang:.5};
+function ripeStage(v){
+  const h = VARS[v].hv; G.ripeOff = G.ripeOff || {};
+  if (!G.ripeOff[v] || G.ripeOff[v].y !== G.year) G.ripeOff[v] = {y:G.year, o:rnd(-.35, .35)};
+  const d = (G.week - h[0]) * 7 + G.day, tot = (h[1] - h[0] + 1) * 7;
+  return clamp(3.6 + 2.8 * d / tot + G.ripeOff[v].o, 1, 6);
+}
+// 덜 익음 -7, 알맞음 +5, 다 익음 +2(대신 창고에서 25일 먼저 물러지기 시작)
+const RIPE_LO = 4.5, RIPE_HI = 5.7;
+function ripeMod(v){ const s = ripeStage(v); return s < RIPE_LO ? -7 : s <= RIPE_HI ? 5 : 2; }
+function ripeBrix(v){ return 8.6 + ripeStage(v) * .95 + (RIPE_BRIX[v] || 0); }
+function drawRipeCut(c, cx, cy, R, stage, seed){
+  // 사과 반쪽 단면: 껍질 → 녹말(검푸름) → 익은 하얀 부분이 안쪽부터 넓어져요
+  const V = VARS[seed] || {};
+  c.beginPath(); c.arc(cx, cy, R + 8, 0, Math.PI * 2); c.fillStyle = V.col || '#e0473c'; c.fill(); c.lineWidth = 3; c.strokeStyle = INK; c.stroke();
+  c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.fillStyle = '#1f2b5c'; c.fill();
+  const clear = stage <= 1 ? 0 : stage >= 6 ? R * 1.02 : R * [0, 0, .28, .45, .66, .88][Math.floor(stage) - 1] + (stage % 1) * R * .2;
+  if (clear > 0) {
+    c.save(); c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.clip();
+    c.fillStyle = '#fbf1cf'; c.beginPath();
+    for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2, w = clear * (1 + .1 * Math.sin(a * 5 + 1) + .06 * Math.sin(a * 11)); const x = cx + Math.cos(a) * w, y = cy + Math.sin(a) * w; k ? c.lineTo(x, y) : c.moveTo(x, y); }
+    c.fill();
+    if (stage > 3 && stage < 6) { c.fillStyle = 'rgba(31,43,92,.55)'; for (let k = 0; k < 9; k++) { const a = k * .7 + 1, d = clear * .75 + 6; c.beginPath(); c.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 7, 0, Math.PI * 2); c.fill(); } }
+    c.restore();
+  }
+  // 씨방(별 모양)과 씨 5개
+  c.strokeStyle = '#c9b27a'; c.lineWidth = 2.5; c.beginPath();
+  for (let k = 0; k <= 10; k++) { const a = k / 10 * Math.PI * 2 - Math.PI / 2, d = k % 2 ? R * .1 : R * .24; const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d; k ? c.lineTo(x, y) : c.moveTo(x, y); }
+  c.stroke();
+  for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 - Math.PI / 2; c.beginPath(); c.ellipse(cx + Math.cos(a) * R * .16, cy + Math.sin(a) * R * .16, 4, 7, a + Math.PI / 2, 0, Math.PI * 2); c.fillStyle = '#4a2a17'; c.fill(); }
+}
+function uiRipe(v, i){
+  G.ripeChk = G.ripeChk || {};
+  const s = ripeStage(v), st = Math.round(s * 2) / 2, bx = ripeBrix(v).toFixed(1), V = VARS[v], last = G.week >= V.hv[1];
+  const [ic, head, say] = s < RIPE_LO ? ['🟦', '아직 덜 익었어요', '파란 녹말이 많아요. 지금 따면 덜 달아요. 며칠 기다리면 더 맛있어져요.']
+    : s <= RIPE_HI ? ['✅', '딱 알맞게 익었어요!', '녹말이 알맞게 당으로 바뀌었어요. 지금 따면 가장 맛있어요.']
+    : ['🟨', '다 익었어요', '녹말이 거의 다 당으로 바뀌었어요. 달지만 창고에서 빨리 물러져요. 서둘러 따요!'];
+  if (typeof sfx === 'function') sfx('click');
+  UI.open({ic:'🧪', title:`${V.name} 익음 검사`, w:900, render(o){
+    o.body.innerHTML = `<div style="display:flex;gap:20px;align-items:center">
+      <canvas id="rpCv" width="300" height="300" style="width:300px;height:300px;flex:none"></canvas>
+      <div style="font-size:21px;line-height:1.5">
+        <p style="margin:0 0 6px">사과 한 알을 가로로 잘라 <b>요오드</b>를 떨어뜨렸어요. 녹말이 있는 곳은 <b style="color:#1f2b5c">검푸르게</b> 변해요.</p>
+        <p style="margin:0 0 6px;font-size:26px">${ic} <b>${head}</b></p>
+        <p style="margin:0 0 6px">녹말 검사 <b>${st}단계</b> / 6 · 당도계 <b>${bx}°Bx</b></p>
+        <p style="margin:0">${say}${last ? '<br><b style="color:#c0392b">이번 주가 지나면 사과가 떨어져요!</b>' : ''}</p>
+      </div></div>
+      <div style="font-size:18px;background:#fff7d6;border:2px solid var(--ink);border-radius:12px;padding:8px 12px;margin-top:10px">💡 사과는 익을수록 녹말이 당으로 바뀌어 하얀 부분이 안쪽부터 넓어져요. 농부는 감 대신 이렇게 재 보고 딸 날을 정해요. (단계 1 녹말 가득 → 6 녹말 없음)</div>`;
+    o.footEl.innerHTML = `<button class="btn" id="rpWait">📅 조금 더 기다릴게요</button> <button class="btn go" id="rpGo">🍎 지금 딸래요</button>`;
+    drawRipeCut($('#rpCv').getContext('2d'), 150, 150, 120, st, v);
+    $('#rpWait').onclick = () => { G.ripeChk[v] = G.year + '-' + G.week; UI.close(); toast(`📅 ${V.name}는 이번 주엔 더 기다려요. 다음 주에 다시 검사할 수 있어요.`); };
+    $('#rpGo').onclick = () => { G.ripeChk[v] = G.year + '-' + G.week; UI.close(); if (taskFor(i) === 'harvest') { P.actI = i; P.sw = .3; finishAct(); } };
+  }});
+}
+
 // ===== 사냥꾼 윤산들 · 사냥 의뢰 (2026-10-14) =====
 // 이장님 왼쪽에 서 있어요. 지금 장비·레벨(farmerPower)로 이길 만한 ★을 골라 의뢰 3개(쉬움·알맞음·도전)를 줘요.
 // 기준: 장비 묶음별 싸움 시뮬(test/hqcal.js)에서 이길 확률 90% 넘는 가장 높은 ★
@@ -7488,6 +7897,8 @@ function act(t){
     if (k === 'plant' && AUTO) { const opts = VAR_KEYS.filter(unlocked); G.selVar = opts[Math.floor(t.i / PER_ROW) % opts.length]; }
     const p = treePos(t.i);
     P.dir = Math.abs(p.x - P.x) > Math.abs(p.y - P.y) ? (p.x < P.x ? 2 : 3) : (p.y < P.y ? 1 : 0);
+    // 2026-10-15 꽃솎기·열매솎기·가지치기는 미니게임, 수확은 익음 검사부터 (05f_farm.js)
+    if (fgHook(k, t.i)) return;
     P.actI = t.i; P.sw = .3; finishAct(); // 기다림 없이 바로
   }
   else if (t.kind === 'grandma') talkGrandma();
