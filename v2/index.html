@@ -2844,9 +2844,10 @@ function pvHeroSwap(){
   return keep;
 }
 const pvLocked = () => typeof cv !== 'undefined' && document.pointerLockElement === cv;
-function pvLook(dx){ PV.yaw = (PV.yaw + dx * .0032) % (Math.PI * 2); }
+// 좌우 = 돌기, 위아래 = 고개 들기·숙이기(지평선 높이 .08~.40)
+function pvLook(dx, dy){ PV.yaw = (PV.yaw + dx * .0032) % (Math.PI * 2); PV.hor = clamp(PV.hor - (dy || 0) * .0009, .08, .40); }
 function toggleView(){
-  PV.on = !PV.on; PV.x = P.x; PV.y = P.y; PV.yaw = 0; sfx('click');
+  PV.on = !PV.on; PV.x = P.x; PV.y = P.y; PV.yaw = 0; PV.hor = .32; sfx('click');
   if (!PV.on && pvLocked()) document.exitPointerLock();
   toast(PV.on ? '🎥 3인칭 시점이에요. 화면을 누르면 마우스로 둘러봐요!' : '🗺️ 원래 시점으로 돌아왔어요.');
   viewBtnSync();
@@ -3019,7 +3020,7 @@ function render3D(ctx, dt, T){
   drawSkyFx(ctx, dt, T);
   drawHuntOverlay(ctx, T);
   if (!pvLocked() && UI.free()) { // 둘러보기 안내
-    const t = '🖱️ 마우스를 좌우로 움직이면 둘러봐요 · 화면을 누르면 마우스가 잠겨요(Esc로 풀기)'; ctx.font = '20px Jua'; const tw = ctx.measureText(t).width + 36;
+    const t = '🖱️ 마우스를 움직이면 둘러봐요 · 화면을 누르면 마우스가 잠겨요(Esc로 풀기)'; ctx.font = '20px Jua'; const tw = ctx.measureText(t).width + 36;
     ctx.beginPath(); rr(ctx, W / 2 - tw / 2, H - 176, tw, 38, 19); ctx.fillStyle = 'rgba(255,250,241,.9)'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.fillText(t, W / 2, H - 150); ctx.textAlign = 'left';
   }
@@ -7637,8 +7638,8 @@ const ptrs = new Map(); let drag = null, pinch = null;
 function mouseBtnDown(btn, p){
   const code = 'Mouse' + btn; MB[code] = true;
   const w = toWorld(p), acts = actsOf(code).filter(a => !['block', 'up', 'down', 'left', 'right'].includes(a));
-  if (btn !== 0) { for (const a of acts) pressAct(a, {wx:w.x}); return true; }
-  if (acts.includes('attack') && fightMode() && UI.free()) { for (const a of acts) pressAct(a, {wx:w.x}); return true; }
+  if (btn !== 0) { for (const a of acts) pressAct(a, {wx:PV.on ? null : w.x}); return true; }
+  if (acts.includes('attack') && fightMode() && UI.free()) { for (const a of acts) pressAct(a, {wx:PV.on ? null : w.x}); return true; }
   for (const a of acts) if (a !== 'attack') pressAct(a);
   return false;
 }
@@ -7649,7 +7650,7 @@ cv.addEventListener('pointermove', e => {
   if (e.buttons & mask) { if (!MB[code]) mouseBtnDown(e.button, stagePt(e)); } else MB[code] = false;
 });
 cv.addEventListener('pointerdown', e => {
-  cv.setPointerCapture(e.pointerId);
+  if (!pvLocked()) try { cv.setPointerCapture(e.pointerId); } catch (er) {} // 2026-10-15 마우스가 잠긴 3인칭에선 이게 에러를 내서 공격·막기가 안 됐어요
   const p = stagePt(e);
   if (UI.free() && inMM(p)) { MM_FULL = !MM_FULL; sfx('pick'); e.preventDefault(); return; } // 작은 지도 누르면 온 세상 ↔ 우리 둘레
   // 2026-10-13 마우스 버튼도 키 설정대로 (기본: 왼쪽 = 공격, 오른쪽 = 막기)
@@ -7714,12 +7715,12 @@ $('#atkBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.f
 // 2026-10-15 3인칭에서 화면을 누르면 마우스가 잠기고, 좌우로 움직이면 둘러봐요(Esc로 풀기)
 cv.addEventListener('pointerdown', () => { if (PV.on && UI.free() && !pvLocked() && cv.requestPointerLock) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} } });
 // 잠기지 않았어도 마우스를 움직이면 돌아가요(잠기면 화면 끝에 막히지 않아요)
-let pvLastX = null;
+let pvLastX = null, pvLastY = null;
 document.addEventListener('mousemove', e => {
-  if (!PV.on || !UI.free()) { pvLastX = null; return; }
-  if (pvLocked()) { pvLook(e.movementX || 0); return; }
-  const dx = e.movementX || (pvLastX == null ? 0 : e.clientX - pvLastX); pvLastX = e.clientX;
-  pvLook(dx * 1.3);
+  if (!PV.on || !UI.free()) { pvLastX = pvLastY = null; return; }
+  if (pvLocked()) { pvLook(e.movementX || 0, e.movementY || 0); return; }
+  const dx = e.movementX || (pvLastX == null ? 0 : e.clientX - pvLastX), dy = e.movementY || (pvLastY == null ? 0 : e.clientY - pvLastY); pvLastX = e.clientX; pvLastY = e.clientY;
+  pvLook(dx * 1.3, dy * 1.3);
 });
 $('#viewBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleView(); });
 viewBtnSync();
