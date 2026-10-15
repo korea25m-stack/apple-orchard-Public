@@ -1852,8 +1852,9 @@ const qq = (cc, a, b, x, y) => cc.quadraticCurveTo(a, b, x, y);
 
 // 2026-10-14 호랑이 탈것: drawHero가 타는 동안 HERO_SIT = 1로 두면 주인공이 등에 걸터앉은 자세로 그려져요
 let HERO_SIT = 0;
+let BENCH_SIT = 0; // 2026-10-15 인부가 벤치에 앉아 쉬는 자세(다리를 접고 몸을 낮춰요)
 function drawHuman(c, x, y, S, dir, walk, act, hero){
-  const sit = hero && HERO_SIT; if (sit) walk = 0;
+  const sit = hero && HERO_SIT, bsit = !hero && BENCH_SIT; if (sit || bsit) walk = 0;
   const side = dir >= 2, back = dir === 1, fem = !!S.fem;
   const ph = walk ? Math.sin(walk) : 0, bob = walk ? Math.abs(Math.cos(walk)) * 2 : 0;
   const sc = (S.kid ? .78 : 1) * CHAR_K;
@@ -1878,7 +1879,8 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
     pl(c, [-6.4, 21, 6.6, 21], 2);
     c.restore();
   };
-  if (sit) { // 걸터앉기: 옆모습은 가까운 다리만 앞으로 내리고, 앞·뒷모습은 두 다리를 양옆으로 벌려요
+  if (bsit) { leg(-6.5, 0, 12, false); leg(6.5, 0, 12, false); c.translate(0, 10); }
+  else if (sit) { // 걸터앉기: 옆모습은 가까운 다리만 앞으로 내리고, 앞·뒷모습은 두 다리를 양옆으로 벌려요
     if (side) leg(3, -.62, 4, false);
     else { leg(-8, .85, 4, false); leg(8, -.85, 4, false); }
   } else if (side) { leg(-2, -ph * .45, 0, true); leg(2, ph * .45, 0, false); }
@@ -2089,7 +2091,29 @@ const YARD = {x:520, y:925, rx:270, ry:85}, HYARD = {x:-450, y:1000, rx:230, ry:
 let P = {x:930, y:1000, dir:0, walk:0, act:0, tgt:null, spd:270};
 let cam = {x:930, y:900, z:.9, ox:0, oy:0}; // 시점 고정 (2026-10-11 조금 더 멀리)
 const floats = [];
-const workerS = {x:780, y:1080, tx:780, ty:1080, dir:0, walk:0, act:0, on:false};
+const workerS = {x:780, y:1080, tx:780, ty:1080, dir:0, walk:0, act:0, on:false, idle:0, sit:false};
+// 2026-10-15 달 요청: 할 일이 없으면 인부는 과수원 오른쪽 위 구석 벤치에 앉아 쉬어요(테이블에 빵·음료)
+const BENCH = {x:2260, y:588};
+function drawBench(c, x, y){
+  const W2 = 72;
+  for (const s of [-1, 1]) cel(c, cc => rr(cc, x + s * (W2 / 2 - 8) - 4, y - 46, 8, 46, 2), '#8a5a34', '#6a4024', 2, 0, 2.2); // 다리·등받이 기둥
+  cel(c, cc => rr(cc, x - W2 / 2, y - 62, W2, 10, 3), '#c98a4a', '#a06a34', 2, 2, 2.4);
+  cel(c, cc => rr(cc, x - W2 / 2, y - 48, W2, 9, 3), '#c98a4a', '#a06a34', 2, 2, 2.4);
+  cel(c, cc => rr(cc, x - W2 / 2 - 4, y - 30, W2 + 8, 11, 3), '#d99a58', '#a86e38', 2, 2, 2.4); // 앉는 판
+}
+function drawSnackTable(c, x, y){
+  c.save(); c.translate(x, y); c.scale(.78, .78); c.translate(-x, -y);
+  shadow(c, x, y, 30, 7);
+  cel(c, cc => rr(cc, x - 3, y - 34, 6, 34, 2), '#8a5a34', '#6a4024', 1, 0, 2);
+  cel(c, cc => { ell(cc, x, y - 36, 32, 11); }, '#e8c08a', '#c49a62', 2, 2, 2.4);
+  // 빵(식빵·소보로)과 음료(우유병·컵)
+  cel(c, cc => rr(cc, x - 26, y - 50, 22, 14, 7), '#e6a95a', '#b87a34', 2, 2, 2);
+  cel(c, cc => { cc.arc(x - 6, y - 42, 7, Math.PI, 0); cc.closePath(); }, '#d98e3e', '#a8662a', 1, 1, 2);
+  cel(c, cc => rr(cc, x + 6, y - 62, 10, 22, 3), '#ffffff', '#d8e4ee', 1, 1, 2);
+  cel(c, cc => rr(cc, x + 8, y - 66, 6, 5, 1), '#5aa0e8', '#2f6fb8', 1, 1, 1.6);
+  cel(c, cc => rr(cc, x + 19, y - 50, 9, 11, 2), '#ff9a3a', '#c86a1a', 1, 1, 1.8);
+  c.restore();
+}
 let ssAnim = null; // 자동 방제 애니메이션
 const critters = [];
 
@@ -2726,7 +2750,8 @@ function collectEntities(ctx, vis, T, w){
   add(SPOT.chief.y, SPOT.chief.x, () => drawPerson(ctx, SPOT.chief.x, SPOT.chief.y, 'chief', 0, 0, 0));
   add(SPOT.hunter.y, SPOT.hunter.x, () => drawHunterSpot(ctx, T));
   if (vis(SPOT.portal.x, SPOT.portal.y, 300)) add(SPOT.portal.y - 60, SPOT.portal.x, () => drawPortal(ctx, SPOT.portal.x, SPOT.portal.y, T));
-  if (workerS.on) add(workerS.y, workerS.x, () => drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act));
+  add(BENCH.y - 2, BENCH.x, () => drawBench(ctx, BENCH.x, BENCH.y)); add(BENCH.y + 14, BENCH.x + 60, () => drawSnackTable(ctx, BENCH.x + 60, BENCH.y + 14));
+  if (workerS.on) add(workerS.y, workerS.x, () => { BENCH_SIT = workerS.sit ? 1 : 0; try { drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act); } finally { BENCH_SIT = 0; } });
   for (const c of critters) if (vis(c.x, c.y)) add(c.y, c.x, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
   if (raidAnim) add(raidAnim.y, raidAnim.x, () => drawAnimal(ctx, raidAnim.kind, raidAnim.x, raidAnim.y, T, raidAnim.flip));
   if (ssAnim) add(1e9, P.x, () => drawSprayDrone(ctx, ssAnim, T));
@@ -4940,7 +4965,7 @@ function renderTodo(needSpray){
   blemTodo(items);
   hqTodo(items);
   huntTodo(items);
-  if (G.worker > 0) items.push({ic:'👷', t:'인부 아저씨 일하는 중', n:`남은 ${workerLeftTxt()}`, done:true});
+  if (G.worker > 0) items.push({ic:'👷', t:workerS.sit ? '인부 아저씨 벤치에서 쉬는 중 ☕' : '인부 아저씨 일하는 중', n:`남은 ${workerLeftTxt()}`, done:true});
   if (!items.filter(i => !i.done).length) items.push({ic:'☕', t:'급한 일은 없어요. 농막에서 자면 다음 할 일까지 시간이 가요.', n:'', done:true});
   const sig = JSON.stringify(items);
   if (sig === todoSig) return; todoSig = sig;
@@ -7417,7 +7442,7 @@ hooks.emit = (type, d) => {
   else if (type === 'contest') contestUI();
   else if (type === 'newYear') { popup('🎆', `${G.year}년차가 밝았어요!`, `나무들이 한 살씩 더 먹었어요. 겨울엔 가지치기(49~10주)를 해 두면 올해 사과가 좋아져요.`); }
   else if (type === 'week') { saveLocal(); }
-  else if (type === 'workerDid') { const p = treePos(d.i); workerS.tx = p.x + rnd(-10, 10); workerS.ty = p.y + 46; workerS.act = .5; workerS.on = true; }
+  else if (type === 'workerDid') { const p = treePos(d.i); workerS.tx = p.x + rnd(-10, 10); workerS.ty = p.y + 46; workerS.act = .5; workerS.on = true; workerS.idle = 0; workerS.sit = false; }
 };
 
 function saveLocal(){ store.set(SAVE_KEY, serialize()); }
@@ -7529,7 +7554,11 @@ function update(dt){
     if (d > 4) { const s = Math.min(d, 320 * dt); workerS.x += dx / d * s; workerS.y += dy / d * s; workerS.walk += dt * 11; workerS.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0); }
     else workerS.walk = 0;
     if (workerS.act > 0) workerS.act -= dt;
-    if (G.worker <= 0) { workerS.tx = SPOT.shed.x; workerS.ty = SPOT.shed.y + 30; if (d < 8) workerS.on = false; }
+    if (G.worker <= 0) { workerS.tx = SPOT.shed.x; workerS.ty = SPOT.shed.y + 30; workerS.sit = false; if (d < 8) workerS.on = false; }
+    else { // 2026-10-15 할 일이 3초 넘게 없으면 벤치로 가서 앉아요. 일이 생기면 바로 일하러 가요
+      workerS.idle += dt;
+      if (workerS.idle > 3) { workerS.tx = BENCH.x; workerS.ty = BENCH.y + 4; workerS.sit = d < 6; if (workerS.sit) workerS.dir = 0; }
+    }
   }
   updateCritters(dt); updateVillagers(dt); updateHunt(dt);
   for (const f of flies) { f.t += dt; f.x += Math.cos(f.t * .7) * 40 * dt + 10 * dt; f.y += Math.sin(f.t * 1.3) * 30 * dt; if (f.x > WORLD_W) f.x = 0; }
