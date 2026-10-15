@@ -770,12 +770,14 @@ function sprayState(type){
   if (v < RISK_HIGH) return {ok:false, why:`지금 ${type === 'dis' ? '병' : '해충'} 위험은 ${v}(${riskLevel(v)})예요. ${RISK_HIGH} 이상 "높음"일 때 해요.`};
   return {ok:true};
 }
+const SPRAY_DAYS = {S:17, A:14, B:10, C:7};
 function applySpray(type, grade){
   const cost = sprayCost();
   G.money -= cost; G.stats.sprays++;
   if (type === 'nutri') { G.nutri++; (G.nutriM = G.nutriM || []).push(G.year * 100 + weekLabel(G.week).m); if (G.nutriM.length > 6) G.nutriM.shift(); return `영양제를 줬어요. 올해 ${G.nutri}/3번 (${won(cost)})`; }
-  let days = {S:10, A:8, B:7, C:5}[grade] || 7, note = '';
-  if (G.wx.wind >= 6 && !G.b.drone) { days -= 2; note = ' 바람이 세서 약이 좀 날아갔어요.'; }
+  // 2026-10-15 달 요청: 방제 효과 S 17일·A 14일·B 10일·C 7일(이전 10·8·7·5). 자동 방제는 B. 강풍(드론 없음)은 -3일(이전 -2)
+  let days = SPRAY_DAYS[grade] || SPRAY_DAYS.B, note = '';
+  if (G.wx.wind >= 6 && !G.b.drone) { days -= 3; note = ' 바람이 세서 약이 좀 날아갔어요.'; }
   G.prot[type] = absDay() + days - 1;
   return `${type === 'dis' ? '살균제' : '살충제'}를 뿌렸어요. ${days}일 동안 지켜 줘요.${note} (${won(cost)})`;
 }
@@ -5041,8 +5043,8 @@ function chooseSprayMode(k){
   if (G.money < sprayCost()) { toast('돈이 모자라요.', 'bad'); return; }
   UI.open({ic:'🚜', title:'어떻게 뿌릴까요?', w:820, render(o){
     o.body.innerHTML = `<div class="grid g2">
-      <button class="opt" id="drv"><span class="t">🚜 직접 운전하기</span><span>${jo(HN(), '이', '가')} 방제기를 몰고 과수원 길을 위로 달려요(30초). 바위·나뭇가지는 피하고 벌레 떼는 지나가며 잡아요. 점수가 높을수록 약 효과가 길고(최대 10일) 사과 품질과 ${HN()} 경험치가 올라요.</span></button>
-      <button class="opt" id="aut"><span class="t">⚡ 자동으로 뿌리기</span><span>3초면 끝나요. 7일 동안 지켜 줘요. 품질 보너스는 없어요.</span></button></div>`;
+      <button class="opt" id="drv"><span class="t">🚜 직접 운전하기</span><span>${jo(HN(), '이', '가')} 방제기를 몰고 과수원 길을 위로 달려요(30초). 바위·나뭇가지는 피하고 벌레 떼는 지나가며 잡아요. 점수가 높을수록 약 효과가 길고(최대 ${SPRAY_DAYS.S}일) 사과 품질과 ${HN()} 경험치가 올라요.</span></button>
+      <button class="opt" id="aut"><span class="t">⚡ 자동으로 뿌리기</span><span>3초면 끝나요. ${SPRAY_DAYS.B}일 동안 지켜 줘요. 품질 보너스는 없어요.</span></button></div>`;
     $('#drv').onclick = () => { UI.close(); startDrive(k); };
     $('#aut').onclick = () => { UI.close(); autoSpray(k); };
   }});
@@ -7346,7 +7348,7 @@ function drawDrive(){
     c.textAlign = 'center';
     c.fillStyle = {S:'#ff6b57', A:'#ffb13b', B:'#5cc46c', C:'#9b8e86'}[r.g]; c.font = '190px Jua'; c.fillText(r.g, 960, 510);
     c.fillStyle = INK; c.font = '36px Jua'; c.fillText(`${r.sc}점 · 벌레 ${M.bugs}떼 · 부딪힘 ${M.hits}번`, 960, 585);
-    c.font = '28px Jua'; c.fillText(`약 효과 ${({S:10, A:8, B:7, C:5})[r.g]}일 · 사과 품질 +${M.qb} · 경험치 +${M.xp}`, 960, 640);
+    c.font = '28px Jua'; c.fillText(`약 효과 ${SPRAY_DAYS[r.g]}일 · 사과 품질 +${M.qb} · 경험치 +${M.xp}`, 960, 640);
     c.font = '22px Jua'; c.fillStyle = '#8a7a70'; c.fillText(`점수가 높을수록 사과 품질이 오르고 ${jo(HN(), '이', '가')} 강해져요`, 960, 690);
   }
   c.restore();
