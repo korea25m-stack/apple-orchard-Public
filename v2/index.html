@@ -147,6 +147,8 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .hpn input{font:inherit;font-size:24px;padding:8px 14px;border:2.5px solid var(--ink);border-radius:12px;width:260px}.hpn small{font-family:var(--body);font-size:15px;color:var(--muted)}
 .snd{display:flex;align-items:center;gap:14px;margin:10px 0;font-family:var(--display);font-size:22px}.snd b{width:150px;font-weight:400}.snd input{flex:1;accent-color:#e8423a}.snd span{width:40px;text-align:right}.snd .btn{width:96px}
 .townLock{background:#fff1e6;border:2px solid #ff9a5a;border-radius:12px;padding:8px 14px;margin:0 0 10px;font-family:var(--display);font-size:19px;color:#b2482b}
+.offerCmp{display:grid;grid-template-columns:1fr 1fr;gap:12px}.offerCmp>div{background:#fff6e6;border:2px solid #e8d4b0;border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}.offerCmp small{font-size:15px;color:var(--muted)}.offerCmp b{font-family:var(--display);font-size:26px}.offerCmp span{font-size:16px}
+.offerVerdict{font-family:var(--display);font-size:22px;margin:12px 0 4px;text-align:center}.offerVerdict.good{color:#2f8a3e}.offerVerdict.bad{color:#c4402f}
 .gnote{font-size:16px;color:var(--muted);margin:10px 2px}
 .ggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .gslot{border:2.5px solid var(--ink);border-radius:16px;background:#fff;padding:10px 12px}
@@ -887,7 +889,7 @@ function newWeek(){
     if (o.due < w && o.year === G.year || o.year < G.year) { G.rep = Math.max(0, G.rep - 2); toast(`${o.name} 주문 날짜를 놓쳤어요. 평판 -2`, 'bad'); return false; }
     return true;
   });
-  if (G.year >= 2 && w >= 30 && w <= 46 && G.orders.length < 2 && Math.random() < .4) makeOrder();
+  if (G.year >= 2 && w >= 30 && w <= 46 && G.orders.length + offerCount('order') < 2 && Math.random() < .4) makeOrder();
   // 품평회
   retailWeek();
   { const L = weekLabel(w); if ([5, 8, 10].includes(L.m) && L.wk === 1 && G.trees.some(t => t && t.age >= 1)) emit('pop', {ic:'🧪', t:`${L.m}월, 영양제 줄 때예요!`, m:'이번 달에 영양제를 한 번 줄 수 있어요. 방제 창에서 🧪 영양제를 고르세요. (5월·8월·10월에 한 번씩)'}); }
@@ -898,8 +900,7 @@ function newWeek(){
 function makeOrder(){
   const t = pick(ORDERS);
   const o = {id:G.oid++, name:t.name, ic:t.ic, g:t.g, n:rint(t.n[0], t.n[1]), price:Math.round(gByK(t.g).base * 10000 + t.bonus), rep:t.rep, due:Math.min(52, G.week + rint(3, 5)), year:G.year};
-  G.orders.push(o);
-  emit('pop', {ic:t.ic, t:'새 주문이 들어왔어요', m:`${o.name}: ${gByK(o.g).name} 등급 이상 ${o.n}상자, 상자당 ${won(o.price)}. ${o.due}주까지 창고에서 납품해 주세요.`});
+  offerOrder('order', o); // 2026-10-15 바로 받지 않고 수락·거절 창부터 띄워요
 }
 function canDeliver(o){ return stockAtLeast(o.g) >= o.n; }
 function stockAtLeast(gk){
@@ -5534,13 +5535,44 @@ function retailUnit(gk){ const hi = clamp(gByK(gk).base * 1.07 * (G.b.cold ? 1.1
 function retailWeek(){
   if (!G.retail) G.retail = [];
   G.retail = G.retail.filter(o => { if (o.year < G.year || o.due < G.week) { toast(`${o.name} 소매 주문 날짜가 지났어요`, 'bad'); return false; } return true; });
-  if (totalStock() < 2 || G.retail.length >= (shedLv() >= 3 ? 3 : 2) || Math.random() > RETAIL_P + (shedLv() >= 2 ? .1 : 0)) return;
+  if (totalStock() < 2 || G.retail.length + offerCount('retail') >= (shedLv() >= 3 ? 3 : 2) || Math.random() > RETAIL_P + (shedLv() >= 2 ? .1 : 0)) return;
   const gs = GRADES.map(g => g.k).filter(k => stockAtLeast(k) >= 2);
   if (!gs.length) return;
   const t = pick(RETAIL_C), g = pick(gs);
   const o = {id:G.oid++, name:t.name, ic:t.ic, g, n:Math.min(rint(2, 6), stockAtLeast(g) + rint(0, 2)), unit:retailUnit(g), due:Math.min(52, G.week + 2), year:G.year};
-  G.retail.push(o);
-  emit('pop', {ic:'🛍️', t:'소매 주문이 들어왔어요', m:`${t.ic} ${o.name}: ${gByK(g).name} 등급 이상 ${o.n}상자, 상자당 <b>${won(o.unit)}</b>(경매보다 비싸요!). 창고에서 F → 🎁 주문 포장으로 보내 주세요. ${o.due}주까지.`});
+  offerOrder('retail', o);
+}
+// ===== 주문 수락·거절 (2026-10-15 달 요청) =====
+// 납품·소매 주문이 오면 바로 받지 않고 창을 띄워요. 같은 양을 경매로 팔면 얼마쯤인지 나란히 보여 주고, 거절해도 평판은 그대로예요.
+const offerCount = kind => (G.offers || []).filter(x => x.kind === kind).length;
+function offerOrder(kind, o){ (G.offers = G.offers || []).push({kind, o}); emit('offer'); }
+// 그 등급(이상) 사과를 경매로 팔 때 상자당 예상 값: 창고에 있는 품종 비율로, 입찰 평균(0.84~1.07배의 가운데)
+function auctionEst(gk){
+  const ok = GRADES.slice(0, GRADES.findIndex(g => g.k === gk) + 1).map(g => g.k);
+  let n = 0, m = 0; for (const k in G.stock) { const [v, g] = k.split('|'); if (ok.includes(g) && G.stock[k] > 0) { n += G.stock[k]; m += VARS[v].mult * G.stock[k]; } }
+  const vm = n ? m / n : 1;
+  return Math.round(clamp(gByK(gk).base * vm * (G.b.cold ? 1.1 : 1) * shedMult() * .955, 3, 10) * 10) * 1000;
+}
+let offerOpen = false;
+const wonU = n => Math.abs(n) >= 10000 ? `${+(n / 10000).toFixed(1)}만원` : won(n); // 7.8만원처럼 소수 한 자리
+function showOffers(){
+  if (offerOpen || !(G.offers && G.offers.length)) return;
+  offerOpen = true;
+  UI.push(() => {
+    const X = G.offers[0]; if (!X) { offerOpen = false; UI.next && UI.next(); return; }
+    const {kind, o} = X, retail = kind === 'retail', unit = retail ? o.unit : o.price, est = auctionEst(o.g), diff = (unit - est) * o.n, have = stockAtLeast(o.g);
+    const good = diff > 0;
+    UI.open({ic:retail ? '🛍️' : o.ic, title:retail ? '소매 주문이 들어왔어요' : '납품 주문이 들어왔어요', w:820, noX:true, onClose(){ offerOpen = false; setTimeout(showOffers, 300); }, render(m){
+      m.body.innerHTML = `<p style="font-size:22px;margin:0 0 12px">${o.ic} <b>${esc(o.name)}</b>: ${gByK(o.g).name} 등급 이상 <b>${o.n}상자</b> · <b>${o.due}주까지</b>${retail ? ' · 포장해서 보내요' : ''}</p>
+        <div class="offerCmp"><div><small>이 주문</small><b>${wonU(unit)}</b><span>× ${o.n} = ${wonU(unit * o.n)}${retail ? '' : ` · 평판 +${o.rep}`}${retail ? ' · 평판 +1' : ''}</span></div>
+        <div><small>경매로 팔면 (예상)</small><b>약 ${wonU(est)}</b><span>× ${o.n} = 약 ${wonU(est * o.n)}</span></div></div>
+        <p class="offerVerdict ${good ? 'good' : 'bad'}">${good ? `🟢 경매보다 약 ${wonU(diff)} 더 받아요` : diff === 0 ? '⚪ 경매와 비슷해요' : `🔴 경매보다 약 ${wonU(-diff)} 덜 받아요`}</p>
+        <p class="gnote">지금 창고에 맞는 사과: ${have}상자${have < o.n ? ` (${o.n - have}상자 더 있어야 보낼 수 있어요)` : ''}. 거절해도 평판은 그대로예요. 수락하고 날짜를 놓치면 ${retail ? '주문이 사라져요' : '평판 -2'}.</p>`;
+      m.footEl.innerHTML = `<button class="btn" id="ofNo">🙅 거절하기</button><button class="btn go" id="ofYes">🤝 수락하기</button>`;
+      $('#ofYes').onclick = () => { G.offers.shift(); (retail ? (G.retail = G.retail || []) : G.orders).push(o); todoSig = ''; sfx('good'); toast(`🤝 ${o.name} 주문을 받았어요. ${o.due}주까지 창고에서 보내요.`, 'good'); UI.close(); };
+      $('#ofNo').onclick = () => { G.offers.shift(); sfx('pick'); toast(`🙅 ${o.name} 주문을 정중히 거절했어요.`); UI.close(); };
+    }});
+  });
 }
 function retailBody(){
   const L = G.retail || [];
@@ -6960,6 +6992,7 @@ hooks.emit = (type, d) => {
   if (type === 'raid') spawnRaid(d.kind);
   else if (type === 'wxfx') startWxFx(d.k);
   else if (type === 'pop') { if (WXFX && WXFX.t < .5) setTimeout(() => popup(d.ic, d.t, d.m), 3000); else popup(d.ic, d.t, d.m); }
+  else if (type === 'offer') showOffers();
   else if (type === 'contest') contestUI();
   else if (type === 'newYear') { popup('🎆', `${G.year}년차가 밝았어요!`, `나무들이 한 살씩 더 먹었어요. 겨울엔 가지치기(49~10주)를 해 두면 올해 사과가 좋아져요.`); }
   else if (type === 'week') { saveLocal(); }
@@ -6973,6 +7006,7 @@ function afterLoad(){
   cam.x = P.x; cam.y = P.y; cam.ox = cam.oy = 0;
   workerS.on = G.worker > 0; workerS.x = SPOT.shed.x; workerS.y = SPOT.shed.y + 30;
   todoSig = ''; updateHUD(true); saveLocal();
+  offerOpen = false; setTimeout(showOffers, 800); // 저장할 때 답 안 한 주문이 있으면 다시 물어봐요
 }
 
 function skipWeek(){
