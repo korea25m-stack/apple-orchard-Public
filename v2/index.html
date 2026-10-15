@@ -3419,7 +3419,7 @@ function heroHurt(m, base){
 const MONS = [];
 let monId = 1, spawnT = 0;
 // 2026-10-13 필드 산짐승 1.5배: 최대 8→12마리, 생성 5초→3.3초. 이미 많은 종류는 덜 나와서 골고루 섞여요
-const MON_CAP = 12, MON_EVERY = 3.3;
+const MON_CAP = 18, MON_EVERY = 2.2; // 2026-10-15 달 요청: 짐승 약 1.5배 (12마리·3.3초 → 18마리·2.2초)
 function pickKind(tab){
   if (seasonOf(G.week) === 'winter' && tab.snake) { tab = {...tab}; delete tab.snake; } // 뱀은 겨울잠
   const n = {}; for (const m of MONS) if (!m.dead && !m.raid) n[m.kind] = (n[m.kind] || 0) + 1;
@@ -3774,9 +3774,20 @@ function huntEntities(ctx, add, vis, T){
 // 화면 위: 작은 지도, 습격 화살표, 구역 안내
 let miniBase = null;
 const MM = {w:240, h:Math.round(240 * WORLD_H / WORLD_W)}; MM.x = W - 26 - MM.w; MM.y = 24; // 2026-10-13 오른쪽 위 끝
+// 2026-10-15 달 요청(짐승과 빨간 점이 안 맞아요): 온 세상을 240px에 넣으면 1px이 143걸음이라, 화면 안 짐승은 우주 점 밑에 숨고
+// 화면 밖 짐승만 우주 바로 옆 점으로 보였어요. 이제 작은 지도는 우주 둘레(가로 MM_VIEW)만 크게 보여 줘요. 지도를 누르면 온 세상 ↔ 우리 둘레.
+const MM_VIEW = 9000; let MM_FULL = false;
+const mmScale = () => MM_FULL ? MM.w / WORLD_W : MM.w / MM_VIEW;
+function mmOrigin(){
+  if (MM_FULL) return {x:WX0, y:WY0};
+  const s = mmScale(), vw = MM.w / s, vh = MM.h / s;
+  return {x:clamp(P.x - vw / 2, WX0, WX1 - vw), y:clamp(P.y - vh / 2, WY0, WY1 - vh)};
+}
+const inMM = p => p.x >= MM.x - 6 && p.x <= MM.x + MM.w + 6 && p.y >= MM.y - 6 && p.y <= MM.y + MM.h + 6;
 function buildMiniBase(){
-  miniBase = mk(MM.w, MM.h); const c = miniBase.getContext('2d'), s = MM.w / WORLD_W;
-  for (let y = 0; y < MM.h; y += 4) for (let x = 0; x < MM.w; x += 4) {
+  const s = MM.w / MM_VIEW, BW = Math.ceil(WORLD_W * s), BH = Math.ceil(WORLD_H * s);
+  miniBase = mk(BW, BH); const c = miniBase.getContext('2d');
+  for (let y = 0; y < BH; y += 4) for (let x = 0; x < BW; x += 4) {
     const wx = WX0 + x / s, wy = WY0 + y / s;
     c.fillStyle = inHunt(wx, wy) ? mix(mix('#7fbf5a', '#2f5a2a', clamp(homeDist(wx, wy) / 14000, 0, 1) * .85), '#eef4f8', snowK(wy)) : '#a6dc78'; c.fillRect(x, y, 4, 4);
   }
@@ -3784,28 +3795,33 @@ function buildMiniBase(){
   c.strokeStyle = '#c99d62'; c.lineWidth = 2; c.lineCap = 'round';
   for (const T of [...TRAILS, ROAD, ...VROADS]) { c.beginPath(); T.forEach(([x, y], i) => i ? c.lineTo(x * s, y * s) : c.moveTo(x * s, y * s)); c.stroke(); }
   c.fillStyle = '#b9875a'; c.fillRect(OX * s, OY * s, ORCH_W * s, MAX_ROWS * ROW_H * s);
-  c.fillStyle = '#e8634a'; for (const b of VB) c.fillRect(b.x * s - 2, b.y * s - 3, 5, 4);
-  c.font = '11px Jua'; c.fillStyle = INK; c.textAlign = 'center';
-  c.fillText('과수원', (OX + ORCH_W / 2) * s, OY * s - 2); c.fillText('마을', VNEW.x * s, (VNEW.y - 1100) * s);
+  c.fillStyle = '#9a7a5a'; for (const b of VB) c.fillRect(b.x * s - 3, b.y * s - 3, 6, 5); // 집은 갈색 네모(빨간 짐승 점과 헷갈리지 않게)
   c.fillStyle = 'rgba(255,255,255,.35)'; for (const p of PEAKS) { c.beginPath(); c.moveTo((p.x - 160 * p.s) * s, p.y * s); c.lineTo(p.x * s, (p.y - 300 * p.s) * s); c.lineTo((p.x + 160 * p.s) * s, p.y * s); c.fill(); }
-  c.fillStyle = INK;
-  [['전설의 산 ' + zoneLv(3), 1600, -6200], [zoneLv(4), 11000, -1200], [zoneLv(5), -10600, -6600], [zoneLv(6), 13600, -13400], ['눈 덮인 설산', 1600, 15600]].forEach(([t, x, y]) => c.fillText(t, x * s, y * s));
 }
+// 글자는 지도 크기와 상관없이 같은 크기로 보이게 덮어 그려요
+const MM_LABELS = () => [['과수원', OX + ORCH_W / 2, OY - 150], ['마을', VNEW.x, VNEW.y - 1100], ['전설의 산 ' + zoneLv(3), 1600, -6200], [zoneLv(4), 11000, -1200], [zoneLv(5), -10600, -6600], [zoneLv(6), 13600, -13400], ['눈 덮인 설산', 1600, 15600]];
 function drawHuntOverlay(ctx, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (!miniBase) buildMiniBase();
-  const s = MM.w / WORLD_W, mx = x => MM.x + (x - WX0) * s, my = y => MM.y + (y - WY0) * s;
+  const s = mmScale(), o = mmOrigin(), mx = x => MM.x + (x - o.x) * s, my = y => MM.y + (y - o.y) * s, sB = MM.w / MM_VIEW;
   ctx.save();
   ctx.beginPath(); rr(ctx, MM.x - 6, MM.y - 6, MM.w + 12, MM.h + 12, 14); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
-  ctx.drawImage(miniBase, MM.x, MM.y);
+  ctx.beginPath(); rr(ctx, MM.x, MM.y, MM.w, MM.h, 8); ctx.clip();
+  if (MM_FULL) ctx.drawImage(miniBase, MM.x, MM.y, MM.w, MM.h);
+  else ctx.drawImage(miniBase, (o.x - WX0) * sB, (o.y - WY0) * sB, MM.w, MM.h, MM.x, MM.y, MM.w, MM.h);
+  ctx.font = '11px Jua'; ctx.textAlign = 'center'; ctx.fillStyle = INK; for (const [t, x, y] of MM_LABELS()) ctx.fillText(t, mx(x), my(y));
   const vw = W / cam.z, vh = H / cam.z;
   ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(mx(cam.x - vw / 2), my(cam.y - vh / 2), vw * s, vh * s);
   ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🛖', mx(SPOT.nongmak.x), my(SPOT.nongmak.y) + 4);
   for (const r of RESTS) { const f = G.rests && G.rests[r.id]; ctx.globalAlpha = f ? 1 : .55; ctx.font = f ? '12px sans-serif' : 'bold 11px Jua'; ctx.fillStyle = INK; ctx.fillText(f ? '⛺' : '?', mx(r.x), my(r.y) + 4); }
   ctx.globalAlpha = 1; ctx.font = '13px sans-serif'; for (const D of DENS) ctx.fillText(D.ic, mx(D.x), my(D.y) + 4);
-  for (const m of MONS) if (!m.dead) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), m.raid ? 4.5 : 2.2, 0, 7); ctx.fillStyle = m.raid ? '#ff3b30' : '#7a2a1a'; ctx.fill(); }
-  ctx.beginPath(); ctx.arc(mx(P.x), my(P.y), 4.5, 0, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.beginPath(); ctx.arc(mx(P.x), my(P.y), MM_FULL ? 4.5 : 4, 0, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+  // 짐승 점은 우주 점 위에 그려서 가까이 있어도 안 가려져요
+  for (const m of MONS) if (!m.dead) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), m.boss ? 4.5 : m.raid ? 4 : 3, 0, 7); ctx.fillStyle = m.raid || m.eng ? '#ff3b30' : '#d6372c'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = '#fffaf1'; ctx.stroke(); }
   ctx.restore();
+  { const t = MM_FULL ? '🗺️ 온 세상 · 누르면 크게' : '🔍 누르면 온 세상'; ctx.font = '12px Jua'; const tw = ctx.measureText(t).width + 12;
+    ctx.beginPath(); rr(ctx, MM.x + MM.w - tw - 4, MM.y + MM.h - 22, tw, 18, 9); ctx.fillStyle = 'rgba(255,250,241,.88)'; ctx.fill();
+    ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(t, MM.x + MM.w - tw / 2 - 4, MM.y + MM.h - 9); }
   // 습격한 산짐승이 화면 밖이면 화살표
   for (const m of MONS) {
     if (!m.raid || m.dead) continue;
@@ -6658,24 +6674,34 @@ const BGM = {
   home:{bpm:84, chords:[[48, 64, 67, 72], [45, 60, 64, 69], [41, 57, 60, 65], [43, 59, 62, 67]], mel:[76, 79, 81, 79, 76, 74, 72, -1, 74, 76, 79, 76, 74, 72, 69, -1, 72, 74, 76, 74, 72, 69, 67, -1, 69, 72, 74, 72, 71, 67, 71, -1]},
   // 호랑이 굴: 느리고 어두운 단조 + 심장 박동 북소리
   den:{bpm:72, chords:[[38, 53, 56, 62], [37, 52, 55, 61], [38, 53, 56, 62], [36, 51, 54, 60]], mel:[74, -1, -1, 73, -1, -1, 70, -1, 69, -1, -1, -1, 70, -1, 73, -1, 74, -1, -1, 75, -1, -1, 74, -1, 73, -1, 70, -1, 69, -1, -1, -1]},
+  // 2026-10-15 달 요청: 한 곡만 계속 나와서 곡을 늘리고 돌아가며 틀어요 (곳마다 4번 돌면 다음 곡)
+  meadow:{bpm:92, lead:'sine', chords:[[41, 57, 60, 65], [48, 60, 64, 67], [43, 59, 62, 67], [45, 60, 64, 69]], mel:[72, 74, 76, -1, 77, 76, 74, -1, 72, -1, 76, 79, 79, -1, 76, -1, 74, 76, 74, 72, 71, -1, 67, -1, 69, 72, 76, -1, 74, 72, 72, -1]},
+  village:{bpm:104, lead:'square', lv:.09, chords:[[43, 59, 62, 67], [40, 59, 64, 67], [48, 60, 64, 67], [50, 62, 66, 69]], mel:[79, -1, 78, 79, 81, 79, 76, -1, 76, -1, 74, 76, 79, -1, 74, -1, 72, 74, 76, 79, 76, 74, 72, -1, 74, -1, 78, 81, 79, -1, -1, -1]},
+  woods:{bpm:88, lead:'sine', chords:[[38, 53, 57, 62], [36, 52, 55, 60], [38, 53, 57, 62], [33, 52, 57, 60]], mel:[62, -1, 65, 67, 69, -1, 67, 65, 64, -1, 60, -1, 64, 67, -1, -1, 69, -1, 72, 71, 69, 67, 65, -1, 64, 65, 64, 62, 60, -1, 57, -1]},
+  trail:{bpm:110, lead:'square', lv:.08, chords:[[45, 60, 64, 69], [41, 57, 60, 65], [43, 59, 62, 67], [40, 56, 59, 64]], mel:[76, -1, 76, 77, 79, -1, 77, 76, 72, -1, 72, 74, 76, -1, 72, -1, 74, -1, 74, 76, 77, -1, 79, 77, 76, -1, 71, -1, 68, 71, -1, -1]},
   hunt:{bpm:96, chords:[[45, 60, 64, 69], [41, 57, 60, 65], [43, 59, 62, 67], [40, 59, 64, 67]], mel:[69, -1, 72, 74, 76, -1, 74, 72, 69, -1, 67, 69, 72, -1, 71, -1, 69, -1, 72, 74, 76, 79, 76, 74, 72, -1, 71, 72, 71, -1, 67, -1]}
 };
+const BGM_SETS = {home:['home', 'meadow', 'village'], hunt:['hunt', 'woods', 'trail'], den:['den']}, BGM_LOOPS = 4;
 function bgmTick(){
   const c = SND.ctx; if (!c) return;
   const want = typeof inHunt === 'function' && typeof P !== 'undefined' && inHunt(P.x, P.y) ? (typeof inDen === 'function' && inDen(P.x, P.y, 250) ? 'den' : 'hunt') : 'home';
-  if (want !== SND.mode) { SND.mode = want; SND.step = 0; }
-  const S = BGM[SND.mode], st = 60 / S.bpm / 2; // 8분음표
+  SND.pick = SND.pick || {};
+  if (want !== SND.mode) { SND.mode = want; SND.step = 0; const L = BGM_SETS[want]; SND.pick[want] = ((SND.pick[want] ?? -1) + 1) % L.length; SND.song = L[SND.pick[want]]; }
+  const zone = SND.mode, S = BGM[SND.song] || BGM[zone], st = 60 / S.bpm / 2; // 8분음표
   if (SND.nextT < c.currentTime - .5) SND.nextT = c.currentTime + .05;
   while (SND.nextT < c.currentTime + .4) {
     const t = SND.nextT, i = SND.step % 32, bar = Math.floor(i / 8), ch = S.chords[bar], o = SND.bgmG;
     if (SND.on.bgm && SND.vol.bgm > 0) {
       if (i % 8 === 0) { tone('sine', NOTE(ch[0]), t, st * 7.5, .35, o); ch.slice(1).forEach(n => tone('triangle', NOTE(n), t, st * 7.8, .07, o)); }
       if (i % 2 === 1) ch.slice(1).forEach((n, k) => k === (i >> 1) % 3 && tone('sine', NOTE(n + 12), t, st * 1.2, .06, o));
-      const m = S.mel[i]; if (m > 0) tone('triangle', NOTE(m), t, st * 1.7, .16, o);
-      if (SND.mode === 'hunt' && i % 4 === 0) tone('sine', 110, t, .18, .25, o, 55);
-      if (SND.mode === 'den') { if (i % 4 === 0) { tone('sine', 62, t, .22, .55, o, 40); tone('sine', 58, t + st * .55, .2, .4, o, 38); } if (i % 8 === 4) tone('sawtooth', NOTE(ch[0] + 12), t, st * 3, .03, o); }
+      const m = S.mel[i]; if (m > 0) tone(S.lead || 'triangle', NOTE(m), t, st * 1.7, S.lv || .16, o);
+      if (zone === 'hunt' && i % 4 === 0) tone('sine', 110, t, .18, .25, o, 55);
+      if (SND.song === 'trail' && i % 4 === 2) noise(t, .05, .08, o, 4000);
+      if (zone === 'den') { if (i % 4 === 0) { tone('sine', 62, t, .22, .55, o, 40); tone('sine', 58, t + st * .55, .2, .4, o, 38); } if (i % 8 === 4) tone('sawtooth', NOTE(ch[0] + 12), t, st * 3, .03, o); }
     }
     SND.nextT += st; SND.step++;
+    // 4번 돌면 같은 곳의 다음 곡으로
+    if (SND.step % (32 * BGM_LOOPS) === 0) { const L = BGM_SETS[zone]; if (L.length > 1) { SND.pick[zone] = (SND.pick[zone] + 1) % L.length; SND.song = L[SND.pick[zone]]; SND.step = 0; } }
   }
 }
 // 화면 위 소리 버튼
@@ -7169,6 +7195,7 @@ cv.addEventListener('pointermove', e => {
 cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId);
   const p = stagePt(e);
+  if (UI.free() && inMM(p)) { MM_FULL = !MM_FULL; sfx('pick'); e.preventDefault(); return; } // 작은 지도 누르면 온 세상 ↔ 우리 둘레
   // 2026-10-13 마우스 버튼도 키 설정대로 (기본: 왼쪽 = 공격, 오른쪽 = 막기)
   if (e.pointerType === 'mouse' && mouseBtnDown(e.button, p)) { e.preventDefault(); return; }
   ptrs.set(e.pointerId, p);
