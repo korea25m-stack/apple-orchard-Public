@@ -2666,71 +2666,71 @@ function render(ctx, dt, T){
 function collectEntities(ctx, vis, T, w){
   // y 정렬 물체 (2026-10-15 3인칭 시점과 같이 써요)
   const E = [];
-  const add = (y, f) => E.push([y, f]);
+  const add = (y, x, f) => E.push([y, f, x]); // 2026-10-15 3인칭 둘러보기: 깊이를 재려면 x도 필요해요
   for (let i = 0; i < G.trees.length; i++) {
     const t = G.trees[i]; if (!t) continue;
     const p = treePos(i); if (!vis(p.x, p.y)) continue;
     const sp = treeSprite(t);
-    add(p.y, () => ctx.drawImage(sp, p.x - 85, p.y - 222));
+    add(p.y, p.x, () => ctx.drawImage(sp, p.x - 85, p.y - 222));
   }
   // 줄 끝 큰 기둥
   for (let r = 0; r < G.rows; r++) {
     const y = OY + r * ROW_H + STRIP / 2 + 6;
-    for (const x of [OX - 16, OX + ORCH_W + 16]) if (vis(x, y)) add(y, () => cel(ctx, cc => rr(cc, x - 6, y - 160, 12, 162, 3), '#d4cec4', '#a8a092', 3, 0, 2.4));
+    for (const x of [OX - 16, OX + ORCH_W + 16]) if (vis(x, y)) add(y, x, () => cel(ctx, cc => rr(cc, x - 6, y - 160, 12, 162, 3), '#d4cec4', '#a8a092', 3, 0, 2.4));
   }
   // 울타리
   const fx1 = OX - 150, fx2 = OX + ORCH_W + 150, fy1 = OY - 120, fy2 = OY + G.rows * ROW_H + 18;
   for (let x = fx1; x < fx2; x += 100) {
     if (!(x > OX - 140 && x < OX - 20 && false)) {
-      if (vis(x, fy1)) add(fy1, () => { drawFenceRun(ctx, x, fy1, Math.min(x + 100, fx2), fy1, G.b.fence); drawPost(ctx, x, fy1); });
-      if (vis(x, fy2) && !(x >= OX - 160 && x < OX - 40)) add(fy2, () => { drawFenceRun(ctx, x, fy2, Math.min(x + 100, fx2), fy2, G.b.fence); drawPost(ctx, x, fy2); });
+      if (vis(x, fy1)) add(fy1, x, () => { drawFenceRun(ctx, x, fy1, Math.min(x + 100, fx2), fy1, G.b.fence); drawPost(ctx, x, fy1); });
+      if (vis(x, fy2) && !(x >= OX - 160 && x < OX - 40)) add(fy2, x, () => { drawFenceRun(ctx, x, fy2, Math.min(x + 100, fx2), fy2, G.b.fence); drawPost(ctx, x, fy2); });
     }
   }
   for (let y = fy1; y < fy2; y += 70) {
-    if (vis(fx2, y)) add(y, () => { drawPost(ctx, fx2, y); if (G.b.fence) line(ctx, [fx2, y - 40, fx2, y + 30], 2.2, '#ffd23a'); });
-    if (vis(fx1, y) && (y < 920 || y > 1220)) add(y, () => { drawPost(ctx, fx1, y); if (G.b.fence) line(ctx, [fx1, y - 40, fx1, y + 30], 2.2, '#ffd23a'); });
+    if (vis(fx2, y)) add(y, fx2, () => { drawPost(ctx, fx2, y); if (G.b.fence) line(ctx, [fx2, y - 40, fx2, y + 30], 2.2, '#ffd23a'); });
+    if (vis(fx1, y) && (y < 920 || y > 1220)) add(y, fx1, () => { drawPost(ctx, fx1, y); if (G.b.fence) line(ctx, [fx1, y - 40, fx1, y + 30], 2.2, '#ffd23a'); });
   }
-  add(fy2, () => drawPost(ctx, fx2, fy2));
-  if (G.b.fence && vis(fx1, 1180)) add(1180, () => drawSign(ctx, fx1 - 50, 1180, '⚡ 전기 울타리'));
-  if (G.rows < MAX_ROWS) { const sy = OY + G.rows * ROW_H + 120; if (vis(OX + ORCH_W / 2, sy)) add(sy, () => drawSign(ctx, OX + ORCH_W / 2, sy, `🗺️ 살 수 있는 땅`)); }
+  add(fy2, fx2, () => drawPost(ctx, fx2, fy2));
+  if (G.b.fence && vis(fx1, 1180)) add(1180, fx1 - 50, () => drawSign(ctx, fx1 - 50, 1180, '⚡ 전기 울타리'));
+  if (G.rows < MAX_ROWS) { const sy = OY + G.rows * ROW_H + 120; if (vis(OX + ORCH_W / 2, sy)) add(sy, OX + ORCH_W / 2, () => drawSign(ctx, OX + ORCH_W / 2, sy, `🗺️ 살 수 있는 땅`)); }
   // 건물
-  add(SPOT.hanok.y, () => drawHanok(ctx, SPOT.hanok.x, SPOT.hanok.y));
-  add(SPOT.shed.y, () => drawShed(ctx, SPOT.shed.x, SPOT.shed.y));
-  if (G.b.sarang) add(SPOT.sarang.y, () => drawHanok(ctx, SPOT.sarang.x, SPOT.sarang.y, .62));
-  if (G.b.cold) add(SPOT.cold.y, () => drawCold(ctx, SPOT.cold.x, SPOT.cold.y));
-  if (G.b.factory) add(SPOT.factory.y, () => drawFactory(ctx, SPOT.factory.x, SPOT.factory.y));
-  if (G.b.wondumak) add(SPOT.wondumak.y, () => drawWondumak(ctx, SPOT.wondumak.x, SPOT.wondumak.y));
-  for (let k = 0; k < hives(); k++) { const [hx, hy] = SPOT.hives[k]; add(hy, () => drawHive(ctx, hx, hy, T + k)); }
-  if (G.b.frostfan) for (const [x, y] of [[OX - 70, OY - 60], [OX + ORCH_W + 70, OY - 60], [OX - 70, fy2 - 40], [OX + ORCH_W + 70, fy2 - 40]]) add(y, () => drawFrostFan(ctx, x, y, T));
-  if (G.b.drone) add(SPOT.drone.y, () => drawDrone(ctx, SPOT.drone.x, SPOT.drone.y, T));
-  if (G.deco.jangdok) add(SPOT.jangdok.y, () => drawJangdok(ctx, SPOT.jangdok.x, SPOT.jangdok.y));
-  if (G.deco.sotdae) add(SPOT.sotdae.y, () => drawSotdae(ctx, SPOT.sotdae.x, SPOT.sotdae.y));
-  if (G.deco.blossom) for (const [x, y] of SPOT.blossom) add(y, () => drawBlossomTree(ctx, x, y));
-  if (G.deco.flowers) for (const [x, y] of SPOT.flowers) add(y, () => drawFlowerBed(ctx, x, y));
+  add(SPOT.hanok.y, SPOT.hanok.x, () => drawHanok(ctx, SPOT.hanok.x, SPOT.hanok.y));
+  add(SPOT.shed.y, SPOT.shed.x, () => drawShed(ctx, SPOT.shed.x, SPOT.shed.y));
+  if (G.b.sarang) add(SPOT.sarang.y, SPOT.sarang.x, () => drawHanok(ctx, SPOT.sarang.x, SPOT.sarang.y, .62));
+  if (G.b.cold) add(SPOT.cold.y, SPOT.cold.x, () => drawCold(ctx, SPOT.cold.x, SPOT.cold.y));
+  if (G.b.factory) add(SPOT.factory.y, SPOT.factory.x, () => drawFactory(ctx, SPOT.factory.x, SPOT.factory.y));
+  if (G.b.wondumak) add(SPOT.wondumak.y, SPOT.wondumak.x, () => drawWondumak(ctx, SPOT.wondumak.x, SPOT.wondumak.y));
+  for (let k = 0; k < hives(); k++) { const [hx, hy] = SPOT.hives[k]; add(hy, hx, () => drawHive(ctx, hx, hy, T + k)); }
+  if (G.b.frostfan) for (const [x, y] of [[OX - 70, OY - 60], [OX + ORCH_W + 70, OY - 60], [OX - 70, fy2 - 40], [OX + ORCH_W + 70, fy2 - 40]]) add(y, x, () => drawFrostFan(ctx, x, y, T));
+  if (G.b.drone) add(SPOT.drone.y, SPOT.drone.x, () => drawDrone(ctx, SPOT.drone.x, SPOT.drone.y, T));
+  if (G.deco.jangdok) add(SPOT.jangdok.y, SPOT.jangdok.x, () => drawJangdok(ctx, SPOT.jangdok.x, SPOT.jangdok.y));
+  if (G.deco.sotdae) add(SPOT.sotdae.y, SPOT.sotdae.x, () => drawSotdae(ctx, SPOT.sotdae.x, SPOT.sotdae.y));
+  if (G.deco.blossom) for (const [x, y] of SPOT.blossom) add(y, x, () => drawBlossomTree(ctx, x, y));
+  if (G.deco.flowers) for (const [x, y] of SPOT.flowers) add(y, x, () => drawFlowerBed(ctx, x, y));
   // 숲 테두리 (소나무·덤불)
   const R = srand(31);
-  for (let x = WX0 + 30; x < WX1; x += 95) { const y = WY0 + 110 + R() * 40, s = .9 + R() * .4; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
-  for (let y = WY0 + 200; y < worldBot(); y += 130) { const x = WX1 - 40 - R() * 30, s = .9 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
-  for (let y = WY0 + 200; y < worldBot(); y += 140) { const x = WX0 + 30 + R() * 20, s = .85 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
-  for (let x = WX0 + 60; x < WX1; x += 110) { const y = worldBot() - 6 - R() * 20, s = .9 + R() * .3; if (vis(x, y)) add(y, () => drawPine(ctx, x, y, s)); }
+  for (let x = WX0 + 30; x < WX1; x += 95) { const y = WY0 + 110 + R() * 40, s = .9 + R() * .4; if (vis(x, y)) add(y, x, () => drawPine(ctx, x, y, s)); }
+  for (let y = WY0 + 200; y < worldBot(); y += 130) { const x = WX1 - 40 - R() * 30, s = .9 + R() * .3; if (vis(x, y)) add(y, x, () => drawPine(ctx, x, y, s)); }
+  for (let y = WY0 + 200; y < worldBot(); y += 140) { const x = WX0 + 30 + R() * 20, s = .85 + R() * .3; if (vis(x, y)) add(y, x, () => drawPine(ctx, x, y, s)); }
+  for (let x = WX0 + 60; x < WX1; x += 110) { const y = worldBot() - 6 - R() * 20, s = .9 + R() * .3; if (vis(x, y)) add(y, x, () => drawPine(ctx, x, y, s)); }
   villageEntities(ctx, add, vis);
   huntEntities(ctx, add, vis, T);
   const R3 = srand(55);
   for (let k = 0; k < 110; k++) {
     const x = HOME.x0 + R3() * (HOME.x1 - HOME.x0), y = HOME.y0 + 120 + R3() * (HOME.y1 - HOME.y0 - 160), s = .7 + R3() * .5;
     if (inVillage(x, y) || inOrchard(x, y, 60) || nearRoad(x, y, 90) || inYard(x, y) || blockedSpot(x, y)) continue;
-    if (vis(x, y)) add(y, () => drawBush(ctx, x, y, s));
+    if (vis(x, y)) add(y, x, () => drawBush(ctx, x, y, s));
   }
   // 사람
-  add(SPOT.grandma.y, () => drawPerson(ctx, SPOT.grandma.x, SPOT.grandma.y, 'grandma', 0, 0, 0));
-  add(SPOT.chief.y, () => drawPerson(ctx, SPOT.chief.x, SPOT.chief.y, 'chief', 0, 0, 0));
-  add(SPOT.hunter.y, () => drawHunterSpot(ctx, T));
-  if (vis(SPOT.portal.x, SPOT.portal.y, 300)) add(SPOT.portal.y - 60, () => drawPortal(ctx, SPOT.portal.x, SPOT.portal.y, T));
-  if (workerS.on) add(workerS.y, () => drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act));
-  for (const c of critters) if (vis(c.x, c.y)) add(c.y, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
-  if (raidAnim) add(raidAnim.y, () => drawAnimal(ctx, raidAnim.kind, raidAnim.x, raidAnim.y, T, raidAnim.flip));
-  if (ssAnim) add(1e9, () => drawSprayDrone(ctx, ssAnim, T));
-  else add(P.y, () => drawHero(ctx));
+  add(SPOT.grandma.y, SPOT.grandma.x, () => drawPerson(ctx, SPOT.grandma.x, SPOT.grandma.y, 'grandma', 0, 0, 0));
+  add(SPOT.chief.y, SPOT.chief.x, () => drawPerson(ctx, SPOT.chief.x, SPOT.chief.y, 'chief', 0, 0, 0));
+  add(SPOT.hunter.y, SPOT.hunter.x, () => drawHunterSpot(ctx, T));
+  if (vis(SPOT.portal.x, SPOT.portal.y, 300)) add(SPOT.portal.y - 60, SPOT.portal.x, () => drawPortal(ctx, SPOT.portal.x, SPOT.portal.y, T));
+  if (workerS.on) add(workerS.y, workerS.x, () => drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act));
+  for (const c of critters) if (vis(c.x, c.y)) add(c.y, c.x, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
+  if (raidAnim) add(raidAnim.y, raidAnim.x, () => drawAnimal(ctx, raidAnim.kind, raidAnim.x, raidAnim.y, T, raidAnim.flip));
+  if (ssAnim) add(1e9, P.x, () => drawSprayDrone(ctx, ssAnim, T));
+  else add(P.y, P.x, () => drawHero(ctx));
   return E;
 }
 let curTarget = null;
@@ -2804,38 +2804,51 @@ function drawSkyFx(ctx, dt, T){
 // 미니맵 옆 🎥 버튼(또는 V)을 누르면 우주 등 뒤 위에서 앞(북쪽)을 바라보는 시점이 돼요. 다시 누르면 원래 시점.
 // 땅은 WebGL로 원근 투영(타일 그대로), 나무·사람·짐승·건물은 서 있는 그림이라 발 위치 깊이에 맞춰 크게·작게 그려요.
 // 카메라는 늘 북쪽을 봐요 → WASD 방향·조작은 그대로예요.
-const PV = {on:false, f:780, h:330, back:520, hor:.32, far:2400, near:120, x:0, y:0, shx:0, shy:0};
-const pvC = () => PV.y + PV.back;                   // 카메라가 서 있는 곳(우주 뒤)
-const pvD = y => pvC() - y;                        // 앞쪽 거리
+const PV = {on:false, f:780, h:330, back:520, hor:.32, far:2400, near:120, x:0, y:0, shx:0, shy:0, yaw:0, cs:1, sn:0};
+// 2026-10-15 달 요청: 마우스로 둘러보기. PV.yaw만큼 카메라가 돌아요(0 = 북쪽). 오른쪽 r = (cs, sn), 앞 = (sn, -cs)
 const pvHor = () => H * PV.hor;
+function pvLD(x, y){ const dx = x - PV.x, dy = y - PV.y; return [dx * PV.cs + dy * PV.sn, PV.back + dx * PV.sn - dy * PV.cs]; } // [옆, 앞 거리]
 function w2s(x, y){
   if (!PV.on) return {x:(x - cam.x) * cam.z + W / 2, y:(y - cam.y) * cam.z + H / 2, s:cam.z};
-  const d = Math.max(1, pvD(y)), s = PV.f / d;
-  return {x:W / 2 + (x - PV.x) * s, y:pvHor() + PV.f * PV.h / d, s};
+  const [l, d0] = pvLD(x, y), d = Math.max(1, d0), s = PV.f / d;
+  return {x:W / 2 + l * s, y:pvHor() + PV.f * PV.h / d, s};
 }
 function s2w(p){
-  const d = PV.f * PV.h / Math.max(6, p.y - pvHor());
-  return {x:PV.x + (p.x - W / 2) * d / PV.f, y:pvC() - Math.min(d, PV.far)};
+  const d = Math.min(PV.far, PV.f * PV.h / Math.max(6, p.y - pvHor())), l = (p.x - W / 2) * d / PV.f, fw = d - PV.back;
+  return {x:PV.x + l * PV.cs + fw * PV.sn, y:PV.y + l * PV.sn - fw * PV.cs};
 }
-// 서 있는 그림: 발(y) 깊이의 크기로 똑바로
-function pvAt(c, y){
-  const d = pvD(y); if (d < PV.near) return false;
-  const s = PV.f / d;
-  c.setTransform(s, 0, 0, s, W / 2 - PV.x * s + PV.shx, pvHor() + PV.f * PV.h / d - y * s + PV.shy);
+// 서 있는 그림: 발(x, y) 깊이의 크기로 똑바로
+function pvAt(c, x, y){
+  const [l, d] = pvLD(x, y); if (d < PV.near) return false;
+  const s = PV.f / d, sx = W / 2 + l * s, sy = pvHor() + PV.f * PV.h / d;
+  c.setTransform(s, 0, 0, s, sx - x * s + PV.shx, sy - y * s + PV.shy);
   c.globalAlpha = clamp((PV.far + 200 - d) / 500, 0, 1);
   return true;
 }
-// 땅에 깔린 표시(동그라미·위험 구역): 그 자리에서 눕혀서
+// 땅에 깔린 표시(동그라미·위험 구역): 그 자리에서 눕혀서 (원근 투영을 그 점에서 1차 근사)
 function pvAtG(c, x0, y0){
-  const d = pvD(y0); if (d < PV.near) return false;
-  const a = PV.f / d, k = (x0 - PV.x) * PV.f / (d * d), e = PV.f * PV.h / (d * d);
-  const sx = W / 2 + (x0 - PV.x) * a, sy = pvHor() + PV.f * PV.h / d;
-  c.setTransform(a, 0, k, e, sx - a * x0 - k * y0 + PV.shx, sy - e * y0 + PV.shy);
+  const [l, d] = pvLD(x0, y0); if (d < PV.near) return false;
+  const F = PV.f, d2 = d * d, cs = PV.cs, sn = PV.sn;
+  const a = F * (cs * d - l * sn) / d2, k = F * (sn * d + l * cs) / d2, b = -F * PV.h * sn / d2, e = F * PV.h * cs / d2;
+  const sx = W / 2 + l * F / d, sy = pvHor() + F * PV.h / d;
+  c.setTransform(a, b, k, e, sx - a * x0 - k * y0 + PV.shx, sy - b * x0 - e * y0 + PV.shy);
   return true;
 }
+// 우주가 바라보는 방향을 카메라 기준으로 바꿔서 그려요(앞으로 걸으면 등이 보이게)
+function pvHeroSwap(){
+  const hx = P.hx != null ? P.hx : [0, 0, -1, 1][P.dir || 0], hy = P.hy != null ? P.hy : [1, -1, 0, 0][P.dir || 0];
+  const l = hx * PV.cs + hy * PV.sn, fw = hx * PV.sn - hy * PV.cs, keep = {dir:P.dir, face:P.face, d8:P.d8};
+  P.dir = Math.abs(l) > Math.abs(fw) ? (l < 0 ? 2 : 3) : (fw > 0 ? 1 : 0);
+  if (Math.abs(l) > .2) P.face = l < 0 ? -1 : 1;
+  P.d8 = (Math.round(Math.atan2(-fw, l) / (Math.PI / 4)) + 8) % 8;
+  return keep;
+}
+const pvLocked = () => typeof cv !== 'undefined' && document.pointerLockElement === cv;
+function pvLook(dx){ PV.yaw = (PV.yaw + dx * .0032) % (Math.PI * 2); }
 function toggleView(){
-  PV.on = !PV.on; PV.x = P.x; PV.y = P.y; sfx('click');
-  toast(PV.on ? '🎥 3인칭 시점이에요. 다시 누르면 원래대로!' : '🗺️ 원래 시점으로 돌아왔어요.');
+  PV.on = !PV.on; PV.x = P.x; PV.y = P.y; PV.yaw = 0; sfx('click');
+  if (!PV.on && pvLocked()) document.exitPointerLock();
+  toast(PV.on ? '🎥 3인칭 시점이에요. 화면을 누르면 마우스로 둘러봐요!' : '🗺️ 원래 시점으로 돌아왔어요.');
   viewBtnSync();
 }
 function viewBtnSync(){
@@ -2853,9 +2866,9 @@ function pvGL(){
   if (!gl) return PG = {fail:true};
   const sh = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); return s; };
   const pr = gl.createProgram();
-  gl.attachShader(pr, sh(gl.VERTEX_SHADER, `attribute vec2 q; uniform vec2 o; uniform float T; uniform vec4 u; uniform vec4 v; varying vec2 uv; varying float dd;
-    void main(){ vec2 a = o + q * T; float d = u.y - a.y; dd = d; uv = q;
-      gl_Position = vec4((a.x - u.x) * 2.0 * u.z / v.x, d * (1.0 - 2.0 * v.z / v.y) - 2.0 * u.z * u.w / v.y, 2.0 * v.w - d, d); }`));
+  gl.attachShader(pr, sh(gl.VERTEX_SHADER, `attribute vec2 q; uniform vec2 o; uniform float T; uniform vec4 u; uniform vec4 v; uniform vec3 r; varying vec2 uv; varying float dd;
+    void main(){ vec2 a = o + q * T, e = a - u.xy; float l = e.x * r.x + e.y * r.y, d = r.z + e.x * r.y - e.y * r.x; dd = d; uv = q;
+      gl_Position = vec4(l * 2.0 * u.z / v.x, d * (1.0 - 2.0 * v.z / v.y) - 2.0 * u.z * u.w / v.y, 2.0 * v.w - d, d); }`));
   gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, `precision mediump float; uniform sampler2D tx; uniform vec3 fog; uniform float far; varying vec2 uv; varying float dd;
     void main(){ if (dd > far) discard; vec4 c = texture2D(tx, uv); float f = smoothstep(far * .4, far, dd); gl_FragColor = vec4(mix(c.rgb, fog, f * .9), 1.0); }`));
   gl.linkProgram(pr);
@@ -2865,7 +2878,7 @@ function pvGL(){
   const qa = gl.getAttribLocation(pr, 'q'); gl.enableVertexAttribArray(qa); gl.vertexAttribPointer(qa, 2, gl.FLOAT, false, 0, 0);
   const U = n => gl.getUniformLocation(pr, n);
   const an = gl.getExtension('EXT_texture_filter_anisotropic') || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
-  return PG = {cv, gl, o:U('o'), T:U('T'), u:U('u'), v:U('v'), fog:U('fog'), far:U('far'), an, anMax:an ? Math.min(8, gl.getParameter(an.MAX_TEXTURE_MAX_ANISOTROPY_EXT)) : 0};
+  return PG = {cv, gl, o:U('o'), T:U('T'), u:U('u'), v:U('v'), fog:U('fog'), far:U('far'), r:U('r'), an, anMax:an ? Math.min(8, gl.getParameter(an.MAX_TEXTURE_MAX_ANISOTROPY_EXT)) : 0};
 }
 function pvTex(tx, ty, budget){
   const k = tx + ',' + ty, gl = PG.gl;
@@ -2892,18 +2905,24 @@ function pvGround(ctx){
   const S = seasonOf(G.week), hor = pvHor();
   ctx.fillStyle = PAL[S].g; ctx.fillRect(0, hor, W, H - hor);
   const g = pvGL(); if (g.fail) return;
-  const gl = g.gl, C = pvC();
+  const gl = g.gl;
   gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.uniform4f(g.u, PV.x, C, PV.f, PV.h); gl.uniform4f(g.v, W, H, hor, PV.near);
+  gl.uniform4f(g.u, PV.x, PV.y, PV.f, PV.h); gl.uniform4f(g.v, W, H, hor, PV.near); gl.uniform3f(g.r, PV.cs, PV.sn, PV.back);
   gl.uniform1f(g.T, TILE); gl.uniform1f(g.far, PV.far); gl.uniform3fv(g.fog, hex3(PV_FOG[S]));
-  const budget = {n:3};
-  const ty1 = Math.floor((C - PV.near) / TILE), ty0 = Math.floor((C - PV.far) / TILE);
-  for (let ty = ty1; ty >= ty0; ty--) {                   // 가까운 줄부터 (새 땅 조각은 한 장면에 3장까지만 만들어요)
-    const d = Math.min(PV.far, C - ty * TILE), hw = W / 2 * d / PV.f + TILE;
-    for (let tx = Math.floor((PV.x - hw) / TILE); tx <= Math.floor((PV.x + hw) / TILE); tx++) {
-      const t = pvTex(tx, ty, budget); if (!t) continue;
-      gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform2f(g.o, tx * TILE, ty * TILE); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  // 보이는 사다리꼴을 감싸는 땅 조각만, 가까운 것부터 (새 땅 조각은 한 장면에 3장까지만 만들어요)
+  const cn = [[PV.near, -1], [PV.near, 1], [PV.far, -1], [PV.far, 1]].map(([d, sd]) => { const l = sd * W / 2 * d / PV.f, fw = d - PV.back; return [PV.x + l * PV.cs + fw * PV.sn, PV.y + l * PV.sn - fw * PV.cs]; });
+  const xs = cn.map(c => c[0]), ys = cn.map(c => c[1]), list = [], M = TILE * .72;
+  for (let ty = Math.floor(Math.min(...ys) / TILE) - 1; ty <= Math.floor(Math.max(...ys) / TILE) + 1; ty++)
+    for (let tx = Math.floor(Math.min(...xs) / TILE) - 1; tx <= Math.floor(Math.max(...xs) / TILE) + 1; tx++) {
+      const [l, d] = pvLD((tx + .5) * TILE, (ty + .5) * TILE);
+      if (d < PV.near - M || d > PV.far + M || Math.abs(l) > W / 2 * Math.max(d, PV.near) / PV.f + M) continue;
+      list.push([d, tx, ty]);
     }
+  list.sort((a2, b2) => a2[0] - b2[0]);
+  const budget = {n:3};
+  for (const [, tx, ty] of list) {
+    const t = pvTex(tx, ty, budget); if (!t) continue;
+    gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform2f(g.o, tx * TILE, ty * TILE); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
   ctx.drawImage(g.cv, 0, 0);
 }
@@ -2914,7 +2933,7 @@ function pvSky(ctx){
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, hor + 60);
   const R = srand(91);
   for (const [k, col, amp, base] of [[.012, mix(fog, '#7a9ab8', .45), 120, 30], [.03, mix(fog, '#6a9a7a', .5), 70, 8]]) {
-    const off = -PV.x * k;
+    const off = PV.yaw * 1080 * -1 - PV.x * k * .3;
     ctx.beginPath(); ctx.moveTo(0, hor + 10);
     for (let x = -200; x <= W + 200; x += 40) { const X = x - ((off % 1600) + 1600) % 1600, wx = (x - off) / 260;
       ctx.lineTo(x, hor + base - amp * (.55 + .45 * Math.sin(wx) * Math.sin(wx * .37 + 1.3)) * (.7 + .3 * Math.sin(wx * 2.1))); }
@@ -2924,12 +2943,11 @@ function pvSky(ctx){
 }
 
 function render3D(ctx, dt, T){
-  const k = Math.min(1, dt * 7); PV.x += (P.x - PV.x) * k; PV.y += (P.y - PV.y) * k;
+  const k = Math.min(1, dt * 7); PV.x += (P.x - PV.x) * k; PV.y += (P.y - PV.y) * k; PV.cs = Math.cos(PV.yaw); PV.sn = Math.sin(PV.yaw);
   PV.shx = FX.shake > 0 ? rnd(-1, 1) * FX.shake * 16 : 0; PV.shy = FX.shake > 0 ? rnd(-1, 1) * FX.shake * 12 : 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true;
   pvSky(ctx); pvGround(ctx);
-  const C = pvC();
-  const vis = (x, y, m = 260) => { const d = C - y; return d > PV.near - m && d < PV.far + m && Math.abs(x - PV.x) < W / 2 * Math.max(d, PV.near) / PV.f + m + 120; };
+  const vis = (x, y, m = 260) => { const [l, d] = pvLD(x, y); return d > PV.near - m && d < PV.far + m && Math.abs(l) < W / 2 * Math.max(d, PV.near) / PV.f + m + 120; };
   const w = G.week, plantOk = TASKS.plant.ok(w);
   // 땅 위 표시
   for (let i = 0; i < G.trees.length; i++) {
@@ -2940,18 +2958,21 @@ function render3D(ctx, dt, T){
   }
   // 서 있는 것들 (먼 것부터)
   const E = collectEntities(ctx, vis, T, w);
-  E.sort((a, b) => a[0] - b[0]);
+  for (const e of E) { if (e[0] > 1e8) { e[0] = P.y; e[2] = P.x; } e.d = e[0] < -1e8 ? 1e9 : pvLD(e[2], e[0])[1]; }
+  E.sort((a, b) => b.d - a.d);
+  const keep = pvHeroSwap();
   for (const e of E) {
     if (e[0] < -1e8) { ctx.setTransform(1, 0, 0, 1, 0, 0); e[1](); continue; } // 보스 위험 구역은 자기가 눕혀 그려요
-    if (!pvAt(ctx, e[0] > 1e8 ? P.y : e[0])) continue;
+    if (!pvAt(ctx, e[2], e[0])) continue;
     e[1]();
   }
   ctx.globalAlpha = 1;
-  if (!ssAnim && pvAt(ctx, P.y)) { ctx.globalAlpha = 1; drawHeroGhost(ctx); }
+  if (!ssAnim && pvAt(ctx, P.x, P.y)) { ctx.globalAlpha = 1; drawHeroGhost(ctx); }
+  Object.assign(P, keep);
   ctx.globalAlpha = 1;
   for (const m of mist) if (pvAtG(ctx, m.x, m.y)) { ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 7); ctx.fillStyle = `rgba(235,248,255,${m.a})`; ctx.fill(); }
   if (seasonOf(w) === 'spring' || seasonOf(w) === 'summer') for (const f of flies) {
-    if (!vis(f.x, f.y) || !pvAt(ctx, f.y + 60)) continue;
+    if (!vis(f.x, f.y) || !pvAt(ctx, f.x, f.y + 60)) continue;
     const fl = Math.abs(Math.sin(f.t * 14)) * 7 + 2;
     ctx.fillStyle = f.c; ctx.strokeStyle = INK; ctx.lineWidth = 1.4;
     for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(f.x + s * fl * .6, f.y, fl, 5, 0, 0, 7); ctx.fill(); ctx.stroke(); }
@@ -2961,7 +2982,7 @@ function render3D(ctx, dt, T){
   for (let i = 0; i < G.trees.length; i++) {
     const p = treePos(i);
     if ((p.x - P.x) ** 2 + (p.y - P.y) ** 2 > 520 * 520) continue;
-    const k2 = taskFor(i); if (!k2 || (k2 === 'plant' && G.money < SAPLING) || !pvAt(ctx, p.y)) continue;
+    const k2 = taskFor(i); if (!k2 || (k2 === 'plant' && G.money < SAPLING) || !pvAt(ctx, p.x, p.y)) continue;
     const by = p.y - (G.trees[i] ? (G.trees[i].age === 0 ? 140 : 205) : 50) + Math.sin(T * 3 + i) * 4;
     ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(p.x, by, 15, 0, 7); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
     ctx.font = '17px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(TASKS[k2].ic, p.x, by + 1); ctx.textBaseline = 'alphabetic';
@@ -2973,7 +2994,7 @@ function render3D(ctx, dt, T){
     const ty = tg.kind === 'tree' ? tg.y - 4 : tg.y;
     if (pvAtG(ctx, tg.x, ty)) { ctx.globalAlpha = 1; ctx.beginPath(); ell(ctx, tg.x, ty, 36 + Math.sin(T * 6) * 3, 13); ctx.lineWidth = 4; ctx.strokeStyle = '#ffd25e'; ctx.stroke(); }
     const lab = targetLabel(tg);
-    if (lab && pvAt(ctx, P.y)) {
+    if (lab && pvAt(ctx, P.x, P.y)) {
       ctx.globalAlpha = 1; const bx = P.x, by = P.y - 148;
       ctx.font = '22px Jua'; const tw = ctx.measureText(lab).width + 56;
       ctx.beginPath(); rr(ctx, bx - tw / 2, by - 22, tw, 40, 14); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
@@ -2985,7 +3006,7 @@ function render3D(ctx, dt, T){
   drawFx(ctx);
   for (const f of floats) {
     if (f.age == null) f.age = 0; f.age += dt;
-    if (!pvAt(ctx, (f.y0 == null ? (f.y0 = f.y) : f.y0) + 110)) continue;
+    if (!pvAt(ctx, f.x, (f.y0 == null ? (f.y0 = f.y) : f.y0) + 110)) continue;
     const pop = f.pop ? 1 + Math.max(0, 1 - f.age / f.pop) * .7 : 1;
     ctx.globalAlpha = clamp(f.t * 2, 0, 1);
     ctx.font = Math.round((f.sz || 26) * pop) + 'px Jua'; ctx.textAlign = 'center'; ctx.lineWidth = 6; ctx.strokeStyle = '#fffaf1'; ctx.strokeText(f.s, f.x, f.y); ctx.fillStyle = f.c || INK; ctx.fillText(f.s, f.x, f.y);
@@ -2997,6 +3018,11 @@ function render3D(ctx, dt, T){
   drawHurtVignette(ctx);
   drawSkyFx(ctx, dt, T);
   drawHuntOverlay(ctx, T);
+  if (!pvLocked() && UI.free()) { // 둘러보기 안내
+    const t = '🖱️ 화면을 누르면 마우스로 둘러봐요 · Esc로 마우스 풀기'; ctx.font = '20px Jua'; const tw = ctx.measureText(t).width + 36;
+    ctx.beginPath(); rr(ctx, W / 2 - tw / 2, H - 176, tw, 38, 19); ctx.fillStyle = 'rgba(255,250,241,.9)'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.fillText(t, W / 2, H - 150); ctx.textAlign = 'left';
+  }
 }
 
 // ===== 사과골 마을 (과수원 서쪽) =====
@@ -3239,16 +3265,16 @@ function drawBigTree(c, x, y){
   c.restore();
 }
 function villageEntities(ctx, add, vis){
-  for (const b of VB) if (vis(b.x, b.y, 300)) add(b.y, () => drawVHouse(ctx, b));
-  if (vis(JEONGJA.x, JEONGJA.y, 300)) add(JEONGJA.y, () => drawJeongja(ctx, JEONGJA.x, JEONGJA.y));
-  if (vis(BIGTREE.x, BIGTREE.y, 340)) add(BIGTREE.y, () => drawBigTree(ctx, BIGTREE.x, BIGTREE.y));
-  for (const t of VTREES) if (vis(t.x, t.y, 200)) add(t.y, () => drawOak(ctx, t.x, t.y, .62));
-  if (vis(PLAY.x, PLAY.y, 400)) { add(PLAY.y - 4, () => drawPlayground(ctx, PLAY.x, PLAY.y)); add(PLAY.y + 140, () => drawSign(ctx, PLAY.x, PLAY.y + 140, '🛝 사과골 놀이터')); }
-  if (vis(-760, 1330)) add(1330, () => drawSign(ctx, -760, 1330, '🏡 사과골 마을'));
+  for (const b of VB) if (vis(b.x, b.y, 300)) add(b.y, b.x, () => drawVHouse(ctx, b));
+  if (vis(JEONGJA.x, JEONGJA.y, 300)) add(JEONGJA.y, JEONGJA.x, () => drawJeongja(ctx, JEONGJA.x, JEONGJA.y));
+  if (vis(BIGTREE.x, BIGTREE.y, 340)) add(BIGTREE.y, BIGTREE.x, () => drawBigTree(ctx, BIGTREE.x, BIGTREE.y));
+  for (const t of VTREES) if (vis(t.x, t.y, 200)) add(t.y, t.x, () => drawOak(ctx, t.x, t.y, .62));
+  if (vis(PLAY.x, PLAY.y, 400)) { add(PLAY.y - 4, PLAY.x, () => drawPlayground(ctx, PLAY.x, PLAY.y)); add(PLAY.y + 140, PLAY.x, () => drawSign(ctx, PLAY.x, PLAY.y + 140, '🛝 사과골 놀이터')); }
+  if (vis(-760, 1330)) add(1330, -760, () => drawSign(ctx, -760, 1330, '🏡 사과골 마을'));
   // 화가의 이젤
   const EZ = vxy(675, 2352);
-  if (vis(EZ[0], EZ[1])) add(EZ[1], () => { ctx.save(); ctx.translate(EZ[0], EZ[1]); line(ctx, [-12, 0, 0, -58, 12, 0], 3, '#8a5432'); cel(ctx, cc => rr(cc, -16, -64, 32, 26, 2), '#ffffff', '#e0e0e0', 1, 1, 2.2); ctx.beginPath(); ctx.arc(-4, -52, 6, 0, 7); ctx.fillStyle = '#e8423a'; ctx.fill(); ctx.beginPath(); ctx.arc(6, -46, 4, 0, 7); ctx.fillStyle = '#5cb85c'; ctx.fill(); ctx.restore(); });
-  for (const n of NPCS) if (vis(n.x, n.y)) add(n.y, () => drawPerson(ctx, n.x, n.y, n.look, n.dir, n.walk, 0));
+  if (vis(EZ[0], EZ[1])) add(EZ[1], EZ[0], () => { ctx.save(); ctx.translate(EZ[0], EZ[1]); line(ctx, [-12, 0, 0, -58, 12, 0], 3, '#8a5432'); cel(ctx, cc => rr(cc, -16, -64, 32, 26, 2), '#ffffff', '#e0e0e0', 1, 1, 2.2); ctx.beginPath(); ctx.arc(-4, -52, 6, 0, 7); ctx.fillStyle = '#e8423a'; ctx.fill(); ctx.beginPath(); ctx.arc(6, -46, 4, 0, 7); ctx.fillStyle = '#5cb85c'; ctx.fill(); ctx.restore(); });
+  for (const n of NPCS) if (vis(n.x, n.y)) add(n.y, n.x, () => drawPerson(ctx, n.x, n.y, n.look, n.dir, n.walk, 0));
 }
 function drawVillageTags(ctx){
   ctx.font = '17px Jua'; ctx.textAlign = 'center';
@@ -3256,7 +3282,7 @@ function drawVillageTags(ctx){
     const d = Math.hypot(n.x - P.x, n.y - P.y); if (d > 300) continue;
     ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
     const tw = ctx.measureText(n.name).width + 18, ty = n.y - (n.look.kid ? 104 : 136);
-    if (PV.on && !pvAt(ctx, n.y)) continue;
+    if (PV.on && !pvAt(ctx, n.x, n.y)) continue;
     ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
     ctx.beginPath(); rr(ctx, n.x - tw / 2, ty - 18, tw, 25, 10); ctx.fillStyle = 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.fillText(n.name, n.x, ty);
@@ -3602,7 +3628,7 @@ function drawFx(c){
     c.restore();
   }
   for (const p of FX.parts) {
-    if (PV.on && !pvAt(c, p.y + 60)) continue;
+    if (PV.on && !pvAt(c, p.x, p.y + 60)) continue;
     const a = clamp(p.t / p.t0, 0, 1); c.globalAlpha = a;
     c.save(); c.translate(p.x, p.y); c.rotate(p.t * 9);
     c.beginPath(); for (let k = 0; k < 4; k++) { const an = k * Math.PI / 2; c.lineTo(Math.cos(an) * p.r, Math.sin(an) * p.r); c.lineTo(Math.cos(an + .785) * p.r * .4, Math.sin(an + .785) * p.r * .4); } c.closePath();
@@ -4025,21 +4051,21 @@ function drawNongmak(c, x, y){
 }
 function huntEntities(ctx, add, vis, T){
   if (!FOREST) buildForest();
-  if (vis(SPOT.nongmak.x, SPOT.nongmak.y, 300)) add(SPOT.nongmak.y, () => drawNongmak(ctx, SPOT.nongmak.x, SPOT.nongmak.y));
+  if (vis(SPOT.nongmak.x, SPOT.nongmak.y, 300)) add(SPOT.nongmak.y, SPOT.nongmak.x, () => drawNongmak(ctx, SPOT.nongmak.x, SPOT.nongmak.y));
   // 사냥터 경계: 숲 울타리와 입구 표지판
-  for (const o of BORDER) if (vis(o.x, o.y)) add(o.y, () => drawPine(ctx, o.x, o.y, o.s));
+  for (const o of BORDER) if (vis(o.x, o.y)) add(o.y, o.x, () => drawPine(ctx, o.x, o.y, o.s));
   const [gE, gS, gN, gW] = GATES;
-  if (vis(gE.x - 90, gE.y + 130)) add(gE.y + 130, () => drawSign(ctx, gE.x - 90, gE.y + 130, '🌲 동쪽 사냥터 →'));
-  if (vis(gS.x + 190, gS.y - 90)) add(gS.y - 90, () => drawSign(ctx, gS.x + 190, gS.y - 90, '🌲 남쪽 사냥터 ↓'));
-  if (vis(gN.x + 200, gN.y + 160)) add(gN.y + 160, () => drawSign(ctx, gN.x + 200, gN.y + 160, '🌲 북쪽 사냥터 ↑'));
-  if (vis(gW.x + 130, gW.y - 120)) add(gW.y - 120, () => drawSign(ctx, gW.x + 130, gW.y - 120, '← 서쪽 사냥터 🌲'));
-  for (const r of RESTS) if (vis(r.x, r.y, 400)) { add(r.y, () => drawRest(ctx, r, T)); }
+  if (vis(gE.x - 90, gE.y + 130)) add(gE.y + 130, gE.x - 90, () => drawSign(ctx, gE.x - 90, gE.y + 130, '🌲 동쪽 사냥터 →'));
+  if (vis(gS.x + 190, gS.y - 90)) add(gS.y - 90, gS.x + 190, () => drawSign(ctx, gS.x + 190, gS.y - 90, '🌲 남쪽 사냥터 ↓'));
+  if (vis(gN.x + 200, gN.y + 160)) add(gN.y + 160, gN.x + 200, () => drawSign(ctx, gN.x + 200, gN.y + 160, '🌲 북쪽 사냥터 ↑'));
+  if (vis(gW.x + 130, gW.y - 120)) add(gW.y - 120, gW.x + 130, () => drawSign(ctx, gW.x + 130, gW.y - 120, '← 서쪽 사냥터 🌲'));
+  for (const r of RESTS) if (vis(r.x, r.y, 400)) { add(r.y, r.x, () => drawRest(ctx, r, T)); }
   denEntities(ctx, add, vis, T);
-  for (const p of PEAKS) if (vis(p.x, p.y - 150 * p.s, 420 * p.s)) add(p.y, () => drawPeak(ctx, p.x, p.y, p.s, p.v));
-  for (const o of FOREST) if (vis(o.x, o.y)) add(o.y, () => o.k === 'pine' ? drawPine(ctx, o.x, o.y, o.s * 1.1) : o.k === 'oak' ? drawOak(ctx, o.x, o.y, o.s) : o.k === 'rock' ? drawRock(ctx, o.x, o.y, o.s) : drawBush(ctx, o.x, o.y, o.s * 1.2));
-  for (const f of FORAGE) if (vis(f.x, f.y)) add(f.y - 1, () => drawForage(ctx, f));
-  if (BFX.length) add(-1e9, () => drawBossFx(ctx));
-  for (const m of MONS) if (vis(m.x, m.y)) add(m.y, () => drawMon(ctx, m));
+  for (const p of PEAKS) if (vis(p.x, p.y - 150 * p.s, 420 * p.s)) add(p.y, p.x, () => drawPeak(ctx, p.x, p.y, p.s, p.v));
+  for (const o of FOREST) if (vis(o.x, o.y)) add(o.y, o.x, () => o.k === 'pine' ? drawPine(ctx, o.x, o.y, o.s * 1.1) : o.k === 'oak' ? drawOak(ctx, o.x, o.y, o.s) : o.k === 'rock' ? drawRock(ctx, o.x, o.y, o.s) : drawBush(ctx, o.x, o.y, o.s * 1.2));
+  for (const f of FORAGE) if (vis(f.x, f.y)) add(f.y - 1, f.x, () => drawForage(ctx, f));
+  if (BFX.length) add(-1e9, 0, () => drawBossFx(ctx));
+  for (const m of MONS) if (vis(m.x, m.y)) add(m.y, m.x, () => drawMon(ctx, m));
 }
 // 화면 위: 작은 지도, 습격 화살표, 구역 안내
 let miniBase = null;
@@ -4357,22 +4383,22 @@ function denEntities1(ctx, D, add, vis, T){
   if (!vis(D.x, D.y, D.rx + 400)) return;
   // 동굴 입구 (북쪽)
   const cx = D.x, cy = D.y - D.ry + 40;
-  if (vis(cx, cy, 400)) add(cy, () => drawCave(ctx, cx, cy, D.snow));
+  if (vis(cx, cy, 400)) add(cy, cx, () => drawCave(ctx, cx, cy, D.snow));
   // 바위 벽 (숲길 쪽은 비워 둬요)
   const R = srand(5150);
   for (let k = 0; k < 46; k++) {
     const a = k / 46 * 6.283; let da = Math.abs(a - D.gate); da = Math.min(da, 6.283 - da);
     if (da < .3 || Math.abs(a - 4.712) < .32) { R(); R(); continue; }
     const x = D.x + Math.cos(a) * (D.rx + 30), y = D.y + Math.sin(a) * (D.ry + 26), s = 1.5 + R() * .8; R();
-    if (vis(x, y, 200)) add(y, () => drawRock(ctx, x, y, s));
+    if (vis(x, y, 200)) add(y, x, () => drawRock(ctx, x, y, s));
   }
   // 횃불
   for (let k = 0; k < 8; k++) {
     const a = D.gate + .55 + k * .72, x = D.x + Math.cos(a) * D.rx * .86, y = D.y + Math.sin(a) * D.ry * .86;
-    if (vis(x, y, 200)) add(y, () => drawTorch(ctx, x, y, T + k));
+    if (vis(x, y, 200)) add(y, x, () => drawTorch(ctx, x, y, T + k));
   }
   const gx = D.x + Math.cos(D.gate) * (D.rx + 220), gy = D.y + Math.sin(D.gate) * (D.ry + 200);
-  if (D.sign && vis(gx, gy)) add(gy, () => drawSign(ctx, gx, gy, D.sign));
+  if (D.sign && vis(gx, gy)) add(gy, gx, () => drawSign(ctx, gx, gy, D.sign));
 }
 function drawCave(c, x, y, snow){
   c.save(); c.translate(x, y);
@@ -5687,7 +5713,7 @@ function drawRideTigerFB(c, dir, layer){
 let ghostCv = null;
 function drawHeroGhost(c){
   if (!riding()) { c.globalAlpha = .38; drawHero(c); c.globalAlpha = 1; return; }
-  const z = PV.on ? PV.f / Math.max(PV.near, pvD(P.y)) : cam.z, GW = 340, GH = 320, OX = 170, OY = 240, w = Math.ceil(GW * z), h = Math.ceil(GH * z);
+  const z = PV.on ? PV.f / PV.back : cam.z, GW = 340, GH = 320, OX = 170, OY = 240, w = Math.ceil(GW * z), h = Math.ceil(GH * z);
   if (!ghostCv) ghostCv = document.createElement('canvas');
   if (ghostCv.width !== w || ghostCv.height !== h) { ghostCv.width = w; ghostCv.height = h; }
   const g = ghostCv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
@@ -7459,6 +7485,7 @@ function treeInfo(i){
 
 // ----- 매 프레임 -----
 function update(dt){
+  if (pvLocked() && !UI.free()) document.exitPointerLock(); // 창이 뜨면 마우스를 풀어 줘요
   if (UI.free() && speed > 0 && !ssAnim) advance(dt / DAY_SEC * 14 * speed * (inHunt(P.x, P.y) ? .5 : 1)); // 사냥터에선 시간이 조금 천천히 (2026-10-12 밸런스 .1 → .5)
   updateSS(dt);
   // 하루 이동
@@ -7467,6 +7494,7 @@ function update(dt){
     if (actDown('up') || keys.ArrowUp) my -= 1; if (actDown('down') || keys.ArrowDown) my += 1;
     if (actDown('left') || keys.ArrowLeft) mx -= 1; if (actDown('right') || keys.ArrowRight) mx += 1;
     if (joy.on) { mx = joy.x; my = joy.y; }
+    if (PV.on && PV.yaw && (mx || my)) { const a = mx * PV.cs - my * PV.sn, b = mx * PV.sn + my * PV.cs; mx = a; my = b; } // 3인칭: 보는 방향 기준으로 걸어요
     if (mx || my) { P.tgt = null; P.pend = null; }
     else if (P.tgt) {
       const dx = P.tgt.x - P.x, dy = P.tgt.y - P.y, d = Math.hypot(dx, dy);
@@ -7482,7 +7510,7 @@ function update(dt){
     const ox = P.x, oy = P.y;
     moveBy(P, nx * sp * dt, ny * sp * dt);
     P.walk += dt * 11;
-    P.dir = Math.abs(nx) > Math.abs(ny) ? (nx < 0 ? 2 : 3) : (ny < 0 ? 1 : 0);
+    P.dir = Math.abs(nx) > Math.abs(ny) ? (nx < 0 ? 2 : 3) : (ny < 0 ? 1 : 0); P.hx = nx; P.hy = ny;
     { // 탈것 8방향: 대각선에서 키를 떼는 순간 한쪽 키만 남아도 안 바뀌게 0.08초 이어져야 바꿔요
       const n8 = (Math.round(Math.atan2(ny, nx) / (Math.PI / 4)) + 8) % 8;
       if (P.d8 == null) P.d8 = n8;
@@ -7643,7 +7671,7 @@ const endPtr = e => {
   if (!ptrs.has(e.pointerId)) return;
   ptrs.delete(e.pointerId);
   if (ptrs.size < 2) pinch = null;
-  if (drag && !drag.moved && e.type === 'pointerup' && UI.free()) clickWorld(toWorld(stagePt(e)));
+  if (drag && !drag.moved && e.type === 'pointerup' && UI.free() && !pvLocked()) clickWorld(toWorld(stagePt(e)));
   if (!ptrs.size) drag = null;
 };
 cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
@@ -7683,6 +7711,9 @@ function joyMove(e){
 $('#fBtn').addEventListener('pointerdown', e => { e.preventDefault(); pressF(); });
 const fUp = () => { P.touchBlock = false; };
 $('#atkBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroAttack(); });
+// 2026-10-15 3인칭에서 화면을 누르면 마우스가 잠기고, 좌우로 움직이면 둘러봐요(Esc로 풀기)
+cv.addEventListener('pointerdown', () => { if (PV.on && UI.free() && !pvLocked() && cv.requestPointerLock) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} } });
+document.addEventListener('mousemove', e => { if (PV.on && pvLocked()) pvLook(e.movementX || 0); });
 $('#viewBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleView(); });
 viewBtnSync();
 $('#rideBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (UI.free()) toggleRide(); });
