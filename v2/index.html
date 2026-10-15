@@ -704,9 +704,10 @@ function doTask(i, who){
     q = Math.round(clamp(q, 5, 99));
     const g = gradeOf(q);
     let bx = t.bx; if (t.dmg > 20 && bx > 1) bx--;
-    const key = t.v + '|' + g.k;
     const bin = AUTO ? G.stock : who === 'me' ? (G.carry = G.carry || {}) : (G.raw = G.raw || {});
-    bin[key] = (bin[key] || 0) + bx;
+    // 2026-10-15 달 요청: 한 나무에서도 특·상·보통·하가 섞여 나와요(상자마다 품질 ±12) → 분류 벨트에 여러 등급이 섞여 올라와요
+    for (let b = 0; b < bx; b++) { const key = t.v + '|' + gradeOf(clamp(q + rnd(-12, 12), 5, 99)).k; bin[key] = (bin[key] || 0) + 1; }
+    if (Math.random() < .3) G.blem = (G.blem || 0) + rint(1, 2); // 떨어지거나 부딪힌 흠과
     G.stats.boxes += bx; G.stats.yearBoxes += bx;
     if (q > G.stats.bestQ) G.stats.bestQ = q;
     unlock('harvest1');
@@ -825,6 +826,7 @@ function endDay(){
   }
   G.workerWorked = 0;
   ageStock(); // 2026-10-15 창고 사과 신선도
+  blemDaily(); // 2026-10-15 흠과 부탁
   G.day++;
   if (G.day >= 7) { G.day = 0; newWeek(); }
   genWeather();
@@ -2916,6 +2918,7 @@ function updateVillagers(dt){
   }
 }
 function talkNpc(n){
+  if (blemTalk(n)) return;
   const line = n.lines[n.li++ % n.lines.length].replace(/\{N\}/g, HN());
   if (n.shop) {
     talk(n, esc(line) + '<br>장비 사고 강화하는 건 우리 가게에서!', `<button class="btn" id="tOk">다음에요</button><button class="btn pri" id="gearGo">🎒 장비 보기</button>`);
@@ -4695,6 +4698,7 @@ function renderTodo(needSpray){
   if (quizReady('chief')) items.push({ic:'👴', t:'이장님 사과 퀴즈', n:'지금 가능', go:'chief'});
   const upcoming = VAR_KEYS.filter(v => G.trees.some(t => t && t.v === v && t.fr) && G.week < VARS[v].hv[0]);
   for (const v of upcoming) items.push({ic:'⏳', t:`${VARS[v].name} 수확은 ${VARS[v].hv[0]}주부터`, n:`${VARS[v].hv[0] - G.week}주 뒤`, done:true});
+  blemTodo(items);
   hqTodo(items);
   huntTodo(items);
   if (G.worker > 0) items.push({ic:'👷', t:'인부 아저씨 일하는 중', n:`남은 ${workerLeftTxt()}`, done:true});
@@ -4712,6 +4716,7 @@ function renderTodo(needSpray){
 function goTo(what){
   if (what === 'raid') { const m = MONS.find(m => m.raid && !m.dead); if (m) { P.tgt = {x:m.x, y:m.y}; P.pendMon = m; } return; }
   if (what === 'shop') { const n = NPCS.find(n => n.buyer); if (n) { P.tgt = {x:n.x + 55, y:n.y + 20}; P.pend = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20}; } return; }
+  if (what.startsWith && what.startsWith('npc:')) { const n = NPCS[+what.slice(4)]; if (n) { P.tgt = {x:n.x + 55, y:n.y + 20}; P.pend = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20}; } return; }
   if (what === 'shed') { P.tgt = {x:SPOT.shed.x, y:SPOT.shed.y + 40}; P.pend = {kind:'shed'}; return; }
   if (what === 'chief' || what === 'grandma' || what === 'hunter') { P.tgt = {x:SPOT[what].x + 50, y:SPOT[what].y + 30}; return; }
   const i = nearestOf(what);
@@ -5587,14 +5592,16 @@ const RETAIL_C = [
   {name:'등산객 가족', ic:'🥾'}, {name:'카페 사장님', ic:'☕'}, {name:'할머니 손주 선물', ic:'🎀'}, {name:'동네 반찬가게', ic:'🍱'}
 ];
 const RETAIL_MAX = 200000, RETAIL_P = .35;
+const RETAIL_LOW = [{name:'사과즙 공방', ic:'🧃'}, {name:'잼 만드는 할머니', ic:'🍯'}, {name:'마을 식당', ic:'🍲'}, {name:'주스 가게', ic:'🥤'}], RETAIL_LOW_P = .25;
 function retailUnit(gk){ const hi = clamp(gByK(gk).base * 1.07 * (G.b.cold ? 1.1 : 1) * shedMult(), 3, 10); return Math.min(RETAIL_MAX, Math.round(hi * 2 * 10) * 1000); }
 function retailWeek(){
   if (!G.retail) G.retail = [];
   G.retail = G.retail.filter(o => { if (o.year < G.year || o.due < G.week) { toast(`${o.name} 소매 주문 날짜가 지났어요`, 'bad'); return false; } return true; });
-  if (totalStock() < 2 || G.retail.length + offerCount('retail') >= (shedLv() >= 3 ? 3 : 2) || Math.random() > RETAIL_P + (shedLv() >= 2 ? .1 : 0)) return;
+  const lowOk = gradeN('C') >= 2; // 2026-10-15 달 요청: 즙·하과 소매 주문이 더 자주 와요
+  if (totalStock() < 2 || G.retail.length + offerCount('retail') >= (shedLv() >= 3 ? 3 : 2) || Math.random() > RETAIL_P + (shedLv() >= 2 ? .1 : 0) + (lowOk ? RETAIL_LOW_P : 0)) return;
   const gs = GRADES.map(g => g.k).filter(k => stockAtLeast(k) >= 2);
   if (!gs.length) return;
-  const t = pick(RETAIL_C), g = pick(gs);
+  const low = lowOk && Math.random() < .5, t = pick(low ? RETAIL_LOW : RETAIL_C), g = low ? 'C' : pick(gs);
   const o = {id:G.oid++, name:t.name, ic:t.ic, g, n:Math.min(rint(2, 6), stockAtLeast(g) + rint(0, 2)), unit:retailUnit(g), due:Math.min(52, G.week + 2), year:G.year};
   offerOrder('retail', o);
 }
@@ -5701,14 +5708,20 @@ function finishRetail(o){
 // 창고에서 F → 노란 박스를 내려놓고 창고 화면으로 바뀌어요.
 // 🍎 분류: 컨베이어 벨트에 지나가는 사과를 특·상·보통·하 색 통에 넣어요 → 등급별 재고(G.stock). 자동 분류기는 하 → 보통 → 상 → 특 순서로 하나씩 달아요.
 // 🎁 포장: 주문 고르기 → 등급 통을 눌러 종이상자에 담기 → 흠집 사과 골라내기 → 운송장 확인 도장 → 트럭으로 보내기. 큰 주문은 일꾼에게 맡길 수 있어요.
-const SORTERS = [{g:'C', price:1000000}, {g:'B', price:2000000}, {g:'A', price:3000000}, {g:'S', price:5000000}];
+// 2026-10-15 달 요청: 분류기가 너무 쉽게 업그레이드돼서 값 올림(100·200·300·500만 → 300·500·800·1200만), 켜고 끌 수 있고 돌릴 때 전기세(상자당 SORT_PWR)
+const SORTERS = [{g:'C', price:3000000}, {g:'B', price:5000000}, {g:'A', price:8000000}, {g:'S', price:12000000}];
+const SORT_PWR = 2000;
+const sorterOn = () => !G.sorterOff && Object.keys(G.sorter || {}).length > 0;
+function payPower(n){ const c = SORT_PWR * n; if (G.money < c) { G.sorterOff = 1; return false; } G.money -= c; G.powerBill = (G.powerBill || 0) + c; return true; }
 const G_TIP = {S:'크고 반짝반짝 빛나요', A:'크고 색이 고와요', B:'조금 작고 덜 익었어요', C:'작고 흠집이 있어요'};
 const TUB = {S:['#ff6b57', '#c8402e'], A:['#ffb13b', '#cc7a12'], B:['#5cc46c', '#2f8a40'], C:['#b0a49a', '#7d7066']};
 const AR = {S:31, A:27, B:23, C:19};
 const DEST = {'서울 단골 손님':'서울시 마포구 사과길 7', '캠핑장 사장님':'가평 별빛캠핑장', '옆 마을 빵집':'옆 마을 큰길 12 빵집', '유치원 간식':'해님 유치원',
   '등산객 가족':'산 아래 솔바람 민박', '카페 사장님':'읍내 사과나무 카페', '할머니 손주 선물':'부산시 해운대구 바다로 3', '동네 반찬가게':'마을 시장 3번 가게',
-  '추석 선물세트':'읍내 선물세트 포장센터', '로컬푸드 매장':'읍내 로컬푸드 직매장', '학교 급식':'햇살초등학교 급식실', '백화점 납품':'시내 백화점 식품관'};
-const BULK_N = 6, BULK_FEE = 10000, BAD_P = .2;
+  '추석 선물세트':'읍내 선물세트 포장센터', '사과즙 공방':'마을 사과즙 공방', '잼 만드는 할머니':'윗마을 감나무집', '마을 식당':'마을 시장 맛나식당', '주스 가게':'읍내 생과일 주스 가게', '로컬푸드 매장':'읍내 로컬푸드 직매장', '학교 급식':'햇살초등학교 급식실', '백화점 납품':'시내 백화점 식품관'};
+const BULK_N = 6, BULK_FEE = 10000, BAD_P = .1;
+// 2026-10-15 달 요청: 상자 하나에 사과 PK_APL개를 한 번 누를 때 하나씩 → 흰 보호망(낱개 포장) 씌우기 → 상자로. 운송장은 가끔(BILL_ERR) 틀리게 나와요.
+const PK_APL = 3, BILL_ERR = .25, NET = {x:84, y:330}, BASKET = {x:64, y:476};
 const SORT_X = {S:400, A:700, B:1000, C:1300};
 
 function shedInit(){ if (!G.raw) G.raw = {}; if (!G.carry) G.carry = {}; if (!G.sorter) G.sorter = {}; }
@@ -5730,7 +5743,7 @@ function buySorter(){
   toast(`🤖 '${gByK(s.g).name}' 자동 분류기를 달았어요! 이제 ${gByK(s.g).name} 사과는 기계가 알아서 골라요.`, 'gold');
   return true;
 }
-function sortAllNow(){ shedInit(); const n = rawN(); for (const k in G.raw) bagAdd(G.stock, k, G.raw[k]); G.raw = {}; return n; }
+function sortAllNow(){ shedInit(); const n = rawN(); if (!payPower(n)) return 0; for (const k in G.raw) bagAdd(G.stock, k, G.raw[k]); G.raw = {}; return n; }
 function unloadCarry(){
   shedInit(); const n = carryN(); if (!n) return 0;
   for (const k in G.carry) bagAdd(G.raw, k, G.carry[k]);
@@ -5814,6 +5827,8 @@ function openShed(mode, focus){
       const i = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(code);
       if (i >= 0) { if (SH.mode === 'sort') sortToBin(GRADES[i].k); else packTub(GRADES[i].k); return true; }
       if (code === 'KeyF' || code === 'Space') { const b = o.el.querySelector('#pkMain'); if (b && !b.disabled) b.click(); return true; }
+      if (SH.mode === 'pack' && code === 'KeyX') { packToss(); return true; }
+      if (SH.mode === 'pack' && code === 'KeyR') { packReprint(); return true; }
       return false;
     },
     render(m){ shedRender(m); }});
@@ -5833,14 +5848,15 @@ function shedRender(o){
   const raw = rawN(), pl = packList(), m = SH.mode;
   let h = `<div class="shBar"><button class="tab ${m === 'sort' ? 'on' : ''}" data-m="sort">🍎 사과 분류${raw ? ` <b>${raw}</b>` : ''}</button>
     <button class="tab ${m === 'pack' ? 'on' : ''}" data-m="pack">🎁 주문 포장${pl.length ? ` <b>${pl.length}</b>` : ''}</button>
-    <span class="shTubs">${GRADES.map(g => `<i style="background:${TUB[g.k][0]}">${g.name} ${gradeN(g.k)}</i>`).join('')}</span>
+    <span class="shTubs">${GRADES.map(g => `<i style="background:${TUB[g.k][0]}">${g.name} ${gradeN(g.k)}</i>`).join('')}<i style="background:#a8743a">🍂 흠과 ${G.blem || 0}</i></span>
     <button class="btn" id="shBook">📒 창고 장부 · 경매</button></div>`;
   if (m === 'sort') {
     const nx = nextSorter();
     h += `<div class="srtShop"><b>🤖 자동 분류기</b>${SORTERS.map(s => G.sorter[s.g] ? `<span class="own">✔ ${gByK(s.g).name}</span>`
       : s === nx ? `<button class="btn y" id="srtBuy" ${G.money >= s.price ? '' : 'disabled'}>${gByK(s.g).name} 분류기 달기 · ${won(s.price)}</button>` : `<span class="lock">🔒 ${gByK(s.g).name}</span>`).join('')}
-      ${!nx && raw ? `<button class="btn go" id="srtAll">⚡ ${raw}상자 한꺼번에 분류</button>` : ''}
-      <small>${raw ? '사과를 눌러 집고 → 알맞은 통을 눌러요. 통만 눌러도(또는 1~4 키) 맨 앞 사과가 들어가요. 사과 하나에 상자가 여러 개 묶여 있어요(10상자당 1개, 5~10번).' : carryN() ? '들고 있는 노란 박스가 있어요.' : '분류할 사과가 없어요. 밭에서 사과를 따서 노란 박스로 가져오세요.'}</small></div>
+      ${Object.keys(G.sorter).length ? `<button class="btn ${sorterOn() ? 'go' : ''}" id="srtTog">${sorterOn() ? '🔌 켜짐' : '⭘ 꺼짐'}</button><small>전기세 상자당 ${won(SORT_PWR)}${G.powerBill ? ` · 지금까지 ${won(G.powerBill)}` : ''}</small>` : ''}
+      ${!nx && raw && sorterOn() ? `<button class="btn go" id="srtAll">⚡ ${raw}상자 한꺼번에 분류 · ${won(SORT_PWR * raw)}</button>` : ''}
+      <small>${raw ? (sorterOn() ? '🔌 분류기가 켜져 있어요. ' : '') + '사과를 눌러 집고 → 알맞은 통을 눌러요. 통만 눌러도(또는 1~4 키) 맨 앞 사과가 들어가요. 사과 하나에 상자가 여러 개 묶여 있어요(10상자당 1개, 5~10번).' : carryN() ? '들고 있는 노란 박스가 있어요.' : '분류할 사과가 없어요. 밭에서 사과를 따서 노란 박스로 가져오세요.'}</small></div>
       <canvas id="shCv" width="1456" height="480"></canvas>`;
   } else {
     h += `<div class="pkWrap"><div class="pkList">${pl.length ? pl.map(e => { const o2 = e.o, ok = stockAtLeast(o2.g) >= o2.n, on = SH.pk && SH.pk.kind === e.kind && SH.pk.o === o2;
@@ -5854,7 +5870,8 @@ function shedRender(o){
   o.body.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { SH.mode = b.dataset.m; if (SH.mode === 'pack' && !SH.pk) { const e = packList().find(e => stockAtLeast(e.o.g) >= e.o.n); if (e) packPick(e); } shedRerender(); });
   $('#shBook').onclick = () => { UI.close(); setTimeout(() => uiStore(), 160); };
   const sb = $('#srtBuy'); if (sb) sb.onclick = () => { if (buySorter()) shedRerender(); };
-  const sa = $('#srtAll'); if (sa) sa.onclick = () => { SH.items = []; SH.grab = null; SH.queue = null; const n = sortAllNow(); sfx('coin'); toast(`⚡ 자동 분류기가 ${n}상자를 한꺼번에 나눴어요!`, 'good'); shedRerender(); };
+  const sa = $('#srtAll'); if (sa) sa.onclick = () => { const n = sortAllNow(); if (!n) { toast('전기세 낼 돈이 모자라서 분류기가 꺼졌어요. 직접 나눠요!', 'bad'); shedRerender(); return; } SH.items = []; SH.grab = null; SH.queue = null; sfx('coin'); toast(`⚡ 자동 분류기가 ${n}상자를 한꺼번에 나눴어요! (전기세 ${won(SORT_PWR * n)})`, 'good'); shedRerender(); };
+  const stg = $('#srtTog'); if (stg) stg.onclick = () => { G.sorterOff = sorterOn() ? 1 : 0; sfx('click'); shMsg(sorterOn() ? '🔌 분류기를 켰어요. 상자마다 전기세가 들어요.' : '⭘ 분류기를 껐어요. 이제 직접 나눠요!'); shedRerender(); };
   o.body.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { const e = packList().find(e => e.kind + ':' + e.o.id === b.dataset.pk); if (e) { packPick(e); shedRerender(); } });
   const cv = o.body.querySelector('#shCv');
   const pt = e => { const r = cv.getBoundingClientRect(); return {x:(e.clientX - r.left) * cv.width / r.width, y:(e.clientY - r.top) * cv.height / r.height}; };
@@ -5888,7 +5905,7 @@ function sortBatches(){
   for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
   return out;
 }
-const autoOf = it => !!G.sorter[it.gk];
+const autoOf = it => !G.sorterOff && !!G.sorter[it.gk];
 function sortUpdate(dt){
   const S = SH; S.msgT = Math.max(0, S.msgT - dt);
   for (const k in S.arms) S.arms[k] = Math.max(0, S.arms[k] - dt * 3);
@@ -5907,7 +5924,10 @@ function sortUpdate(dt){
     if (it.st === 'belt') {
       const px = it.x; it.x += S.spd * dt;
       const bx = SORT_X[it.gk];
-      if (autoOf(it) && px < bx && it.x >= bx) { S.arms[it.gk] = 1; dropTo(it, it.gk); }
+      if (autoOf(it) && px < bx && it.x >= bx) {
+        if (payPower(it.n)) { S.arms[it.gk] = 1; dropTo(it, it.gk); }
+        else { shMsg('💸 전기세 낼 돈이 모자라서 분류기가 꺼졌어요. 직접 나눠요!'); shedRerender(); }
+      }
       if (it.x > 1450) { it.st = 'gone'; S.queue.push(it.b); shMsg('🔄 놓친 사과는 한 바퀴 더 돌아요!'); }
     } else if (it.st === 'held') { it.x = S.ptr.x; it.y = S.ptr.y; }
     else if (it.st === 'drop') {
@@ -5967,7 +5987,7 @@ function drawSort(c, W2, H2){
     drawGApple(c, x - 82, 53, 'fuji', g.k, S.t);
     c.textAlign = 'left'; c.font = '25px Jua'; c.fillStyle = TUB[g.k][1]; c.fillText(g.name, x - 46, 46);
     c.font = '16px Jua'; c.fillStyle = INK; c.fillText(G_TIP[g.k], x - 46, 76);
-    c.font = '15px Jua'; c.fillStyle = G.sorter[g.k] ? '#2f6fb8' : '#8a7a6a'; c.textAlign = 'right'; c.fillText(G.sorter[g.k] ? '🤖 자동' : `[${i + 1}]`, x + 112, 40); c.textAlign = 'center';
+    c.font = '15px Jua'; c.fillStyle = G.sorter[g.k] ? '#2f6fb8' : '#8a7a6a'; c.textAlign = 'right'; c.fillText(G.sorter[g.k] && !G.sorterOff ? '🤖 자동' : `[${i + 1}]`, x + 112, 40); c.textAlign = 'center';
     c.save(); c.translate(x, 292 + b * 6); drawTub(c, 0, 0, 230 - b * 8, 120, g.k, gradeN(g.k)); c.restore();
     c.font = '20px Jua'; c.fillStyle = INK; c.fillText(`${gradeN(g.k)}상자`, x, 464);
   });
@@ -5989,7 +6009,7 @@ function drawSort(c, W2, H2){
 const PK_TUB_X = {S:120, A:330, B:540, C:750};
 function packPick(e){
   packRefund();
-  SH.pk = {kind:e.kind, o:e.o, boxes:Array.from({length:e.o.n}, () => null), step:'fill', sel:null, fly:[], stamp:0, truck:0, go:0};
+  SH.pk = {kind:e.kind, o:e.o, boxes:Array.from({length:e.o.n}, () => null), step:'fill', sel:null, fly:[], stamp:0, truck:0, go:0, st:null, bill:null, wrong:0};
   shMsg(`${gByK(e.o.g).name} 이상 통을 골라서 상자 ${e.o.n}개를 채워요.`);
 }
 function packRefund(){
@@ -5997,91 +6017,151 @@ function packRefund(){
   for (const b of pk.boxes) if (b) bagAdd(G.stock, b.key, 1);
   SH.pk = null;
 }
+const boxFull = b => b && b.apl.length >= PK_APL;
 function boxRects(n){
   const cols = Math.min(7, n), rows = Math.ceil(n / 7), out = [];
-  for (let i = 0; i < n; i++) { const r = Math.floor(i / 7), cIn = i % 7, cn = r < rows - 1 ? cols : n - r * 7, x0 = (1080 - cn * 140) / 2 + 10;
-    out.push({x:x0 + cIn * 140, y:(rows > 1 ? 300 : 360) + r * 110, w:120, h:82}); }
+  for (let i = 0; i < n; i++) { const r = Math.floor(i / 7), cIn = i % 7, cn = r < rows - 1 ? cols : n - r * 7, x0 = 170 + (900 - cn * 128) / 2 + 6;
+    out.push({x:x0 + cIn * 128, y:(rows > 1 ? 300 : 360) + r * 110, w:116, h:82}); }
   return out;
 }
 function tubOk(gk){ const pk = SH.pk; return pk && gIdx(gk) <= gIdx(pk.o.g); }
+// 통을 한 번 누르면 사과 한 알이 망 씌우는 자리로 와요
 function packTub(gk){
   const pk = SH.pk; if (!pk) { shMsg('왼쪽에서 주문을 먼저 골라요.'); return; }
   if (pk.step !== 'fill') return;
   if (!tubOk(gk)) { sfx('bad'); shMsg(`이 주문은 '${gByK(pk.o.g).name}' 이상만 보낼 수 있어요.`); return; }
-  if (pk.sel !== gk) { pk.sel = gk; sfx('click'); shMsg(`'${gByK(gk).name}' 통을 골랐어요. 통을 누를 때마다 한 상자씩 담겨요.`); shedRerender(); return; }
-  const i = pk.boxes.findIndex(b => !b); if (i < 0) { shMsg('상자가 다 찼어요! 테이프를 붙여요.'); return; }
-  if (!gradeN(gk)) { sfx('bad'); shMsg('이 통은 비었어요. 다른 통을 골라요.'); return; }
-  const key = takeOne(gk), r = boxRects(pk.boxes.length)[i];
-  pk.boxes[i] = {key, gk, bad:gk !== 'C' && Math.random() < BAD_P, f:0};
-  pk.fly.push({x0:PK_TUB_X[gk], y0:90, x1:r.x + 60, y1:r.y + 10, t:0, key});
+  if (pk.sel !== gk) { pk.sel = gk; sfx('click'); shMsg(`'${gByK(gk).name}' 통을 골랐어요. 누를 때마다 사과가 한 알씩 나와요.`); shedRerender(); return; }
+  if (pk.st) { sfx('bad'); shMsg('🤍 먼저 나온 사과에 보호망을 씌워요! (F / Space)'); return; }
+  const i = pk.boxes.findIndex(b => !boxFull(b)); if (i < 0) { shMsg('상자가 다 찼어요! 테이프를 붙여요.'); return; }
+  let b = pk.boxes[i];
+  if (b && b.gk !== gk) { sfx('bad'); shMsg(`이 상자는 '${gByK(b.gk).name}' 사과로 채우는 중이에요. ${gByK(b.gk).name} 통을 눌러요.`); return; }
+  if (!b) { if (!gradeN(gk)) { sfx('bad'); shMsg('이 통은 비었어요. 다른 통을 골라요.'); return; } b = pk.boxes[i] = {key:takeOne(gk), gk, apl:[], f:0}; }
+  pk.st = {box:i, gk, v:b.key.split('|')[0], bad:gk !== 'C' && Math.random() < BAD_P, t:0};
+  pk.fly.push({x0:PK_TUB_X[gk], y0:90, x1:NET.x, y1:NET.y - 6, t:0, key:b.key, gk, toSt:1});
   sfx('pick'); shedRerender();
+}
+// 흰 보호망을 씌워서 상자에 넣어요
+function packWrap(){
+  const pk = SH.pk; if (!pk || !pk.st) return;
+  const s = pk.st, b = pk.boxes[s.box], r = boxRects(pk.boxes.length)[s.box];
+  b.apl.push({bad:s.bad}); b.f = 0; pk.st = null;
+  pk.fly.push({x0:NET.x, y0:NET.y - 6, x1:r.x + 22 + (b.apl.length - 1) * 36, y1:r.y + 6, t:0, v:s.v, gk:s.gk, net:1, bad:s.bad});
+  sfx('plant'); if (boxFull(b) && pk.boxes.every(boxFull)) shMsg('📦 상자를 다 채웠어요! 테이프를 붙여요.'); shedRerender();
+}
+// 흠집 난 사과는 흠과 바구니로
+function packToss(){
+  const pk = SH.pk; if (!pk || !pk.st) return;
+  if (!pk.st.bad) { sfx('bad'); shMsg('멀쩡한 사과예요! 흠집이 있는 것만 바구니에 넣어요.'); return; }
+  pk.fly.push({x0:NET.x, y0:NET.y - 6, x1:BASKET.x, y1:BASKET.y - 10, t:0, bad:1});
+  pk.st = null; G.blem = (G.blem || 0) + 1; sfx('snip');
+  shMsg(`👍 흠집 사과를 골라냈어요! 흠과 바구니 ${G.blem}개. 같은 통에서 한 알 더 꺼내요.`); shedRerender();
 }
 function packClick(p){
   const pk = SH.pk; if (!pk) return;
   for (const g of GRADES) if (Math.abs(p.x - PK_TUB_X[g.k]) < 100 && p.y > 20 && p.y < 200) { packTub(g.k); return; }
+  if (Math.hypot(p.x - BASKET.x, p.y - BASKET.y) < 56) { packToss(); return; }
+  if (Math.hypot(p.x - NET.x, p.y - NET.y) < 60) { if (pk.st) packWrap(); return; }
   const rs = boxRects(pk.boxes.length);
   for (let i = 0; i < rs.length; i++) { const r = rs[i]; if (p.x > r.x && p.x < r.x + r.w && p.y > r.y - 30 && p.y < r.y + r.h) { packBox(i); return; } }
 }
 function packBox(i){
-  const pk = SH.pk, b = pk.boxes[i];
+  const pk = SH.pk;
   if (pk.step === 'fill') {
-    if (b && b.bad) { b.bad = false; sfx('snip'); shMsg('👍 흠집 사과를 골라냈어요! (즙 바구니로 쏙)'); pk.fly.push({x0:boxRects(pk.boxes.length)[i].x + 60, y0:boxRects(pk.boxes.length)[i].y, x1:60, y1:480, t:0, bad:1}); return; }
-    if (pk.boxes.every(Boolean)) packSeal();
-    else shMsg('먼저 위의 통을 눌러 상자를 다 채워요.');
+    if (pk.st) packWrap();
+    else if (pk.boxes.every(boxFull)) packSeal();
+    else shMsg('위의 통을 눌러 사과를 한 알씩 꺼내요.');
   } else if (pk.step === 'ship') packGo();
 }
-function packSeal(){ const pk = SH.pk; if (!pk || !pk.boxes.every(Boolean)) return; pk.step = 'bill'; sfx('snip'); shMsg('📦 테이프 쫙! 이제 운송장을 확인해요.'); shedRerender(); }
-function packStamp(){ const pk = SH.pk; if (!pk || pk.step !== 'bill') return; pk.step = 'ship'; pk.stamp = 1; pk.truck = 0; sfx('pop'); shMsg('🚚 트럭이 왔어요! 상자를 누르거나 보내기를 눌러요.'); shedRerender(); }
+// 운송장: 가끔 받는 분·상자 수·등급이 주문과 다르게 나와요 → 다시 뽑아야 해요
+function makeBill(o){
+  const b = {name:o.name, n:o.n, g:o.g, err:null};
+  if (Math.random() < BILL_ERR) {
+    const t = pick(['n', 'name', 'g']);
+    if (t === 'n') b.n = o.n + pick([-2, -1, 1, 2, 3]) || o.n + 1;
+    else if (t === 'name') b.name = pick(Object.keys(DEST).filter(k => k !== o.name));
+    else b.g = pick(GRADES.map(g => g.k).filter(k => k !== o.g));
+    b.err = t;
+  }
+  return b;
+}
+function packSeal(){ const pk = SH.pk; if (!pk || pk.st || !pk.boxes.every(boxFull)) return; pk.step = 'bill'; pk.bill = makeBill(pk.o); sfx('snip'); shMsg('📦 테이프 쫙! 운송장이 주문이랑 똑같은지 봐요.'); shedRerender(); }
+function packStamp(){ const pk = SH.pk; if (!pk || pk.step !== 'bill') return; pk.wrong = pk.bill.err ? 1 : 0; pk.step = 'ship'; pk.stamp = 1; pk.truck = 0; sfx('pop'); shMsg('🚚 트럭이 왔어요! 상자를 누르거나 보내기를 눌러요.'); shedRerender(); }
+function packReprint(){
+  const pk = SH.pk; if (!pk || pk.step !== 'bill') return;
+  const was = pk.bill.err; pk.bill = {name:pk.o.name, n:pk.o.n, g:pk.o.g, err:null}; sfx(was ? 'good' : 'click');
+  shMsg(was ? '🕵️ 틀린 운송장을 잡아냈어요! 새로 뽑았어요.' : '맞는 운송장이었어요. 그래도 새로 뽑았어요.'); shedRerender();
+}
 function packGo(){ const pk = SH.pk; if (!pk || pk.step !== 'ship') return; pk.step = 'go'; pk.go = 0; sfx('whirl'); shedRerender(); }
 function packWorker(){
   const pk = SH.pk; if (!pk || pk.step !== 'fill') return;
-  const left = pk.boxes.filter(b => !b).length, fee = G.worker > 0 ? 0 : BULK_FEE * left;
+  if (pk.st) { shMsg('🤍 나온 사과부터 망을 씌우거나 골라내요.'); return; }
+  const left = pk.boxes.filter(b => !boxFull(b)).length, fee = G.worker > 0 ? 0 : BULK_FEE * left;
   if (G.money < fee) { toast('돈이 모자라요', 'bad'); return; }
   const order = GRADES.slice(0, gIdx(pk.o.g) + 1).map(g => g.k).reverse();
-  let need = left; for (const gk of order) while (need && gradeN(gk)) { const i = pk.boxes.findIndex(b => !b); pk.boxes[i] = {key:takeOne(gk), gk, bad:false, f:1}; need--; }
-  if (need) { shMsg('창고에 맞는 사과가 모자라요.'); shedRerender(); return; }
-  pk.boxes.forEach(b => { b.bad = false; b.f = 1; });
-  G.money -= fee; pk.step = 'bill'; sfx('snip');
-  shMsg(fee ? `👷 일꾼이 ${left}상자를 담고 테이프까지 붙였어요. (${won(fee)})` : '👷 인부 아저씨가 다 담고 테이프까지 붙였어요!');
+  let need = pk.boxes.filter(b => !b).length;
+  if (need > order.reduce((a, g) => a + gradeN(g), 0)) { shMsg('창고에 맞는 사과가 모자라요.'); shedRerender(); return; }
+  for (const gk of order) while (need && gradeN(gk)) { const i = pk.boxes.findIndex(b => !b); pk.boxes[i] = {key:takeOne(gk), gk, apl:[], f:1}; need--; }
+  pk.boxes.forEach(b => { b.apl = Array.from({length:PK_APL}, () => ({bad:false})); b.f = 1; });
+  G.money -= fee; pk.step = 'bill'; pk.bill = makeBill(pk.o); sfx('snip');
+  shMsg(fee ? `👷 일꾼이 ${left}상자를 담고 테이프까지 붙였어요. (${won(fee)}) 운송장은 직접 봐요!` : '👷 인부 아저씨가 다 담고 테이프까지 붙였어요! 운송장은 직접 봐요.');
   shedRerender();
 }
 function packFinish(){
-  const pk = SH.pk, o = pk.o, bad = pk.boxes.filter(b => b.bad).length, retail = pk.kind === 'retail';
+  const pk = SH.pk, o = pk.o, bad = pk.boxes.filter(b => b.apl.some(a => a.bad)).length, retail = pk.kind === 'retail';
   let pay = (retail ? o.unit : o.price) * o.n;
   if (bad) pay = Math.round(pay * (1 - .05 * bad) / 1000) * 1000;
+  if (pk.wrong) pay = Math.round(pay * .9 / 1000) * 1000;
   G.money += pay; addInc('apple', pay); G.stats.sold += o.n;
-  const rep = bad ? -1 : retail ? 1 : o.rep; G.rep = Math.max(0, G.rep + rep);
+  const rep = bad || pk.wrong ? -1 : retail ? 1 : o.rep; G.rep = Math.max(0, G.rep + rep);
   if (retail) { G.stats.retail = (G.stats.retail || 0) + 1; G.retail = G.retail.filter(x => x !== o); }
   else G.orders = G.orders.filter(x => x !== o);
   pk.done = true; SH.pk = null; sfx('coin');
-  toast(bad ? `📮 ${o.name}: 상자에서 흠집 사과가 ${bad}개 나왔대요. +${won(pay)}, 평판 -1` : `📮 ${o.name}에 ${o.n}상자 보냈어요! +${won(pay)}, 평판 +${rep}`, bad ? 'bad' : 'gold');
+  const why = [bad ? `흠집 사과 든 상자 ${bad}개` : '', pk.wrong ? '틀린 운송장 때문에 늦게 도착' : ''].filter(Boolean).join(', ');
+  toast(why ? `📮 ${o.name}: ${why}. +${won(pay)}, 평판 -1` : `📮 ${o.name}에 ${o.n}상자 보냈어요! +${won(pay)}, 평판 +${rep}`, why ? 'bad' : 'gold');
   checkRich();
   const e = packList().find(e => stockAtLeast(e.o.g) >= e.o.n); if (e) packPick(e);
   shedRerender();
 }
 function packActHtml(){
   const pk = SH.pk; if (!pk) return `<span class="pkG">왼쪽에서 보낼 주문을 골라요.</span>`;
-  const o = pk.o, filled = pk.boxes.filter(Boolean).length, left = o.n - filled;
-  if (pk.step === 'fill') return `<span class="pkG">① <b>${gByK(o.g).name} 이상</b> 통 고르기 → ② 통을 눌러 담기 <b>${filled}/${o.n}</b> → ③ 흠집 사과가 보이면 상자를 눌러 골라내요</span>
-    ${o.n >= BULK_N && left ? `<button class="btn" id="pkWork">👷 일꾼에게 맡기기 ${G.worker > 0 ? '(인부 있음 · 무료)' : '· ' + won(BULK_FEE * left)}</button>` : ''}
+  const o = pk.o, filled = pk.boxes.filter(boxFull).length, left = o.n - filled;
+  if (pk.step === 'fill') {
+    if (pk.st) return `<span class="pkG">🍎 사과가 나왔어요. 흠집이 보이면 <b>흠과 바구니</b>(X), 멀쩡하면 <b>보호망</b>을 씌워요.</span>
+      <button class="btn" id="pkToss">🍂 흠과 바구니 (X)</button><button class="btn pri" id="pkMain">🤍 보호망 씌우기</button>`;
+    return `<span class="pkG">① <b>${gByK(o.g).name} 이상</b> 통 고르기 → ② 통을 눌러 한 알씩 → ③ 보호망 씌우기 · 상자 <b>${filled}/${o.n}</b> (한 상자에 ${PK_APL}알)</span>
+    ${o.n >= BULK_N && left && pk.boxes.every(b => !b || boxFull(b)) ? `<button class="btn" id="pkWork">👷 일꾼에게 맡기기 ${G.worker > 0 ? '(인부 있음 · 무료)' : '· ' + won(BULK_FEE * left)}</button>` : ''}
     <button class="btn pri" id="pkMain" ${left ? 'disabled' : ''}>📦 테이프 붙이기</button>`;
-  if (pk.step === 'bill') return `<span class="pkG">운송장에 받는 곳과 상자 수가 맞는지 봐요.</span><button class="btn pri" id="pkMain">✅ 확인 도장 쾅</button>`;
+  }
+  if (pk.step === 'bill') return `<span class="pkG">운송장이 왼쪽 주문(받는 분·상자 수·등급)과 같은지 봐요.</span><button class="btn" id="pkRe">🔄 틀렸어요, 다시 뽑기 (R)</button><button class="btn pri" id="pkMain">✅ 확인 도장 쾅</button>`;
   if (pk.step === 'ship') return `<span class="pkG">트럭이 기다려요!</span><button class="btn pri" id="pkMain">🚚 보내기 (+${won((pk.kind === 'retail' ? o.unit : o.price) * o.n)})</button>`;
   return `<span class="pkG">🚚 부릉부릉~ 출발!</span>`;
 }
 function bindPackAct(){
   const w = $('#pkWork'); if (w) w.onclick = packWorker;
+  const t = $('#pkToss'); if (t) t.onclick = packToss;
+  const re = $('#pkRe'); if (re) re.onclick = packReprint;
   const m = $('#pkMain'); if (!m || !SH.pk) return;
-  m.onclick = {fill:packSeal, bill:packStamp, ship:packGo}[SH.pk.step] || (() => {});
+  m.onclick = SH.pk.step === 'fill' && SH.pk.st ? packWrap : {fill:packSeal, bill:packStamp, ship:packGo}[SH.pk.step] || (() => {});
 }
 function packUpdate(dt){
   const S = SH; S.msgT = Math.max(0, S.msgT - dt); const pk = S.pk; if (!pk) return;
   for (const f of pk.fly) f.t += dt * 2.6;
   pk.fly = pk.fly.filter(f => f.t < 1);
   for (const b of pk.boxes) if (b && b.f < 1) b.f = Math.min(1, b.f + dt * 2.5);
+  if (pk.st) pk.st.t += dt;
   if (pk.step === 'ship' || pk.step === 'go') pk.truck = Math.min(1, pk.truck + dt * 1.6);
   if (pk.step === 'go') { pk.go += dt; if (pk.go > 1.5) packFinish(); }
   pk.stamp = Math.max(0, pk.stamp - dt * 2);
+}
+// 흰 보호망(그물 스펀지)을 씌운 사과
+function drawNetApple(c, x, y, v, gk, t, bad){
+  drawGApple(c, x, y, v, gk, t, bad); const r = AR[gk] * .95;
+  c.save(); c.beginPath(); c.arc(x, y + 1, r + 2, 0, 7); c.clip();
+  c.fillStyle = 'rgba(255,255,255,.28)'; c.fillRect(x - r - 3, y - r - 3, r * 2 + 6, r * 2 + 6);
+  c.strokeStyle = 'rgba(255,255,255,.92)'; c.lineWidth = 2.4;
+  for (let k = -3; k <= 3; k++) { c.beginPath(); c.moveTo(x + k * r * .34 - r, y - r - 2); c.lineTo(x + k * r * .34 + r, y + r + 2); c.stroke(); c.beginPath(); c.moveTo(x + k * r * .34 + r, y - r - 2); c.lineTo(x + k * r * .34 - r, y + r + 2); c.stroke(); }
+  c.restore();
+  c.beginPath(); c.arc(x, y + 1, r + 2, 0, 7); c.lineWidth = 1.6; c.strokeStyle = 'rgba(200,200,200,.9)'; c.stroke();
 }
 function drawPackScene(c, W2, H2){
   const S = SH, pk = S.pk; c.clearRect(0, 0, W2, H2); shedBg(c, W2, H2);
@@ -6102,8 +6182,15 @@ function drawPackScene(c, W2, H2){
   c.font = '15px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText('🚚 택배 나가는 문', 970, 49);
   // 작업대
   cel(c, cc => rr(cc, 30, 270, 1020, 240, 18), '#c99a68', '#9a6a40', 5, 5, 3);
-  cel(c, cc => { cc.moveTo(20, 470); cc.quadraticCurveTo(60, 520, 100, 470); cc.closePath(); }, '#d8a46a', '#a8743a', 2, 2, 2.4);
-  c.font = '15px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText('즙 바구니', 60, 462);
+  // 흠과 바구니
+  cel(c, cc => { cc.moveTo(18, 470); cc.lineTo(110, 470); cc.lineTo(100, 508); cc.lineTo(28, 508); cc.closePath(); }, '#d8a46a', '#a8743a', 2, 2, 2.4);
+  for (let i = 0; i < Math.min(5, G.blem || 0); i++) drawGApple(c, 36 + i * 15, 466 - (i % 2) * 5, 'fuji', 'C', S.t);
+  c.font = '15px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText(`🍂 흠과 ${G.blem || 0}`, 64, 452);
+  // 보호망 씌우는 자리
+  cel(c, cc => rr(cc, NET.x - 52, NET.y + 14, 104, 22, 8), '#fffaf1', '#e5dccb', 2, 2, 2.4);
+  cel(c, cc => rr(cc, NET.x + 20, NET.y - 70, 34, 44, 8), '#ffffff', '#dcdcdc', 2, 2, 2);
+  c.strokeStyle = 'rgba(190,190,190,.9)'; c.lineWidth = 1.4; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(NET.x + 22, NET.y - 66 + k * 11); c.lineTo(NET.x + 52, NET.y - 60 + k * 11); c.stroke(); }
+  c.font = '14px Jua'; c.fillStyle = INK; c.fillText('🤍 보호망', NET.x, NET.y + 54);
   if (!pk) { c.font = '28px Jua'; c.fillText('왼쪽에서 주문을 골라요', 540, 400); return; }
   const rs = boxRects(pk.boxes.length), gone = pk.step === 'go' ? Math.min(1, pk.go / .7) : 0;
   pk.boxes.forEach((b, i) => {
@@ -6111,7 +6198,7 @@ function drawPackScene(c, W2, H2){
     if (gone) { c.globalAlpha = 1 - gone; c.translate(gone * (960 - r.x), gone * (180 - r.y)); }
     const open = pk.step === 'fill' || !b;
     if (open) cel(c, cc => { cc.moveTo(r.x + 6, r.y); cc.lineTo(r.x + 18, r.y - 24); cc.lineTo(r.x + r.w - 18, r.y - 24); cc.lineTo(r.x + r.w - 6, r.y); cc.closePath(); }, '#c9925a', '#a87440', 2, 2, 2.4);
-    if (b && open) for (let a = 0; a < 3; a++) drawGApple(c, r.x + 30 + a * 30, r.y + 4 - b.f * 6, b.key.split('|')[0], b.gk, S.t, b.bad && a === 1);
+    if (b && open) b.apl.forEach((a, k) => drawNetApple(c, r.x + 22 + k * 36, r.y + 6 - (k === b.apl.length - 1 ? b.f * 6 : 6), b.key.split('|')[0], b.gk, S.t, a.bad));
     cel(c, cc => rr(cc, r.x, r.y, r.w, r.h, 4), '#d9a46a', '#b47c44', 4, 4, 3);
     if (open) for (const s of [0, 1]) cel(c, cc => { const x = s ? r.x + r.w : r.x, d = s ? 1 : -1; cc.moveTo(x, r.y); cc.lineTo(x + d * 24, r.y + 16); cc.lineTo(x + d * 24, r.y + 40); cc.lineTo(x, r.y + 26); cc.closePath(); }, '#e8b67c', '#c48c50', 2, 2, 2.4);
     else { cel(c, cc => rr(cc, r.x - 4, r.y - 6, r.w + 8, 16, 3), '#e8b67c', '#c48c50', 2, 2, 2.6); cel(c, cc => rr(cc, r.x + r.w / 2 - 12, r.y - 6, 24, r.h + 6, 2), '#f6e3a8', '#d8c07a', 1, 1, 2);
@@ -6119,7 +6206,8 @@ function drawPackScene(c, W2, H2){
     if (b) { c.font = '15px Jua'; c.fillStyle = '#5a3a1c'; c.textAlign = 'center'; c.fillText(gByK(b.gk).name, r.x + r.w - 22, r.y + r.h - 10); }
     c.restore();
   });
-  for (const f of pk.fly) { const k = f.t, x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k - Math.sin(k * Math.PI) * 90; f.bad ? drawGApple(c, x, y, 'fuji', 'C', S.t) : drawApple(c, x, y, 16, '#e8423a', '#b8231e'); }
+  for (const f of pk.fly) { const k = f.t, x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k - Math.sin(k * Math.PI) * 90; f.net ? drawNetApple(c, x, y, f.v, f.gk, S.t, f.bad) : f.bad ? drawGApple(c, x, y, 'fuji', 'C', S.t) : drawGApple(c, x, y, f.key.split('|')[0], f.gk, S.t); }
+  if (pk.st && !pk.fly.some(f => f.toSt)) { const s2 = pk.st, bob = Math.sin(s2.t * 5) * 2; shadow(c, NET.x, NET.y + 14, 20, 5); drawGApple(c, NET.x, NET.y - 6 + bob, s2.v, s2.gk, S.t, s2.bad); }
   // 트럭
   if (pk.truck > 0) {
     const tx = 1250 - pk.truck * 250 + (pk.step === 'go' ? Math.max(0, pk.go - .7) * 600 : 0), ty = 262;
@@ -6139,7 +6227,7 @@ function drawPackScene(c, W2, H2){
     c.fillStyle = '#d6372c'; c.fillRect(330, 60, 420, 10);
     c.textAlign = 'left'; c.fillStyle = INK; c.font = '30px Jua'; c.fillText('📮 운송장', 356, 110);
     c.font = '22px Jua';
-    const rows = [['받는 분', `${o.ic} ${o.name}`], ['주소', DEST[o.name] || '사과 마을'], ['상자', `${o.n}상자 (${gByK(o.g).name} 이상)`], ['받을 돈', won((pk.kind === 'retail' ? o.unit : o.price) * o.n)]];
+    const B = pk.bill || o, rows = [['받는 분', `${o.ic} ${B.name}`], ['주소', DEST[B.name] || '사과 마을'], ['상자', `${B.n}상자 (${gByK(B.g).name} 이상)`], ['받을 돈', won((pk.kind === 'retail' ? o.unit : o.price) * o.n)]];
     rows.forEach(([k, v], i) => { c.fillStyle = '#8a7a6a'; c.fillText(k, 356, 160 + i * 46); c.fillStyle = INK; c.fillText(v, 460, 160 + i * 46); c.strokeStyle = '#e5dccb'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(356, 172 + i * 46); c.lineTo(724, 172 + i * 46); c.stroke(); });
     if (pk.step !== 'bill') { c.save(); c.translate(660, 110); c.rotate(-.25); c.scale(1 + pk.stamp * .6, 1 + pk.stamp * .6); c.beginPath(); c.arc(0, 0, 36, 0, 7); c.lineWidth = 5; c.strokeStyle = '#d6372c'; c.stroke(); c.font = '24px Jua'; c.textAlign = 'center'; c.fillStyle = '#d6372c'; c.fillText('확인', 0, 9); c.restore(); }
     c.restore();
@@ -6149,6 +6237,43 @@ function drawPackScene(c, W2, H2){
     cel(c, cc => rr(cc, 540 - w / 2, 222, w, 42, 14), '#fffaf1', '#ffe9a8', 3, 3, 3); c.fillStyle = INK; c.fillText(S.msg, 540, 251); c.restore();
   }
   c.textAlign = 'left';
+}
+
+// ===== 흠과 나눔 (2026-10-15 달 요청) =====
+// 포장할 때 골라낸 흠집 사과·떨어진 사과는 흠과 바구니(G.blem)에 모여요.
+// 가끔 마을 주민이 흠과를 찾아요 → 싸게 팔거나(개당 BLEM_PRICE, 평판 +1) 그냥 나눠 주면(평판 +2) 돼요.
+const BLEM_PRICE = 2000, BLEM_WAIT = 7;
+const BLEM_ASK = ['사과즙 내려고 하는데', '잼 만들려고 하는데', '애들 간식으로 깎아 주려고 하는데', '사과 파이 구우려고 하는데'];
+function blemNpc(){ return NPCS.filter(n => !n.shop && !n.buyer && !n.look.kid); }
+function blemDaily(){
+  const R = G.blemReq, now = absDay();
+  if (R && now > R.until) { G.blemReq = null; const n = NPCS[R.n]; if (n) toast(`🍂 ${n.name}의 흠과 부탁 날짜가 지났어요`); return; }
+  if (R || (G.blem || 0) < 3 || now < (G.blemNext || 0)) return;
+  const n = pick(blemNpc()); if (!n) return;
+  G.blemNext = now + rint(7, 10);
+  G.blemReq = {n:n.i, need:Math.min(G.blem, rint(3, 8)), why:pick(BLEM_ASK), until:now + BLEM_WAIT};
+  toast(`🍂 ${n.name}이(가) 흠과를 찾아요. 마을에서 말을 걸어 봐요!`, 'good');
+}
+function blemTodo(items){
+  const R = G.blemReq; if (!R || !NPCS[R.n]) return;
+  const ok = (G.blem || 0) >= R.need;
+  items.push({ic:'🍂', t:`${NPCS[R.n].name} 흠과 ${R.need}개 부탁`, n:ok ? '갖다주기' : `흠과 ${G.blem || 0}개뿐`, hot:ok, go:'npc:' + R.n});
+}
+function blemTalk(n){
+  const R = G.blemReq; if (!R || R.n !== n.i) return false;
+  const ok = (G.blem || 0) >= R.need, pay = BLEM_PRICE * R.need;
+  talk(n, `${R.why}, 흠집 난 사과 <b>${R.need}개</b>만 있을까? 모양은 상관없어!<br><small>흠과 바구니: ${G.blem || 0}개 · ${absDay() > R.until - 2 ? '곧 필요 없어져요' : `${R.until - absDay()}일 안에`}</small>`,
+    `<button class="btn" id="tOk">다음에요</button><button class="btn y" id="blSell" ${ok ? '' : 'disabled'}>💰 싸게 팔기 · ${won(pay)} · 평판 +1</button><button class="btn go" id="blGive" ${ok ? '' : 'disabled'}>🎁 나눠 주기 · 평판 +2</button>`);
+  const done = (money, rep) => {
+    G.blem -= R.need; G.blemReq = null; G.rep += rep;
+    if (money) { G.money += money; addInc('apple', money); }
+    sfx(money ? 'coin' : 'good'); todoSig = '';
+    toast(money ? `🍂 ${n.name}에게 흠과 ${R.need}개를 ${won(money)}에 팔았어요. 평판 +${rep}` : `🎁 ${n.name}에게 흠과 ${R.need}개를 나눠 줬어요. 고맙대요! 평판 +${rep}`, 'gold');
+    UI.close();
+  };
+  $('#blSell').onclick = () => done(pay, 1);
+  $('#blGive').onclick = () => done(0, 2);
+  return true;
 }
 
 // ===== 키 설정 (2026-10-13): 기본은 마우스 왼쪽 = 공격, 오른쪽 = 막기. 플레이어가 직접 바꿀 수 있어요 =====
