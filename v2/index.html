@@ -1468,6 +1468,7 @@ function drawHat(c, L, side, back, hy){
 // ----- 동물 -----
 function drawAnimal(c, kind, x, y, t, flip, V){
   c.save(); c.translate(x, y); if (flip) c.scale(-1, 1);
+  if (V && kind === 'tiger' && V.d8 != null && V.d8 % 4) { c.restore(); c.save(); c.translate(x, y); drawTiger8(c, V.d8, t, V); c.restore(); return; } // 8방향(대각선·앞·뒤)
   if (V && kind === 'tiger') { drawFierceTiger(c, t, V); c.restore(); return; } // 2026-10-16 포스 넘치는 호랑이(보스·탈것)
   if (V && kind === 'bwolf') { drawBlackWolf(c, t, V); c.restore(); return; } // 2026-10-16 사납고 무서운 검은 늑대(초심자 보스)
   if (V && CUTE[kind]) { drawCuteBeast(c, kind, t, V); c.restore(); return; } // 2026-10-16 귀여운 새 그림
@@ -4305,7 +4306,8 @@ function drawMon(c, m){
   if (m.dead) c.globalAlpha = clamp(1 - m.deadT, 0, 1);
   c.translate(m.x + (m.st === 'wind' ? rnd(-2, 2) : 0), m.y - (m.jz || 0)); const s = 1.25 * m.V.sc; c.scale(s, s);
   if (m.flash > 0) { c.filter = 'brightness(2.6) saturate(.4)'; c.scale(1.06, .94); }
-  drawAnimal(c, m.kind, 0, 0, m.st === 'eat' ? m.t * .5 : m.stun > 0 || m.st === 'wander' && m.wait > 0 ? 0 : m.t, m.flip, m.V);
+  const d8 = monDir8(m, 1 / 60); m.V.d8 = d8; // 2026-10-16 8방향
+  drawAnimal(c, m.kind, 0, 0, m.st === 'eat' ? m.t * .5 : m.stun > 0 || m.st === 'wander' && m.wait > 0 ? 0 : m.t, d8 % 4 === 0 ? d8 === 4 : m.flip, m.V);
   c.filter = 'none'; c.restore();
   if (m.dead) return;
   const top = m.y - (m.V.boss ? 118 : 80) * m.V.sc;
@@ -5465,6 +5467,25 @@ function drawFierceTiger(c, t, V){
   tgLeg(c, -28, -40, 40, 21, leg, 0); tgLeg(c, 36, -44, 44, 23, -leg, 0); // 가까운 다리
   tgHeadSide(c, 58, -70, t, 1.18);
   c.restore();
+}
+
+// 2026-10-16 달 요청: 보스 호랑이도 8방향. d8 = 0 오른쪽 … 2 아래 … 4 왼쪽 … 6 위 (탈것과 같은 그림, 탄 사람만 없어요)
+function drawTiger8(c, d8, t, V){
+  if (V && V.boss) { const pul = .5 + Math.sin(t * 3) * .5; c.save(); c.globalAlpha = .3 + pul * .15; const g = c.createRadialGradient(0, -4, 6, 0, -4, 100); g.addColorStop(0, '#ff5a1a'); g.addColorStop(1, 'rgba(120,10,0,0)'); c.beginPath(); ell(c, 0, -4, 100, 30); c.fillStyle = g; c.fill(); c.restore(); }
+  if (d8 === 2 || d8 === 6) { drawRideTigerFB(c, d8 === 2 ? 0 : 1, 'under', 0, 0, t, 1.15); drawRideTigerFB(c, d8 === 2 ? 0 : 1, 'over', 0, 0, t, 1.15); }
+  else { drawRideTiger34(c, d8, 'under', 0, 0, t, 1.15); drawRideTiger34(c, d8, 'over', 0, 0, t, 1.15); }
+}
+// 움직이는 방향 → 8방향 (0 오른쪽, 1 오른아래, 2 아래, 3 왼아래, 4 왼쪽, 5 왼위, 6 위, 7 오른위)
+const dir8 = (dx, dy) => (Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8;
+// 짐승이 실제로 움직인 방향으로 8방향을 정해요(잠깐 흔들려도 바로 안 바뀌게 0.1초 기다려요)
+function monDir8(m, dt){
+  const dx = m.x - (m.lx ?? m.x), dy = m.y - (m.ly ?? m.y); m.lx = m.x; m.ly = m.y;
+  let n = m.d8 ?? (m.flip ? 4 : 0);
+  if (Math.hypot(dx, dy) > .4) n = dir8(dx, dy * 1.4);
+  else if (m.eng && !m.dead) n = dir8(P.x - m.x, (P.y - m.y) * 1.4); // 서 있을 땐 우주 쪽을 봐요
+  if (m.d8 == null) m.d8 = n;
+  if (n === m.d8) m.d8T = 0; else if (n === m.d8P) { m.d8T = (m.d8T || 0) + dt; if (m.d8T > .1) { m.d8 = n; m.d8T = 0; } } else { m.d8P = n; m.d8T = 0; }
+  return m.d8;
 }
 
 // ===== 2026-10-13 기상 이벤트 화면 연출 (태풍·우박·늦서리) =====
@@ -7011,10 +7032,11 @@ function tgBodyOval(c, x, y, rx, ry, rot, side, belly){
   c.restore(); c.restore();
 }
 // 대각선(3/4) 모습: 오른쪽 기준으로 그리고 왼쪽은 뒤집어요. 아래 대각선은 얼굴이 보이고, 위 대각선은 엉덩이·꼬리가 보여요
-function drawRideTiger34(c, d8, layer){
-  const t = P.walk / 11, leg = Math.sin(t * 10) * 4;
+// (x, y, t, sc를 넘기면 보스 호랑이도 같은 그림으로 그려요)
+function drawRideTiger34(c, d8, layer, x = P.x, y = P.y, t = P.walk / 11, sc = RIDE_SC){
+  const leg = Math.sin(t * 10) * 4;
   const front = d8 === 1 || d8 === 3, left = d8 === 3 || d8 === 5;
-  c.save(); c.translate(P.x, P.y); c.scale(RIDE_SC * (left ? -1 : 1), RIDE_SC);
+  c.save(); c.translate(x, y); c.scale(sc * (left ? -1 : 1), sc);
   if (layer === 'under') {
     shadow(c, 0, 0, 52, 13, .32);
     if (!front) tgHeadBack(c, 32, -70, .8);                                       // 머리는 몸 너머 오른쪽 위
@@ -7030,9 +7052,9 @@ function drawRideTiger34(c, d8, layer){
 }
 // 위·아래로 갈 때도 호랑이가 몸을 틀어요. 아래(dir 0) = 앞모습, 위(dir 1) = 뒷모습
 // layer 'under'는 우주보다 먼저(몸·다리·뒷머리), 'over'는 우주 다음(앞모습 머리)
-function drawRideTigerFB(c, dir, layer){
-  const t = P.walk / 11, leg = Math.sin(t * 10) * 4;
-  c.save(); c.translate(P.x, P.y); c.scale(RIDE_SC, RIDE_SC);
+function drawRideTigerFB(c, dir, layer, x = P.x, y = P.y, t = P.walk / 11, sc = RIDE_SC){
+  const leg = Math.sin(t * 10) * 4;
+  c.save(); c.translate(x, y); c.scale(sc, sc);
   if (layer === 'under') {
     shadow(c, 0, 0, 46, 12, .32);
     if (dir === 1) tgHeadBack(c, 0, -72, .85);                         // 뒷모습: 머리는 몸 너머(위)
