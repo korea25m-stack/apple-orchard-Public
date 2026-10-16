@@ -392,6 +392,11 @@ const MX0 = MAP0.x - MAP0.ix * MAPK, MY0 = MAP0.y - MAP0.iy * MAPK, MX1 = MAP0.x
 const MCX = (MX0 + MX1) / 2, MCY = (MY0 + MY1) / 2, MHX = (MX1 - MX0) / 2, MHY = (MY1 - MY0) / 2;
 const WX0 = MCX - MHX * 2, WY0 = MCY - MHY * 2, WX1 = MCX + MHX * 2, WY1 = MCY + MHY * 2;
 // 가운데서 얼마나 먼지(지도 가장자리 = 1, 전체 맵 가장자리 = 2)
+// 2026-10-16 달 요청: M 전체 지도의 좌표(달이 "x 120, y 80으로 옮겨줘"처럼 말할 때 쓰는 좌표)
+// 왼쪽 위 끝 = (0, 0), 오른쪽·아래로 커져요. 1칸 = 400(약 10m). 전체 x 0~206, y 0~171
+const GRID = 400;
+const toGrid = (x, y) => [Math.round((x - WX0) / GRID), Math.round((y - WY0) / GRID)];
+const fromGrid = (gx, gy) => [WX0 + gx * GRID, WY0 + gy * GRID];
 const cDist = (x, y) => Math.hypot((x - MCX) / MHX, (y - MCY) / MHY);
 const WORLD_W = WX1 - WX0, WORLD_H = WY1 - WY0;
 const HOME = {x0:-1100, y0:440, x1:3600, y1:4300, name:'우리 과수원'}; // 2026-10-16 지도의 왼쪽 위 검은 원(집·창고·과수원)
@@ -6046,9 +6051,19 @@ function drawBigMap(ctx){
   ctx.fillStyle = 'rgba(20,30,20,.45)'; ctx.fillRect(0, 0, W, H);
   ctx.beginPath(); rr(ctx, x0 - 14, y0 - 54, w + 28, h + 90, 22); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.stroke();
   ctx.font = '28px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🗺️ 전체 지도', x0 + 6, y0 - 16);
-  ctx.font = '18px Jua'; ctx.textAlign = 'right'; ctx.fillText(`${keyName(KB.map[0] || 'KeyM')}를 한 번 더 누르면 닫혀요`, x0 + w - 6, y0 - 18);
+  { const [px, py] = toGrid(P.x, P.y); ctx.font = '18px Jua'; ctx.textAlign = 'right'; ctx.fillText(`📍 내 위치 x ${px} · y ${py}   ·   ${keyName(KB.map[0] || 'KeyM')}를 한 번 더 누르면 닫혀요`, x0 + w - 6, y0 - 18); }
   ctx.save(); ctx.beginPath(); rr(ctx, x0, y0, w, h, 12); ctx.clip();
   ctx.drawImage(miniBase, x0, y0, w, h);
+  // 2026-10-16 좌표 눈금: 10칸마다 옅은 선, 20칸마다 숫자
+  ctx.save(); ctx.lineWidth = 1; ctx.font = '13px Jua'; ctx.fillStyle = INK;
+  const GW = Math.floor(WORLD_W / GRID), GH = Math.floor(WORLD_H / GRID);
+  for (let g = 10; g < GW; g += 10) { const X = x0 + g * GRID * s; ctx.strokeStyle = g % 20 ? 'rgba(255,255,255,.13)' : 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.moveTo(X, y0); ctx.lineTo(X, y0 + h); ctx.stroke(); }
+  for (let g = 10; g < GH; g += 10) { const Y = y0 + g * GRID * s; ctx.strokeStyle = g % 20 ? 'rgba(255,255,255,.13)' : 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.moveTo(x0, Y); ctx.lineTo(x0 + w, Y); ctx.stroke(); }
+  const tick = (t, x, y, al) => { ctx.textAlign = al; ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(255,250,241,.9)'; ctx.strokeText(t, x, y); ctx.fillText(t, x, y); };
+  for (let g = 20; g < GW - 12; g += 20) tick(g, x0 + g * GRID * s, y0 + 15, 'center');
+  for (let g = 20; g < GH - 8; g += 20) tick(g, x0 + 5, y0 + g * GRID * s + 5, 'left');
+  tick('x →', x0 + w - 8, y0 + 15, 'right'); tick('y ↓', x0 + 5, y0 + h - 8, 'left'); tick('0', x0 + 5, y0 + 15, 'left');
+  ctx.restore();
   // 버스 길
   ctx.strokeStyle = 'rgba(255,207,61,.9)'; ctx.lineWidth = 4; ctx.setLineDash([10, 8]); ctx.beginPath(); BUS_LINE.forEach(([x, y], i) => i ? ctx.lineTo(mx(x), my(y)) : ctx.moveTo(mx(x), my(y))); ctx.stroke(); ctx.setLineDash([]);
   const lab = (t, x, y, f = 20) => { ctx.font = `${f}px Jua`; ctx.textAlign = 'center'; ctx.lineWidth = 5; ctx.strokeStyle = '#fffaf1'; ctx.strokeText(t, x, y); ctx.fillStyle = INK; ctx.fillText(t, x, y); };
@@ -6081,6 +6096,15 @@ function drawBigMap(ctx){
   lab(`📍 ${HN()}`, mx(P.x), my(P.y) + 30, 20);
   if (tip) { ctx.font = '20px Jua'; const tw = ctx.measureText(tip[0]).width + 24, tx = clamp(tip[1], x0 + tw / 2 + 4, x0 + w - tw / 2 - 4); ctx.beginPath(); rr(ctx, tx - tw / 2, tip[2] - 26, tw, 34, 12); ctx.fillStyle = '#fff2b8'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke(); ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(tip[0], tx, tip[2] - 2); }
   cv.style.cursor = tip ? 'pointer' : '';
+  // 마우스가 가리키는 곳의 좌표
+  const BM = BIGMAP_MOUSE;
+  if (!tip && BM && BM.x > x0 && BM.x < x0 + w && BM.y > y0 && BM.y < y0 + h) {
+    const [gx, gy] = toGrid(WX0 + (BM.x - x0) / s, WY0 + (BM.y - y0) / s), t = `x ${gx} · y ${gy}`;
+    ctx.font = '18px Jua'; const tw = ctx.measureText(t).width + 20, tx = clamp(BM.x + 14, x0, x0 + w - tw), ty = clamp(BM.y - 40, y0 + 4, y0 + h - 34);
+    ctx.beginPath(); rr(ctx, tx, ty, tw, 30, 10); ctx.fillStyle = 'rgba(255,250,241,.95)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText(t, tx + 10, ty + 21);
+    ctx.beginPath(); ctx.arc(BM.x, BM.y, 4, 0, 7); ctx.fillStyle = INK; ctx.fill();
+  }
   ctx.restore();
   ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🌀·⛺ 누르면 바로 순간이동 · 🚏 버스 정류장 · 🚌 마을버스(노란 점선 = 버스 길) · ? 아직 못 찾은 쉼터', x0 + 6, y0 + h + 26);
   ctx.restore();
