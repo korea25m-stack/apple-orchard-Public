@@ -1219,8 +1219,8 @@ function drawApple(c, x, y, r, col, sh, stripe){
 const LOOKS = {
   haru:   {skin:'#ffe0c4', hair:'#2f201b', hs:'spiky', eye:'#7a4a2a', top:'#fffaf0', outfit:'overall', o2:'#3f74c4', pants:'#3f74c4', shoe:'#8a5232', hat:'straw', scarf:'#e8423a'},
   worker: {skin:'#e9bd93', hair:'#2b2320', hs:'short', eye:'#3a2a20', top:'#7bb3e6', outfit:'tee', pants:'#6a6158', shoe:'#3b3b3b', hat:'band'},
-  chief:  {skin:'#f1c9a6', hair:'#d4d4d4', hs:'bald', eye:'#4a3a2a', top:'#ffffff', outfit:'vest', o2:'#8b5a3c', pants:'#5c4a3e', shoe:'#3b2b22', old:1, glasses:1, beard:'#e2e2e2'},
-  grandma:{skin:'#f6d3b6', hair:'#e4e4e4', hs:'bun', eye:'#4a3a2a', top:'#b48ae6', outfit:'apron', o2:'#fff6ea', pants:'#7a5fa8', shoe:'#5a4040', old:1, girl:1},
+  chief:  {skin:'#f1c9a6', hair:'#d4d4d4', hs:'bald', eye:'#4a3a2a', top:'#ffffff', outfit:'durumagi', o2:'#eae4d2', o3:'#8b5a3c', pants:'#d8d0bc', shoe:'#ffffff', hat:'gat', old:1, glasses:1, beard:'#e2e2e2'},
+  grandma:{skin:'#f6d3b6', hair:'#e4e4e4', hs:'bun', eye:'#4a3a2a', top:'#fff0e0', outfit:'chima', o2:'#b48ae6', o3:'#e8636a', pants:'#7a5fa8', shoe:'#5a4040', old:1, girl:1},
   hunter: {skin:'#e6b48a', hair:'#2b2320', hs:'short', eye:'#3a2a20', top:'#d8c8a0', outfit:'vest', o2:'#5f6e3a', pants:'#4a4636', shoe:'#3a2a20', hat:'cap', capCol:'#f07a28', beard:'#3a2a20'},
   dealer: {skin:'#ffd9bd', hair:'#1f2a44', hs:'short', eye:'#2b3a66', top:'#ffffff', outfit:'jacket', o2:'#2f5fa8', pants:'#2a2f3a', shoe:'#222222', hat:'cap', capCol:'#e8423a'}
 };
@@ -1573,10 +1573,12 @@ function toSpec(L){
   if (L._spec) return L._spec;
   const o = L.outfit || 'tee', girl = !!L.girl;
   const S = {skin:L.skin, hair:L.hair, hs:{spiky:'spiky', short:girl ? 'bob' : 'short', long:'long', pony:'pony', bun:'bun', bob:'bob', bald:'bald'}[L.hs] || 'short', eye:L.eye,
-    fem:girl ? 1 : 0, top:L.top, outer:{tee:'none', vest:'vest', overall:'overall', apron:'apron', jacket:'jacket', dress:'dress'}[o] || 'none', oc:L.o2,
-    bottom:o === 'dress' ? 'skirt' : 'pants', bc:o === 'overall' ? L.o2 : (L.pants || '#555a66'), legs:L.pants || L.skin, shoe:L.shoe,
+    fem:girl ? 1 : 0, top:L.top, outer:{tee:'none', vest:'vest', overall:'overall', apron:'apron', jacket:'jacket', dress:'dress', hanbok:'hanbok', chima:'chima', durumagi:'durumagi', gaeryang:'gaeryang'}[o] || 'none', oc:L.o2,
+    o3:L.o3, saek:L.saek, jokki:L.jokki, baji:o === 'hanbok' || o === 'durumagi' ? 1 : 0,
+    bottom:o === 'dress' || (o === 'gaeryang' && girl) ? 'skirt' : 'pants', bc:o === 'overall' ? L.o2 : (L.pants || '#555a66'), legs:L.pants || L.skin, shoe:L.shoe,
     hat:L.hat, capCol:L.capCol, wide:L.wide, glasses:L.glasses, beard:L.beard, old:L.old, kid:L.kid, scarf:L.scarf};
   if (o === 'dress') S.bc = L.o2;
+  if (o === 'gaeryang' && girl) { S.bc = L.pants || L.o2; S.legs = L.skin; }
   Object.defineProperty(L, '_spec', {value:S, enumerable:false});
   return S;
 }
@@ -1876,11 +1878,14 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
   const sc = (S.kid ? .78 : 1) * CHAR_K;
   const skin = S.skin || '#ffe0c4', skS = shd(skin, .22), shoe = S.shoe || '#6a4028', trim = hero ? wjTrim() : null;
   const outer = S.outer || 'none', oc = S.oc || S.top || '#888888', top = S.top || '#ffffff';
+  // 2026-10-16 한복: hanbok(저고리+바지), chima(짧은 저고리+긴 치마), durumagi(두루마기), gaeryang(개량한복)
+  const chima = outer === 'chima', hb = chima || outer === 'hanbok' || outer === 'durumagi' || outer === 'gaeryang';
   const dress = outer === 'dress', skirt = S.bottom === 'skirt' || dress;
   const pant = outer === 'overall' ? oc : (S.bc || '#4a5068');
   const legC = skirt ? (S.legs || skin) : pant;
-  const longS = outer === 'coat' || outer === 'jacket' || !!S.old;
-  const sleeve = outer === 'coat' || outer === 'jacket' || dress ? oc : top;
+  const longS = outer === 'coat' || outer === 'jacket' || hb || !!S.old;
+  const sleeve = outer === 'coat' || outer === 'jacket' || outer === 'durumagi' || dress ? oc : top;
+  const acc = S.o3 || '#e8423a'; // 고름·깃 색
   c.save(); c.translate(x, y);
   if (!sit) shadow(c, 0, 0, 20 * sc, 6 * sc);
   c.scale(sc, sc);
@@ -1889,7 +1894,8 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
   const hip = -34;
   const leg = (lx, ang, lift, dark) => {
     c.save(); c.translate(lx, hip - lift); c.rotate(ang);
-    pc(c, cc => rr(cc, -6, -2, 12, 24, 5), dark ? shd(legC, .22) : legC, shd(legC, .38), 2, 0);
+    if (S.baji) { pc(c, cc => { cc.moveTo(-7, -2); cc.lineTo(7, -2); qq(cc, 9, 10, 6, 17); cc.lineTo(-6, 17); qq(cc, -9, 10, -7, -2); cc.closePath(); }, dark ? shd(legC, .22) : legC, shd(legC, .38), 2, 0); pc(c, cc => rr(cc, -6.2, 13, 12.4, 4.5, 2), acc, shd(acc, .3), 0, 1, 1.8); }
+    else pc(c, cc => rr(cc, -6, -2, 12, 24, 5), dark ? shd(legC, .22) : legC, shd(legC, .38), 2, 0);
     const B = dark ? shd(shoe, .2) : shoe;
     pc(c, cc => { cc.moveTo(-6.6, 17); cc.lineTo(6.6, 17); cc.lineTo(6.8, 27); if (side) qq(cc, 13.5, 27, 12.5, 34); else qq(cc, 8.5, 29, 8, 34); cc.lineTo(-7.4, 34); qq(cc, -8.2, 25, -6.6, 17); cc.closePath(); }, B, shd(shoe, .4), 2, 1.5);
     pl(c, [-6.4, 21, 6.6, 21], 2);
@@ -1912,7 +1918,11 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
   const arm = (ax, ang, dark) => {
     c.save(); c.translate(ax, -63); c.rotate(ang);
     const C = dark ? shd(sleeve, .22) : sleeve, sk = dark ? shd(skin, .18) : skin;
-    if (longS) { pc(c, cc => rr(cc, -5.2, -3, 10.4, 26, 5), C, shd(sleeve, .38), 2, 0); if (trim) pl(c, [-5, 19, 5, 19], 2.6, trim); }
+    if (longS) {
+      pc(c, cc => rr(cc, -5.2, -3, 10.4, 26, 5), C, shd(sleeve, .38), 2, 0); if (trim) pl(c, [-5, 19, 5, 19], 2.6, trim);
+      if (S.saek) { c.save(); c.beginPath(); rr(c, -5.2, -3, 10.4, 26, 5); c.clip(); ['#e8423a', '#ffd23a', '#5cb85c', '#4aa8e8', '#ff8fae'].forEach((col, k) => { c.fillStyle = dark ? shd(col, .2) : col; c.fillRect(-6, 1 + k * 4, 12, 4); }); c.restore(); c.beginPath(); rr(c, -5.2, -3, 10.4, 26, 5); c.lineWidth = OLW; c.strokeStyle = OL; c.stroke(); }
+      if (hb) pc(c, cc => rr(cc, -5.4, 18, 10.8, 4.5, 2), '#fffaf0', '#e0d8c8', 0, 1, 1.8); // 끝동
+    }
     else { pc(c, cc => rr(cc, -4.4, 4, 8.8, 20, 4.4), sk, skS, 1.5, 0); pc(c, cc => rr(cc, -5.6, -3, 11.2, 12, 5), C, shd(sleeve, .38), 2, 0); }
     pc(c, cc => ell(cc, 0, 25.5, 5.6, 5.6), sk, skS, 1.5, 1.5);
     c.restore();
@@ -1921,12 +1931,32 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
   else if (back) { arm(-tw - 3, .26 - swing, false); arm(tw + 3, -.26 + swing, false); }
   // ── 치마
   const skirtC = dress ? oc : S.bc || '#5a5a6a';
+  if (chima) pc(c, cc => { cc.moveTo(-tw + 1, -62); cc.lineTo(tw - 1, -62); qq(cc, tw + 9, -30, tw + 13, -3); qq(cc, 0, 1, -tw - 13, -3); qq(cc, -tw - 9, -30, -tw + 1, -62); cc.closePath(); }, oc, shd(oc, .32), 4, 2);
+  if (chima && !back) for (const fx of side ? [2] : [-8, 0, 8]) pl(c, [fx * .6, -50, fx * 1.25, -6], 1.6, shd(oc, .28)); // 치마 주름
   if (skirt) pc(c, cc => { cc.moveTo(-tw, -40); cc.lineTo(tw, -40); cc.lineTo(tw + 5, -15); qq(cc, 0, -12, -tw - 5, -15); cc.closePath(); }, skirtC, shd(skirtC, .35), 3, 2);
   // ── 몸통
   const coat = outer === 'coat', jk = outer === 'jacket';
-  const bodyC = coat || jk || dress || (back && outer === 'vest') ? oc : top;
-  pc(c, torso(coat ? -17 : dress ? -36 : -30, coat ? 3 + (side ? Math.sin((walk || 0) * 2) : 0) : jk ? 1 : 0), bodyC, shd(bodyC, .3), 3, 3);
-  const needBelt = !skirt && !coat && outer !== 'overall';
+  const duru = outer === 'durumagi';
+  const bodyC = coat || jk || dress || duru || (back && (outer === 'vest' || S.jokki)) ? (S.jokki && back ? S.jokki : oc) : top;
+  pc(c, torso(coat ? -17 : duru ? -10 : dress ? -36 : chima ? -55 : outer === 'hanbok' ? -32 : -30, coat || duru ? 3 + (side ? Math.sin((walk || 0) * 2) : 0) : jk || outer === 'gaeryang' ? 1 : 0), bodyC, shd(bodyC, .3), 3, 3);
+  const needBelt = !skirt && !coat && !hb && outer !== 'overall';
+  if (hb && !back) { // 동정(흰 깃) + 섶을 여민 깃, 고름
+    const g = outer === 'gaeryang' ? acc : shd(bodyC, .22);
+    if (side) pc(c, cc => { cc.moveTo(4, -68); cc.lineTo(9, -68); cc.lineTo(tw, -56); cc.lineTo(tw - 4, -54); cc.closePath(); }, g, shd(g, .2), 0, 1, 2);
+    else {
+      if (S.jokki) pc(c, cc => { cc.moveTo(-tw - 1, -60); qq(cc, -tw - 1, -68, -tw + 5, -68); cc.lineTo(tw - 5, -68); qq(cc, tw + 1, -68, tw + 1, -60); cc.lineTo(tw + 1, -33); cc.lineTo(-tw - 1, -33); cc.closePath(); }, S.jokki, shd(S.jokki, .3), 2, 2, 2.4);
+      pc(c, cc => { cc.moveTo(-7, -69); cc.lineTo(-2, -69); cc.lineTo(9, chima ? -57 : -55); cc.lineTo(5, chima ? -54 : -51); cc.closePath(); }, g, shd(g, .2), 0, 1, 2);
+      pc(c, cc => { cc.moveTo(-6, -69); cc.lineTo(-3.5, -69); cc.lineTo(5.5, -59); cc.lineTo(4, -57.5); cc.closePath(); }, '#ffffff', '#e8e8e8', 0, 0, 1.4);
+      if (S.jokki) [-50, -43, -36].forEach(by => { c.beginPath(); c.arc(0, by, 1.8, 0, 7); c.fillStyle = '#ffd25e'; c.fill(); c.lineWidth = 1.2; c.strokeStyle = OL; c.stroke(); });
+    }
+    if (outer === 'gaeryang') { if (!side) { c.beginPath(); c.arc(-6, -50, 2.6, 0, 7); c.fillStyle = acc; c.fill(); c.lineWidth = 1.6; c.strokeStyle = OL; c.stroke(); } }
+    else if (!S.jokki) { // 고름: 매듭에서 두 가닥이 늘어져요
+      const ky = chima ? -57 : -52, kx = side ? 7 : 6, len = chima ? 22 : 14;
+      pc(c, cc => { cc.moveTo(kx - 1, ky); cc.lineTo(kx + 2, ky); cc.lineTo(kx - 2, ky + len); cc.lineTo(kx - 6, ky + len - 1); cc.closePath(); }, acc, shd(acc, .3), 1, 1, 2);
+      pc(c, cc => { cc.moveTo(kx, ky); cc.lineTo(kx + 3, ky); cc.lineTo(kx + 3, ky + len * .75); cc.lineTo(kx - 1, ky + len * .75); cc.closePath(); }, acc, shd(acc, .3), 1, 1, 2);
+      pc(c, cc => ell(cc, kx + .5, ky, 3.6, 2.6), acc, shd(acc, .3), 0, 1, 2);
+    }
+  }
   if (!back) {
     if (coat || jk) {
       // 앞섶: 안에 입은 옷이 보이게
@@ -2077,6 +2107,10 @@ function chibiHat(c, S, side, back, hero){
     pc(c, cc => { cc.moveTo(-16, y - 20); qq(cc, 0, y - 17, 16, y - 20); cc.lineTo(16, y - 15); qq(cc, 0, y - 12, -16, y - 15); cc.closePath(); }, hero ? '#2a2830' : '#e8423a', hero ? '#141218' : '#a82a22', 0, 1, 2);
     pl(c, [-24, y - 13, -12, y - 11.5], 1.4, '#cfa640'); pl(c, [12, y - 11.5, 24, y - 13], 1.4, '#cfa640');
     if (apple) drawApple(c, 9, y - 34, 5.5, '#ec3b30', '#a51d16');
+  } else if (hat === 'gat') { // 갓: 넓은 챙 + 원통 모자, 턱끈
+    pc(c, cc => ell(cc, side ? 2 : 0, y - 16, side ? 30 : 36, 6.5), '#2a2a30', '#141418', 1, 1.5);
+    pc(c, cc => { cc.moveTo(-12, y - 17); cc.lineTo(-11, y - 40); qq(cc, 0, y - 44, 11, y - 40); cc.lineTo(12, y - 17); qq(cc, 0, y - 14, -12, y - 17); cc.closePath(); }, '#2a2a30', '#141418', 1.5, 1.5);
+    if (!back && !side) { pl(c, [-14, y - 14, -16, y + 16], 1.6, '#3a3040'); pl(c, [14, y - 14, 16, y + 16], 1.6, '#3a3040'); }
   } else if (hat === 'band') pc(c, cc => rr(cc, -23.5, y - 13, 47, 7, 3), '#ffffff', '#cfd8e0', 1, 1.5, 2.4);
 }
 // 대화창·퀴즈·경매 얼굴 (2026-10-13 맵 캐릭터와 같은 새 그림체로 가슴 위만 크게)
@@ -3075,22 +3109,22 @@ const VROADS = [[[-1000, 1250], [-1000, 4440]], [[-2100, 2500], [-60, 2500]], [[
 const YARD_ROADS = [[[560, 1250], [560, 1000]], [[-450, 1250], [-450, 1010]]]; // 큰길 → 창고 마당·한옥 마당
 const PLAZA = {x:VNEW.x, y:VNEW.y, rx:280, ry:115};
 const VB = [
-  {x:210, y:1900, roof:'#6f8fd8', wall:'#fff3dc', sign:'복순 떡방앗간'},
+  {x:210, y:1900, roof:'#6f8fd8', wall:'#fff3dc', sign:'복순 떡방앗간', choga:1},
   {x:660, y:1900, roof:'#e8634a', wall:'#fffaf0', sign:'금비상회'},
   {x:210, y:2120, roof:'#4a9a6a', wall:'#fffaf0', sign:'사과골 마을회관', big:1},
   {x:660, y:2120, roof:'#f2a03a', wall:'#fff6e6', sign:'다솜빵집'},
   {x:210, y:2470, roof:'#ff8fae', wall:'#fffaf4', sign:'꽃님꽃집'},
   {x:660, y:2470, roof:'#6a7a8a', wall:'#f4efe6', sign:'든든철물'},
   {x:210, y:2690, roof:'#5ab0d0', wall:'#ffffff', sign:'이슬동물병원'},
-  {x:660, y:2690, roof:'#c08a3a', wall:'#fff3dc', sign:'벌찬꿀집'},
+  {x:660, y:2690, roof:'#c08a3a', wall:'#fff3dc', sign:'벌찬꿀집', choga:1},
   {x:210, y:2910, roof:'#e8c040', wall:'#fffaf0', sign:'햇살분교', big:1},
   {x:660, y:2910, roof:'#3a5aa0', wall:'#f2f6fb', sign:'사과골 파출소'}
 ].map(b => { const [x, y] = vxy(b.x, b.y); return {...b, x, y}; }).concat([
   // 2026-10-13 마을이 넓어지면서 새로 생긴 집
-  {x:-1440, y:1480, roof:'#9a6ad8', wall:'#fff6ee', sign:'도윤이네 집'},
-  {x:-560, y:1480, roof:'#d85a6a', wall:'#fffaf2', sign:'빛나네 집'},
+  {x:-1440, y:1480, roof:'#9a6ad8', wall:'#fff6ee', sign:'도윤이네 집', choga:1},
+  {x:-560, y:1480, roof:'#d85a6a', wall:'#fffaf2', sign:'빛나네 집', choga:1},
   {x:-230, y:2290, roof:'#e84a3a', wall:'#fffaf0', sign:'사과골 우체국'},
-  {x:-230, y:2840, roof:'#8a6a3a', wall:'#fff3dc', sign:'할매 국밥집'},
+  {x:-230, y:2840, roof:'#8a6a3a', wall:'#fff3dc', sign:'할매 국밥집', choga:1},
   {x:-1440, y:4380, roof:'#4aa0a0', wall:'#fffaf0', sign:'작은 도서관', big:1},
   {x:-560, y:4380, roof:'#f07a3a', wall:'#fff6e6', sign:'사과즙 공방'}
 ]);
@@ -3116,58 +3150,58 @@ function villageSolids(s){
 // ----- 마을 사람 18명 (+ 이장님·순자 할머니 = 20명) -----
 const NPC_DATA = [
   {name:'오복순 할머니', role:'떡방앗간', home:[210, 1950], r:[60, 20], sp:30,
-   look:{skin:'#f6d3b6', hair:'#e6e6e6', hs:'bun', top:'#7fc2a0', outfit:'apron', o2:'#ffffff', pants:'#5a7a6a', shoe:'#5a4040', old:1, girl:1},
+   look:{skin:'#f6d3b6', hair:'#e6e6e6', hs:'bun', top:'#fff3d6', outfit:'chima', o2:'#7fc2a0', o3:'#e8636a', pants:'#5a7a6a', shoe:'#ffffff', old:1, girl:1},
    lines:['떡 하나 먹고 가! 사과 넣은 사과떡도 있단다.', '사과는 껍질째 먹어야 좋은 게 더 많대.', '우리 방앗간 떡은 마을에서 제일 쫄깃해.']},
   {name:'황금비 사장님', role:'금비상회 · 전리품 삽니다', buyer:1, home:[660, 1950], r:[60, 20], sp:40,
-   look:{skin:'#ffdcc0', hair:'#3a2a20', hs:'bob', eye:'#5a3a2a', top:'#ffffff', outfit:'apron', o2:'#e8423a', pants:'#3a3a4a', shoe:'#2a2a2a', girl:1},
+   look:{skin:'#ffdcc0', hair:'#3a2a20', hs:'bob', eye:'#5a3a2a', top:'#ffe9a8', outfit:'gaeryang', o2:'#ffe9a8', o3:'#e8423a', pants:'#c2453a', shoe:'#2a2a2a', girl:1},
    lines:['어서 와요, 금비상회예요! 사과 상자 테이프는 여기 다 있어요.', '요즘 손님들이 꿀 든 사과를 찾더라고요.', '사과는 서늘한 데 두면 오래 가요.']},
   {name:'최봉구 아저씨', role:'농기계 수리', home:[540, 1790], r:[50, 25], sp:35,
-   look:{skin:'#e2b48a', hair:'#2a2420', hs:'short', eye:'#3a2a20', top:'#f0e6d0', outfit:'overall', o2:'#c25a3a', pants:'#c25a3a', shoe:'#3a2a20', hat:'cap', capCol:'#2f6fb8', beard:'#3a2a20'},
+   look:{skin:'#e2b48a', hair:'#2a2420', hs:'short', eye:'#3a2a20', top:'#c8d8c0', outfit:'gaeryang', o2:'#c8d8c0', o3:'#4a6a4a', pants:'#4a5a4a', shoe:'#3a2a20', hat:'cap', capCol:'#2f6fb8', beard:'#3a2a20'},
    lines:['SS기 소리가 이상하면 언제든 가져와. 뚝딱 고쳐 줄게.', '농기계 길이 4m인 건 SS기가 돌아 나갈 자리가 필요해서야.', '기계도 겨울엔 기름칠을 해 줘야 안 아파.']},
   {name:'박만석 할아버지', role:'정자 바둑왕', home:[262, 2338], still:1,
-   look:{skin:'#f1c9a6', hair:'#d0d0d0', hs:'bald', top:'#e9e0c8', outfit:'vest', o2:'#5a6b8a', pants:'#4a4a5a', shoe:'#3a2a20', old:1, beard:'#e0e0e0'},
+   look:{skin:'#f1c9a6', hair:'#d0d0d0', hs:'bald', top:'#f4efe2', outfit:'hanbok', jokki:'#5a6b8a', o3:'#5a6b8a', pants:'#ece6d6', shoe:'#ffffff', hat:'gat', old:1, beard:'#e0e0e0'},
    lines:['허허, 바둑 한 판 둘 텐가? 이 동네 바둑왕이 바로 나야.', '옛날엔 사과나무가 아주 컸어. 사다리 타고 땄지.', '저 느티나무가 이 마을보다 나이가 많단다.']},
   {name:'조막순 할머니', role:'뜨개질 솜씨꾼', home:[338, 2338], still:1,
-   look:{skin:'#f6d3b6', hair:'#d8d8d8', hs:'bob', top:'#e88a4a', outfit:'jacket', o2:'#b45a8a', pants:'#6a4a5a', shoe:'#4a3030', old:1, girl:1, glasses:1},
+   look:{skin:'#f6d3b6', hair:'#d8d8d8', hs:'bob', top:'#ffe0c0', outfit:'chima', o2:'#b45a8a', o3:'#b45a8a', pants:'#6a4a5a', shoe:'#ffffff', old:1, girl:1, glasses:1},
    lines:['할미가 사과 무늬 목도리 떠 줄까?', '서리 내리는 밤엔 과수원 걱정에 잠이 안 와.', '꽃 필 때 꿀벌이 많아야 사과가 잘 열린단다.']},
   {name:'한도윤', role:'초등학생', home:[430, 2200], r:[140, 50], sp:95,
-   look:{skin:'#ffe0c4', hair:'#2a2020', hs:'spiky', eye:'#4a2a1a', top:'#4aa8e8', outfit:'tee', pants:'#3a3a5a', shoe:'#e8423a', hat:'cap', capCol:'#ffcf3d', kid:1},
+   look:{skin:'#ffe0c4', hair:'#2a2020', hs:'spiky', eye:'#4a2a1a', top:'#fffaf0', outfit:'hanbok', saek:1, o3:'#4aa8e8', pants:'#4a6ad8', shoe:'#e8423a', hat:'cap', capCol:'#ffcf3d', kid:1},
    lines:['{N} 농부님! 사과 하나만 줘! ...농담이야 히히.', '나 커서 사과 박사 될 거야. 세상엔 사과 품종이 7천 가지가 넘는대!', '어제 고라니 봤어! 엄청 빨랐어.']},
   {name:'한소이', role:'도윤이 동생', home:[470, 2210], r:[110, 40], sp:75,
-   look:{skin:'#ffe4cc', hair:'#3a2420', hs:'pony', eye:'#6a3a2a', top:'#ffd23a', outfit:'dress', o2:'#ff9ec4', pants:'#ffe4cc', shoe:'#ff6b8a', kid:1, girl:1},
+   look:{skin:'#ffe4cc', hair:'#3a2420', hs:'pony', eye:'#6a3a2a', top:'#fff4c0', outfit:'chima', saek:1, o2:'#ff6b8a', o3:'#e8423a', pants:'#ffe4cc', shoe:'#ff6b8a', kid:1, girl:1},
    lines:['오빠가 또 뛰어갔어... 같이 잡아 줄래?', '사과꽃은 하얗고 살짝 분홍색이야. 예쁘지?', '나는 빨간 사과가 제일 좋아!']},
   {name:'나방울', role:'유치원생', home:[390, 2230], r:[90, 30], sp:55,
-   look:{skin:'#ffe4cc', hair:'#3a2420', hs:'bob', eye:'#4a2a1a', top:'#ffcf3d', outfit:'dress', o2:'#5ad0c0', pants:'#ffe4cc', shoe:'#ffcf3d', hat:'cap', capCol:'#ffcf3d', kid:1, girl:1},
+   look:{skin:'#ffe4cc', hair:'#3a2420', hs:'bob', eye:'#4a2a1a', top:'#ffe36a', outfit:'chima', saek:1, o2:'#3ab0a0', o3:'#e8423a', pants:'#ffe4cc', shoe:'#ffcf3d', kid:1, girl:1},
    lines:['딸랑딸랑! 나 방울이야!', '사과를 가로로 잘라 봐. 씨가 별 모양으로 들어 있어!', '유치원에서 사과 그림 그렸어!']},
   {name:'서다솜', role:'다솜빵집 제빵사', home:[660, 2170], r:[50, 15], sp:35,
-   look:{skin:'#ffe0c8', hair:'#8a5a3a', hs:'pony', eye:'#7a4a2a', top:'#fff4dc', outfit:'apron', o2:'#f6a04a', pants:'#5a4a3a', shoe:'#6a4a30', girl:1},
+   look:{skin:'#ffe0c8', hair:'#8a5a3a', hs:'pony', eye:'#7a4a2a', top:'#fff4dc', outfit:'gaeryang', o2:'#fff4dc', o3:'#f6a04a', pants:'#c08050', shoe:'#6a4a30', girl:1},
    lines:['갓 구운 사과파이 냄새 나죠? 새콤한 홍로로 만들었어요.', '빵에 넣을 사과는 단단한 게 좋아요.', '사과 많이 따면 우리 빵집 생각도 해 줘요!']},
   {name:'임고은 선생님', role:'햇살분교 선생님', home:[210, 2960], r:[70, 20], sp:40,
-   look:{skin:'#ffe0c8', hair:'#2a2020', hs:'bob', eye:'#3a2a2a', top:'#ffffff', outfit:'jacket', o2:'#6a8ad6', pants:'#3a3a4a', shoe:'#2a2a2a', glasses:1, girl:1},
+   look:{skin:'#ffe0c8', hair:'#2a2020', hs:'bob', eye:'#3a2a2a', top:'#e6eeff', outfit:'gaeryang', o2:'#e6eeff', o3:'#6a8ad6', pants:'#3a4a7a', shoe:'#2a2a2a', glasses:1, girl:1},
    lines:['햇살분교 임고은이에요. 아이들이랑 과수원 견학 가도 될까요?', '사과는 장미과 식물이래요. 장미랑 친척이에요!', '사과나무는 심고 몇 해 지나야 제대로 열려요.']},
   {name:'차분해 순경', role:'사과골 파출소', home:[660, 2600], r:[60, 340], sp:60,
-   look:{skin:'#f3c9a2', hair:'#1a1a1a', hs:'short', eye:'#2a2a2a', top:'#bcd6f0', outfit:'jacket', o2:'#2a3a5a', pants:'#2a3a5a', shoe:'#1a1a1a', hat:'cap', capCol:'#2a3a5a'},
+   look:{skin:'#f3c9a2', hair:'#1a1a1a', hs:'short', eye:'#2a2a2a', top:'#c8daf0', outfit:'gaeryang', o2:'#c8daf0', o3:'#2a3a5a', pants:'#2a3a5a', shoe:'#1a1a1a', hat:'cap', capCol:'#2a3a5a'},
    lines:['차분하게, 차분하게. 마을은 오늘도 평화롭습니다.', '멧돼지가 나오면 혼자 맞서지 말고 울타리를 튼튼히 하세요.', '길 건널 땐 좌우를 꼭 보세요!']},
   {name:'문태풍 기사님', role:'택배 기사', home:[470, 2450], r:[25, 560], sp:120,
-   look:{skin:'#e9bd93', hair:'#1a1a1a', hs:'short', eye:'#2a2a2a', top:'#ffffff', outfit:'jacket', o2:'#3a6fd8', pants:'#2a2f3a', shoe:'#1a1a1a', hat:'cap', capCol:'#3a6fd8'},
+   look:{skin:'#e9bd93', hair:'#1a1a1a', hs:'short', eye:'#2a2a2a', top:'#d8e6ff', outfit:'gaeryang', o2:'#d8e6ff', o3:'#3a6fd8', pants:'#2a2f3a', shoe:'#1a1a1a', hat:'cap', capCol:'#3a6fd8'},
    lines:['택배 왔습니다~ 태풍처럼 빠르게!', '사과 택배엔 "파손주의"를 꼭 붙여요.', '진짜 태풍 올 땐 저도 쉬어요. 과수원도 조심해요!']},
   {name:'윤꽃님', role:'꽃님꽃집', home:[210, 2520], r:[60, 20], sp:35,
-   look:{skin:'#ffe4d0', hair:'#7a3a2a', hs:'long', eye:'#6a3a2a', top:'#ffb7c8', outfit:'dress', o2:'#ff8fae', pants:'#ffe4d0', shoe:'#c25a6a', girl:1},
+   look:{skin:'#ffe4d0', hair:'#7a3a2a', hs:'long', eye:'#6a3a2a', top:'#fff0f4', outfit:'chima', o2:'#ff8fae', o3:'#c2456a', pants:'#ffe4d0', shoe:'#ffffff', girl:1},
    lines:['꽃님꽃집이에요. 사과꽃도 꽃이죠!', '사과꽃은 한 자리에 5~6송이씩 모여 펴요.', '가운데 큰 꽃(중심화)을 남기면 좋은 사과가 된대요.']},
   {name:'곽든든 사장님', role:'든든철물 · 장비 가게', home:[660, 2520], r:[50, 15], sp:35, shop:1,
-   look:{skin:'#e2b48a', hair:'#3a2a20', hs:'short', eye:'#3a2a20', top:'#c25a3a', outfit:'vest', o2:'#6a5040', pants:'#4a4038', shoe:'#2a2018', beard:'#3a2a20'},
+   look:{skin:'#e2b48a', hair:'#3a2a20', hs:'short', eye:'#3a2a20', top:'#f0e6d0', outfit:'hanbok', jokki:'#6a5040', o3:'#6a5040', pants:'#8a7a68', shoe:'#2a2018', beard:'#3a2a20'},
    lines:['든든철물! 가위 날 갈아 줄까?', '가지치기 가위는 잘 들어야 나무가 덜 아파.', '울타리 철사 필요하면 말만 해!']},
   {name:'송이슬 선생님', role:'수의사', home:[210, 2740], r:[60, 20], sp:40,
-   look:{skin:'#ffe0c8', hair:'#5a3a2a', hs:'pony', eye:'#4a3a2a', top:'#e8f6ff', outfit:'jacket', o2:'#ffffff', pants:'#5a7aa0', shoe:'#3a3a3a', girl:1},
+   look:{skin:'#ffe0c8', hair:'#5a3a2a', hs:'pony', eye:'#4a3a2a', top:'#f4fbff', outfit:'gaeryang', o2:'#f4fbff', o3:'#5ab0d0', pants:'#5a7aa0', shoe:'#3a3a3a', girl:1},
    lines:['동물 친구가 아프면 데려와요.', '고라니는 사과 잎을 좋아해서 과수원에 내려와요.', '강아지한테 사과 씨는 주면 안 돼요!']},
   {name:'양벌찬', role:'청년 양봉가', home:[660, 2740], r:[70, 25], sp:45,
-   look:{skin:'#f3c9a2', hair:'#5a3a20', hs:'spiky', eye:'#4a2a1a', top:'#ffe36a', outfit:'overall', o2:'#f2f2f2', pants:'#f2f2f2', shoe:'#5a4a30', hat:'straw'},
+   look:{skin:'#f3c9a2', hair:'#5a3a20', hs:'spiky', eye:'#4a2a1a', top:'#fff0a0', outfit:'gaeryang', o2:'#fff0a0', o3:'#c08a3a', pants:'#8a7040', shoe:'#5a4a30', hat:'straw'},
    lines:['벌찬꿀집 양벌찬! 꿀벌들이 오늘도 열일 중이야.', '꿀벌 한 마리가 하루에 꽃을 수백 송이나 들른대.', '꽃 필 땐 약을 안 쳐야 꿀벌이 안전해.']},
   {name:'하노을', role:'화가', home:[640, 2350], still:1,
-   look:{skin:'#ffe0c8', hair:'#2a2020', hs:'long', eye:'#5a2a3a', top:'#ffffff', outfit:'apron', o2:'#7ab0e8', pants:'#3a3a4a', shoe:'#2a2a2a', girl:1},
+   look:{skin:'#ffe0c8', hair:'#2a2020', hs:'long', eye:'#5a2a3a', top:'#ffffff', outfit:'chima', o2:'#7ab0e8', o3:'#e88a4a', pants:'#3a3a4a', shoe:'#ffffff', girl:1},
    lines:['노을 질 때 과수원이 제일 예뻐요. 그림으로 남기는 중이에요.', '빨강, 노랑, 초록... 사과 하나에도 색이 여러 개예요.', '다 그리면 과수원에 걸어 드릴게요.']},
   {name:'남궁빛나', role:'마을 유튜버', home:[470, 2300], r:[150, 40], sp:50,
-   look:{skin:'#ffe4d0', hair:'#d9a03a', hs:'long', eye:'#6a4a2a', top:'#b98cff', outfit:'jacket', o2:'#ff6b8a', pants:'#3a3a5a', shoe:'#ffffff', girl:1},
+   look:{skin:'#ffe4d0', hair:'#d9a03a', hs:'long', eye:'#6a4a2a', top:'#efe4ff', outfit:'gaeryang', o2:'#efe4ff', o3:'#ff6b8a', pants:'#8a5ad8', shoe:'#ffffff', girl:1},
    lines:['안녕하세요, 빛나TV! 오늘은 사과골 농부님을 만나러 왔어요!', '구독자들이 {N}네 과수원 사과 맛을 궁금해해요!', '사과 따는 날 영상 찍어도 돼요?']}
 ];
 for (const d of NPC_DATA) { d.home = vxy(...d.home); if (d.r) d.r = [d.r[0] * VSC, d.r[1] * VSC]; }
@@ -3244,32 +3278,65 @@ function drawVillageGround(c, win, x0, y0, w, h){
   // 놀이터 모래밭
   c.beginPath(); ell(c, PLAY.x, PLAY.y, 300, 120); c.fillStyle = win ? '#e9eef2' : '#e8d4a0'; c.fill(); c.lineWidth = 3; c.strokeStyle = win ? '#c8d2da' : '#c8a868'; c.stroke();
 }
+// 2026-10-16 달 요청: 마을 건물을 한옥(기와집)·초가집으로. b.roof는 기와 색에 살짝만 섞어 가게마다 구분돼요
 function drawVHouse(c, b){
-  const w = b.big ? 240 : 180, hw = w / 2, wh = b.big ? 80 : 68;
+  const w = b.big ? 240 : 180, hw = w / 2, wh = b.big ? 80 : 68, choga = b.choga, win = seasonOf(G.week) === 'winter';
+  const WOOD = '#8a5432', WOODS = '#5e3820';
   c.save(); c.translate(b.x, b.y);
-  shadow(c, 0, 4, hw + 18, 16, .22);
-  cel(c, cc => rr(cc, -hw + 12, -wh, w - 24, wh, 3), b.wall, mix(b.wall, '#8a6a4a', .22), 5, 5, 3);
-  // 지붕
-  const roof = cc => { cc.moveTo(-hw - 8, -wh + 6); cc.lineTo(-hw + 28, -wh - 54); cc.lineTo(hw - 28, -wh - 54); cc.lineTo(hw + 8, -wh + 6); cc.closePath(); };
-  cel(c, roof, b.roof, mix(b.roof, '#000', .28), 6, 6, 3);
-  c.save(); c.beginPath(); roof(c); c.clip();
-  for (let k = 1; k < 5; k++) line(c, [-hw - 10, -wh + 6 - k * 12, hw + 10, -wh + 6 - k * 12], 1.6, mix(b.roof, '#000', .18));
-  c.restore();
-  hl(c, -hw + 40, -wh - 40, 22, 4, .35);
-  // 문·창
-  cel(c, cc => rr(cc, -15, -48, 30, 48, 3), '#b9784a', '#8a5432', 2, 2, 2.4);
-  c.beginPath(); c.arc(9, -24, 2.2, 0, 7); c.fillStyle = '#ffd25e'; c.fill();
-  for (const sx of [-hw + 44, hw - 44]) {
-    cel(c, cc => rr(cc, sx - 19, -56, 38, 28, 3), '#cfeeff', '#9ccbe8', 3, 3, 2.4);
-    line(c, [sx, -56, sx, -28], 2, INK); line(c, [sx - 19, -42, sx + 19, -42], 2, INK);
-    cel(c, cc => rr(cc, sx - 22, -27, 44, 8, 3), '#a8734a', '#7a4a2c', 1, 1, 2);
-    for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(sx - 12 + k * 12, -29, 4, 0, 7); c.fillStyle = ['#ff6b8a', '#ffd23a', '#ff9a3a'][k]; c.fill(); c.lineWidth = 1.4; c.strokeStyle = INK; c.stroke(); }
+  shadow(c, 0, 4, hw + 22, 16, .22);
+  // 기단(돌로 쌓은 바닥)
+  cel(c, cc => rr(cc, -hw + 4, -14, w - 8, 16, 3), '#c9c2b4', '#9a9282', 2, 2, 2.6);
+  for (let x = -hw + 26; x < hw - 8; x += 26) line(c, [x, -14, x, 2], 1.4, '#9a9282');
+  // 벽: 흰 회벽(한옥) / 황토벽(초가) + 나무 기둥·인방
+  const wall = choga ? '#ecd3a2' : '#fbf5e6';
+  cel(c, cc => rr(cc, -hw + 16, -wh, w - 32, wh - 14, 2), wall, mix(wall, '#8a6a4a', .22), 4, 4, 3);
+  for (const px of [-hw + 16, -26, 18, hw - 24]) cel(c, cc => rr(cc, px, -wh, 8, wh - 14, 2), WOOD, WOODS, 1, 0, 2.2);
+  cel(c, cc => rr(cc, -hw + 16, -wh, w - 32, 8, 2), WOOD, WOODS, 0, 1, 2.2);
+  line(c, [-hw + 18, -wh + 30, hw - 18, -wh + 30], 3, WOOD);
+  // 문: 창살 문(띠살) 두 짝
+  cel(c, cc => rr(cc, -18, -58, 36, 44, 2), '#fff6dc', '#e6d6b0', 2, 2, 2.4);
+  for (let k = -12; k <= 12; k += 6) line(c, [k, -58, k, -14], 1.4, WOOD);
+  for (const y of [-50, -26]) line(c, [-18, y, 18, y], 1.4, WOOD);
+  line(c, [0, -58, 0, -14], 2.4, WOODS);
+  // 창: 한지 바른 격자창
+  for (const sx of [-hw + 54, hw - 54]) {
+    cel(c, cc => rr(cc, sx - 17, -wh + 34, 34, 26, 2), '#fffaea', '#ece0c0', 2, 2, 2.4);
+    for (let k = -8; k <= 8; k += 8) line(c, [sx + k, -wh + 34, sx + k, -wh + 60], 1.4, WOOD);
+    line(c, [sx - 17, -wh + 47, sx + 17, -wh + 47], 1.4, WOOD);
   }
-  // 간판
+  // 지붕
+  if (choga) {
+    const straw = '#dcb563', strawS = '#a88038';
+    const roof = cc => { cc.moveTo(-hw - 22, -wh + 6); qq(cc, -hw - 30, -wh - 24, -hw + 10, -wh - 50); qq(cc, 0, -wh - 74, hw - 10, -wh - 50); qq(cc, hw + 30, -wh - 24, hw + 22, -wh + 6); qq(cc, 0, -wh + 14, -hw - 22, -wh + 6); cc.closePath(); };
+    cel(c, roof, win ? '#eef3f6' : straw, win ? '#c4d2dc' : strawS, 6, 6, 3);
+    c.save(); c.beginPath(); roof(c); c.clip();
+    if (!win) for (let k = -hw - 20; k < hw + 20; k += 9) line(c, [k, -wh + 10, k * .82, -wh - 60], 1.3, mix(straw, '#000', .14));
+    for (let k = -2; k <= 2; k++) line(c, [k * 44 - 30, -wh + 12, k * 44 + 30, -wh - 70], 2, win ? '#b8c6d0' : '#8a6428'); // 새끼줄
+    for (let k = -2; k <= 2; k++) line(c, [k * 44 + 30, -wh + 12, k * 44 - 30, -wh - 70], 2, win ? '#b8c6d0' : '#8a6428');
+    c.restore();
+    // 처마 끝 짚 술
+    for (let x = -hw - 14; x <= hw + 14; x += 12) line(c, [x, -wh + 6 + (1 - (x / (hw + 22)) ** 2) * 6, x, -wh + 13 + (1 - (x / (hw + 22)) ** 2) * 6], 2, win ? '#c4d2dc' : strawS);
+    // 굴뚝
+    cel(c, cc => rr(cc, hw - 30, -wh - 30, 14, 28, 3), '#b07a52', '#7a4e30', 2, 2, 2.4);
+  } else {
+    const tile = mix(b.roof, '#4a5462', .72), tileS = mix(tile, '#000', .32);
+    const roof = cc => { cc.moveTo(-hw - 34, -wh - 18); qq(cc, -hw - 10, -wh + 6, -hw + 24, -wh + 4); cc.lineTo(hw - 24, -wh + 4); qq(cc, hw + 10, -wh + 6, hw + 34, -wh - 18); qq(cc, hw + 2, -wh - 26, hw - 24, -wh - 54); cc.lineTo(-hw + 24, -wh - 54); qq(cc, -hw - 2, -wh - 26, -hw - 34, -wh - 18); cc.closePath(); };
+    cel(c, roof, tile, tileS, 6, 6, 3);
+    c.save(); c.beginPath(); roof(c); c.clip();
+    for (let x = -hw - 30; x <= hw + 30; x += 11) line(c, [x, -wh + 6, x * .9, -wh - 56], 2.2, mix(tile, '#000', .2)); // 골기와 줄
+    if (win) { c.fillStyle = '#f4f8fb'; c.beginPath(); c.moveTo(-hw - 34, -wh - 18); qq(c, -hw - 2, -wh - 26, -hw + 24, -wh - 54); c.lineTo(hw - 24, -wh - 54); qq(c, hw + 2, -wh - 26, hw + 34, -wh - 18); qq(c, 0, -wh - 34, -hw - 34, -wh - 18); c.fill(); }
+    c.restore();
+    // 막새(처마 끝 동그란 기와)
+    for (let x = -hw + 20; x <= hw - 20; x += 16) { c.beginPath(); c.arc(x, -wh + 3, 4, 0, 7); c.fillStyle = tileS; c.fill(); c.lineWidth = 1.4; c.strokeStyle = INK; c.stroke(); }
+    // 용마루 (양끝이 살짝 들려요)
+    cel(c, cc => { cc.moveTo(-hw + 14, -wh - 66); qq(cc, -hw + 22, -wh - 56, -hw + 34, -wh - 56); cc.lineTo(hw - 34, -wh - 56); qq(cc, hw - 22, -wh - 56, hw - 14, -wh - 66); cc.lineTo(hw - 20, -wh - 52); cc.lineTo(-hw + 20, -wh - 52); cc.closePath(); }, win ? '#f4f8fb' : mix(tile, '#000', .18), mix(tile, '#000', .4), 2, 2, 2.6);
+    hl(c, -hw + 30, -wh - 40, 20, 3, .25);
+  }
+  // 현판(나무 간판)
   if (b.sign) {
-    c.font = '17px Jua'; const tw = c.measureText(b.sign).width + 22;
-    cel(c, cc => rr(cc, -tw / 2, -wh - 16, tw, 26, 7), '#fffaf1', '#e8dcc4', 2, 2, 2.4);
-    c.fillStyle = INK; c.textAlign = 'center'; c.fillText(b.sign, 0, -wh + 3); c.textAlign = 'left';
+    c.font = '17px Jua'; const tw = c.measureText(b.sign).width + 22, sy = choga ? -wh - 2 : -wh - 8;
+    cel(c, cc => rr(cc, -tw / 2, sy - 13, tw, 26, 4), '#6a4428', '#4a2e1a', 2, 2, 2.6);
+    c.fillStyle = '#fff2c8'; c.textAlign = 'center'; c.fillText(b.sign, 0, sy + 6); c.textAlign = 'left';
   }
   c.restore();
 }
