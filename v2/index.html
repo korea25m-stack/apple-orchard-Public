@@ -387,7 +387,12 @@ const DAY_SEC = 10;                 // 1배속 하루 10초
 // 2026-10-16 달 요청: 보내 준 지도대로 다시 배치. 지도 1px = 32(0.8m), 지도의 왼쪽 위 검은 원(442,573) = 과수원 둘레 가운데(1200,2300)
 const MAPK = 32, MAP0 = {ix:442, iy:573, x:1200, y:2300};
 const mapXY = (ix, iy) => [MAP0.x + (ix - MAP0.ix) * MAPK, MAP0.y + (iy - MAP0.iy) * MAPK];
-const WX0 = MAP0.x - MAP0.ix * MAPK, WY0 = MAP0.y - MAP0.iy * MAPK, WX1 = MAP0.x + (1289 - MAP0.ix) * MAPK, WY1 = MAP0.y + (1072 - MAP0.iy) * MAPK;
+// 2026-10-16 달 요청: 지도(1289×1072) 영역을 가운데 두고 전체 맵을 가로·세로 2배로. 바깥 숲일수록 센 짐승
+const MX0 = MAP0.x - MAP0.ix * MAPK, MY0 = MAP0.y - MAP0.iy * MAPK, MX1 = MAP0.x + (1289 - MAP0.ix) * MAPK, MY1 = MAP0.y + (1072 - MAP0.iy) * MAPK;
+const MCX = (MX0 + MX1) / 2, MCY = (MY0 + MY1) / 2, MHX = (MX1 - MX0) / 2, MHY = (MY1 - MY0) / 2;
+const WX0 = MCX - MHX * 2, WY0 = MCY - MHY * 2, WX1 = MCX + MHX * 2, WY1 = MCY + MHY * 2;
+// 가운데서 얼마나 먼지(지도 가장자리 = 1, 전체 맵 가장자리 = 2)
+const cDist = (x, y) => Math.hypot((x - MCX) / MHX, (y - MCY) / MHY);
 const WORLD_W = WX1 - WX0, WORLD_H = WY1 - WY0;
 const HOME = {x0:-1100, y0:440, x1:3600, y1:4300, name:'우리 과수원'}; // 2026-10-16 지도의 왼쪽 위 검은 원(집·창고·과수원)
 const worldH = rows => OY + rows * ROW_H + 520;
@@ -647,7 +652,8 @@ const MAP_ROADS = [
   [J6, MP(380, 975), MP(300, 985), MP(250, 966), MP(150, 970), MP(100, 942), MP(0, 925)],                                     // 서쪽 길
   [J5, MP(495, 852), MP(545, 826), MP(612, 835), JE],                                                                       // 확장 부지 1 아래
   [JE, MP(780, 862), MP(860, 846), MP(890, 872), MP(912, 905), MP(950, 932), [F3.cx, F3.cy], MP(1040, 945), MP(1080, 1000)],     // 확장 부지 2로
-  [MP(1080, 1000), MP(1150, 1018), MP(1196, 1024)]                                                                          // 호랑이 굴로
+  [MP(1080, 1000), MP(1150, 1018), MP(1196, 1024)],                                                                         // 옛 호랑이 굴 자리로
+  [MP(1196, 1024), MP(1330, 1100), MP(1470, 1220), MP(1600, 1330), MP(1720, 1420)]                                          // 2026-10-16 넓힌 맵: 오른쪽 아래 끝 호랑이 굴로
 ];
 // 숲 깊이 들어가는 오솔길(지도엔 없지만 깊은 숲을 다닐 수 있게)
 const FOREST_PATHS = [
@@ -655,11 +661,22 @@ const FOREST_PATHS = [
   [V2E, MP(830, 600), MP(960, 640), MP(1100, 700), MP(1250, 760)],
   [MP(415, 430), MP(300, 420), MP(180, 480), MP(60, 560)],
   [MP(458, 712), MP(330, 700), MP(200, 760), MP(70, 800)],
-  [MP(1000, 22), MP(1050, 160), MP(1120, 260)]
+  [MP(1000, 22), MP(1050, 160), MP(1120, 260)],
+  // 2026-10-16 넓힌 바깥 숲: 지도 끝에서 바깥으로 뻗는 길 + 바깥을 크게 한 바퀴 도는 길
+  [MP(575, 0), MP(555, -150), MP(595, -320), MP(570, -500)],
+  [MP(1289, 68), MP(1450, 40), MP(1650, -60), MP(1880, -200)],
+  [MP(0, 925), MP(-180, 900), MP(-380, 960), MP(-600, 1000)],
+  [MP(445, 1072), MP(430, 1250), MP(470, 1420), MP(440, 1580)],
+  [MP(1260, 200), MP(1500, 150), MP(1760, 100)],
+  [MP(1250, 760), MP(1500, 800), MP(1770, 820)],
+  [MP(60, 560), MP(-200, 520), MP(-480, 560)],
+  [MP(70, 800), MP(-200, 850), MP(-420, 820)],
+  [MP(-360, -300), MP(100, -380), MP(580, -380), MP(1100, -360), MP(1650, -300), MP(1770, 100), MP(1790, 540), MP(1770, 820), MP(1700, 1250)],
+  [MP(1700, 1250), MP(1300, 1430), MP(800, 1450), MP(440, 1440), MP(0, 1430), MP(-420, 1360), MP(-480, 820), MP(-480, 560), MP(-470, 100), MP(-360, -300)]
 ];
 // 지도 왼쪽 위의 강(동계천)과 큰 도로(농암로): 그림만
-const RIVER = [MP(640, 0), MP(600, 70), MP(560, 150), MP(500, 200), MP(430, 225), MP(330, 238), MP(220, 228), MP(120, 205), MP(40, 178), MP(0, 165)];
-const HIGHWAY = [MP(590, 0), MP(560, 50), MP(520, 85), MP(440, 125), MP(370, 155), MP(300, 175), MP(200, 190), MP(120, 175), MP(60, 130), MP(0, 85)];
+const RIVER = [MP(700, -536), MP(660, -250), MP(640, 0), MP(600, 70), MP(560, 150), MP(500, 200), MP(430, 225), MP(330, 238), MP(220, 228), MP(120, 205), MP(40, 178), MP(0, 165), MP(-300, 140), MP(-644, 160)];
+const HIGHWAY = [MP(620, -536), MP(600, -250), MP(590, 0), MP(560, 50), MP(520, 85), MP(440, 125), MP(370, 155), MP(300, 175), MP(200, 190), MP(120, 175), MP(60, 130), MP(0, 85), MP(-300, 40), MP(-644, 20)];
 
 // ===== 게임 상태와 규칙 (그림과 분리) =====
 let G = null;
@@ -1437,6 +1454,7 @@ function drawHat(c, L, side, back, hy){
 // ----- 동물 -----
 function drawAnimal(c, kind, x, y, t, flip, V){
   c.save(); c.translate(x, y); if (flip) c.scale(-1, 1);
+  if (V && CUTE[kind]) { drawCuteBeast(c, kind, t, V); c.restore(); return; } // 2026-10-16 귀여운 새 그림
   if (V && NEW_BEAST[kind]) { drawNewBeast(c, kind, t, V); c.restore(); return; }
   if (kind === 'boar' || kind === 'deer') {
     const boar = kind === 'boar', s = boar ? 1.15 : 1;
@@ -2235,31 +2253,35 @@ function nearRoad(x, y, d){
   return false;
 }
 // 2026-10-14 맵 4배: 풀·꽃·얼룩도 4배. 땅 조각(TILE)마다 나눠 담아서 그 조각 것만 그려요
-function buildFeats(){
-  const R = srand(4242), WH = WORLD_H;
-  feats = {blobs:new Map(), tufts:new Map(), flw:new Map()};
-  const put = (m, x, y, v) => { const k = Math.floor(x / TILE) + ',' + Math.floor(y / TILE); let L = m.get(k); if (!L) m.set(k, L = []); L.push(v); };
-  for (let i = 0; i < 41600; i++) {
-    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH, r = 40 + R() * 110, pts = [];
-    const n = 9; for (let k = 0; k < n; k++) { const a = k / n * 6.283, rr2 = r * (.7 + R() * .45); pts.push([x + Math.cos(a) * rr2, y + Math.sin(a) * rr2 * .55]); }
-    put(feats.blobs, x, y, {x, y, r, pts, dark:R() < .55});
+// 2026-10-16 맵을 넓히면서: 풀·꽃·얼룩을 처음에 다 만들지 않고, 땅 조각을 처음 볼 때 그 조각 것만 만들어요(같은 씨앗이라 늘 같은 자리)
+const FEAT_PER_TILE = {blobs:7.7, tufts:77, flw:17.8};
+function buildFeats(){ feats = {blobs:new Map(), tufts:new Map(), flw:new Map(), done:new Set()}; }
+function genFeatTile(tx, ty){
+  const k = tx + ',' + ty; if (feats.done.has(k)) return; feats.done.add(k);
+  const R = srand(((tx * 73856093) ^ (ty * 19349663) ^ 4242) >>> 0); for (let i = 0; i < 6; i++) R();
+  const n = v => Math.floor(v + R()), X = () => (tx + R()) * TILE, Y = () => (ty + R()) * TILE, L = {blobs:[], tufts:[], flw:[]};
+  for (let i = n(FEAT_PER_TILE.blobs); i > 0; i--) {
+    const x = X(), y = Y(), r = 40 + R() * 110, pts = [];
+    for (let q = 0; q < 9; q++) { const a = q / 9 * 6.283, rr2 = r * (.7 + R() * .45); pts.push([x + Math.cos(a) * rr2, y + Math.sin(a) * rr2 * .55]); }
+    L.blobs.push({x, y, r, pts, dark:R() < .55});
   }
-  for (let i = 0; i < 416000; i++) {
-    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH, v = R();
+  for (let i = n(FEAT_PER_TILE.tufts); i > 0; i--) {
+    const x = X(), y = Y(), v = R();
     if (nearHome(x, y) && (inOrchard(x, y) || nearRoad(x, y, 70) || inYard(x, y)) || inDen(x, y, 40)) continue;
-    put(feats.tufts, x, y, [x, y, v]);
+    L.tufts.push([x, y, v]);
   }
-  for (let i = 0; i < 96000; i++) {
-    const x = WX0 + R() * WORLD_W, y = WY0 + R() * WH, k = Math.floor(R() * 4);
+  for (let i = n(FEAT_PER_TILE.flw); i > 0; i--) {
+    const x = X(), y = Y(), q = Math.floor(R() * 4);
     if (y > SNOW_Y + 300 || nearHome(x, y) && (inOrchard(x, y, 20) || nearRoad(x, y, 80) || inYard(x, y)) || inDen(x, y, 40)) continue;
-    put(feats.flw, x, y, [x, y, k]);
+    L.flw.push([x, y, q]);
   }
+  for (const m of ['blobs', 'tufts', 'flw']) feats[m].set(k, L[m]);
 }
 // 과수원·마당·마을 길은 모두 집 둘레(HOME) 안에 있어요
 const nearHome = (x, y) => !!safeAt(x, y, 300); // 2026-10-16 과수원·마을 두 곳·확장 부지
 // 이 땅 조각과 이웃 조각에 담긴 것만 꺼내요 (가장자리에 걸친 것도 그려지게)
 function* featsNear(m, x0, y0, w, h){
-  for (let ty = Math.floor(y0 / TILE) - 1; ty <= Math.floor((y0 + h) / TILE) + 1; ty++) for (let tx = Math.floor(x0 / TILE) - 1; tx <= Math.floor((x0 + w) / TILE) + 1; tx++) { const L = m.get(tx + ',' + ty); if (L) yield* L; }
+  for (let ty = Math.floor(y0 / TILE) - 1; ty <= Math.floor((y0 + h) / TILE) + 1; ty++) for (let tx = Math.floor(x0 / TILE) - 1; tx <= Math.floor((x0 + w) / TILE) + 1; tx++) { genFeatTile(tx, ty); const L = m.get(tx + ',' + ty); if (L) yield* L; }
 }
 function inYard(x, y){ return ((x - YARD.x) / (YARD.rx + 30)) ** 2 + ((y - YARD.y) / (YARD.ry + 30)) ** 2 < 1 || ((x - HYARD.x) / (HYARD.rx + 30)) ** 2 + ((y - HYARD.y) / (HYARD.ry + 30)) ** 2 < 1 || (x > 300 && x < 760 && y > 400 && y < 860) || (x > -680 && x < -220 && y > 600 && y < 940); }
 function checkGround(){
@@ -3497,8 +3519,9 @@ for (const T of [...MAP_ROADS, ROAD]) for (let i = 0; i < T.length - 1; i++) {
 }
 function gateDist(x, y){ return Math.min(...GATES.map(g => Math.hypot(x - g.x, y - g.y))); }
 // 2026-10-14 맵 4배: 집에서 멀어질수록 ★1~★7 (2026-10-16 설산·흰곰 굴은 없앴어요)
-const ZONE_D = [1600, 3400, 5200, 7400, 9800, 12400];
-function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = homeDist(x, y); let z = 0; while (z < ZONE_D.length && d >= ZONE_D[z]) z++; return z; }
+// 2026-10-16 달 요청: 맵 가운데서 멀어질수록 세져요(cDist: 지도 끝 = 1, 전체 맵 끝 = 2). 마을·농장 바로 옆 숲은 ★2까지만
+const ZONE_C = [.5, .75, 1, 1.25, 1.55, 1.85];
+function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = cDist(x, y); let z = 0; while (z < ZONE_C.length && d >= ZONE_C[z]) z++; return homeDist(x, y) < 1500 ? Math.min(z, 1) : z; }
 const ZONES = [
   {name:'얕은 숲', stars:'★'}, {name:'깊은 숲', stars:'★★'}, {name:'골짜기', stars:'★★★'}, {name:'전설의 산', stars:'★★★★'},
   {name:'험한 봉우리', stars:'★★★★★'}, {name:'구름 산맥', stars:'★★★★★★'}, {name:'끝없는 산맥', stars:'★★★★★★★'}
@@ -3604,7 +3627,7 @@ function vnoise(x, y, sc, seed){
   return a + (b - a) * sm(u) + (c2 - a) * sm(v) + (a - b - c2 + d) * sm(u) * sm(v);
 }
 function buildForest(){
-  FOREST = [];
+  FOREST = []; FOREST_G = null;
   const R = srand(808), R3 = srand(6060);
   for (let gy = WY0 + 220; gy < WY1 - 60; gy += 200) for (let gx = WX0 + 140; gx < WX1 - 60; gx += 200) {
     const x = gx + (R() - .5) * 150, y = gy + (R() - .5) * 150, k = R(), s = .85 + R() * .5;
@@ -3638,6 +3661,14 @@ function buildForest(){
   for (const p of PEAKS) put({x:p.x, y:p.y - 10 * p.s, rx:175 * p.s, ry:55 * p.s});
 }
 let BORDER = [], SOLID_G = null, PEAKS = [];
+// 2026-10-16 넓힌 맵: 나무를 1500칸 격자에 나눠 담고, 화면 둘레 칸만 봐요
+let FOREST_G = null;
+function forestNear(){
+  if (!FOREST_G) { FOREST_G = new Map(); for (const o of FOREST) { const k = Math.floor(o.x / 1500) + ',' + Math.floor(o.y / 1500); let L = FOREST_G.get(k); if (!L) FOREST_G.set(k, L = []); L.push(o); } }
+  const out = [], gx = Math.floor(cam.x / 1500), gy = Math.floor(cam.y / 1500), r = PV.on ? 4 : 2;
+  for (let y = gy - r; y <= gy + r; y++) for (let x = gx - r; x <= gx + r; x++) { const L = FOREST_G.get(x + ',' + y); if (L) for (const o of L) out.push(o); }
+  return out;
+}
 // 눈 덮인 바위산 (발 밑 가운데가 0,0)
 function drawPeak(c, x, y, s, v){
   c.save(); c.translate(x, y); c.scale(s, s);
@@ -3686,8 +3717,8 @@ function drawHuntGround(c, x0, y0, w, h, win){
   // 숲 바닥: 깊이 들어갈수록 조금씩 짙어져요
   for (let cy = y0; cy < y0 + h; cy += 64) for (let cx = x0; cx < x0 + w; cx += 64) {
     if (!inHunt(cx + 32, cy + 32)) continue;
-    const t = clamp(homeDist(cx + 32, cy + 32) / 7000, 0, 1), sk = snowK(cy + 32);
-    const t2 = clamp((homeDist(cx + 32, cy + 32) - 7000) / 7000, 0, 1); // ★5~★7은 더 짙은 숲
+    const cd = cDist(cx + 32, cy + 32), t = clamp((cd - .3) / .9, 0, 1), sk = snowK(cy + 32);
+    const t2 = clamp((cd - 1.2) / .7, 0, 1); // 바깥 숲(★5~★7)은 더 짙은 숲
     c.fillStyle = mix(mix(base, dark, .1 + t * .35 + t2 * .22), '#eef4f8', sk * .94); c.fillRect(cx, cy, 65, 65);
   }
   const sk = snowK(y0 + h / 2), sn = sk > .5; win = win || sn;
@@ -4051,7 +4082,10 @@ const RESTS = [
   // 2026-10-16 지도대로 바뀐 길 위로 옮겼어요(길에서 살짝 비켜서)
   {id:'e', name:'강변 동쪽 쉼터', x:mapXY(760, 55)[0], y:mapXY(760, 55)[1] + 260}, {id:'s', name:'남쪽 숲 쉼터', x:mapXY(442, 790)[0] + 280, y:mapXY(442, 790)[1]},
   {id:'n', name:'다리 옆 쉼터', x:mapXY(588, 125)[0] + 300, y:mapXY(588, 125)[1]}, {id:'w', name:'서쪽 숲 쉼터', x:mapXY(150, 970)[0], y:mapXY(150, 970)[1] - 280},
-  {id:'v', name:'남동쪽 골짜기 쉼터', x:mapXY(860, 846)[0], y:mapXY(860, 846)[1] - 300}, {id:'m', name:'고갯길 쉼터', x:mapXY(640, 445)[0] + 120, y:mapXY(640, 445)[1] - 280}
+  {id:'v', name:'남동쪽 골짜기 쉼터', x:mapXY(860, 846)[0], y:mapXY(860, 846)[1] - 300}, {id:'m', name:'고갯길 쉼터', x:mapXY(640, 445)[0] + 120, y:mapXY(640, 445)[1] - 280},
+  // 2026-10-16 넓힌 바깥 숲(한 바퀴 도는 길 위)
+  {id:'on', name:'북쪽 끝 쉼터', x:mapXY(580, -380)[0], y:mapXY(580, -380)[1] + 280}, {id:'oe', name:'동쪽 끝 쉼터', x:mapXY(1790, 540)[0] - 300, y:mapXY(1790, 540)[1]},
+  {id:'os', name:'남쪽 끝 쉼터', x:mapXY(800, 1450)[0], y:mapXY(800, 1450)[1] - 280}, {id:'ow', name:'서쪽 끝 쉼터', x:mapXY(-480, 560)[0] + 300, y:mapXY(-480, 560)[1] + 200}
 ];
 function restAt(x, y, pad = 0){ return RESTS.find(r => Math.hypot(x - r.x, (y - r.y) * 1.2) < 160 + pad); }
 function restsFound(){ if (!G.rests) G.rests = {}; return RESTS.filter(r => G.rests[r.id]); }
@@ -4250,7 +4284,7 @@ function huntEntities(ctx, add, vis, T){
   for (const r of RESTS) if (vis(r.x, r.y, 400)) { add(r.y, r.x, () => drawRest(ctx, r, T)); }
   denEntities(ctx, add, vis, T);
   for (const p of PEAKS) if (vis(p.x, p.y - 150 * p.s, 420 * p.s)) add(p.y, p.x, () => drawPeak(ctx, p.x, p.y, p.s, p.v));
-  for (const o of FOREST) if (vis(o.x, o.y)) add(o.y, o.x, () => o.k === 'pine' ? drawPine(ctx, o.x, o.y, o.s * 1.1) : o.k === 'oak' ? drawOak(ctx, o.x, o.y, o.s) : o.k === 'rock' ? drawRock(ctx, o.x, o.y, o.s) : drawBush(ctx, o.x, o.y, o.s * 1.2));
+  for (const o of forestNear()) if (vis(o.x, o.y)) add(o.y, o.x, () => o.k === 'pine' ? drawPine(ctx, o.x, o.y, o.s * 1.1) : o.k === 'oak' ? drawOak(ctx, o.x, o.y, o.s) : o.k === 'rock' ? drawRock(ctx, o.x, o.y, o.s) : drawBush(ctx, o.x, o.y, o.s * 1.2));
   for (const f of FORAGE) if (vis(f.x, f.y)) add(f.y - 1, f.x, () => drawForage(ctx, f));
   if (BFX.length) add(-1e9, 0, () => drawBossFx(ctx));
   for (const m of MONS) if (vis(m.x, m.y)) add(m.y, m.x, () => drawMon(ctx, m));
@@ -4273,7 +4307,7 @@ function buildMiniBase(){
   miniBase = mk(BW, BH); const c = miniBase.getContext('2d');
   for (let y = 0; y < BH; y += 4) for (let x = 0; x < BW; x += 4) {
     const wx = WX0 + x / s, wy = WY0 + y / s;
-    c.fillStyle = inHunt(wx, wy) ? mix(mix('#7fbf5a', '#2f5a2a', clamp(homeDist(wx, wy) / 14000, 0, 1) * .85), '#eef4f8', snowK(wy)) : '#a6dc78'; c.fillRect(x, y, 4, 4);
+    c.fillStyle = inHunt(wx, wy) ? mix(mix('#7fbf5a', '#2f5a2a', clamp((cDist(wx, wy) - .3) / 1.6, 0, 1) * .85), '#eef4f8', snowK(wy)) : '#a6dc78'; c.fillRect(x, y, 4, 4);
   }
   c.translate(-WX0 * s, -WY0 * s);
   c.lineCap = 'round'; c.lineJoin = 'round';
@@ -4508,8 +4542,8 @@ NEW_BEAST.tiger = Array(7).fill(TIGER);
 const PBEAR = {name:'전설의 흰곰', hp:2600, def:20, dmg:4.3, spd:1.15, sc:1.95, xp:800, boss:1};
 NEW_BEAST.pbear = Array(7).fill(PBEAR);
 const PBEAR_NEED = 34;
-const DEN = {x:mapXY(1196, 1024)[0] + 1000, y:mapXY(1196, 1024)[1] + 40, rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
-DEN.gate = Math.atan2((mapXY(1196, 1024)[1] - DEN.y) / DEN.ry, (mapXY(1196, 1024)[0] - DEN.x) / DEN.rx); // 2026-10-16 달 요청: 지도 맨 오른쪽 아래로. 길이 들어오는 쪽(서쪽)
+const DEN = {x:mapXY(1720, 1420)[0] + 900, y:mapXY(1720, 1420)[1] + 300, rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
+DEN.gate = Math.atan2((mapXY(1720, 1420)[1] - DEN.y) / DEN.ry, (mapXY(1720, 1420)[0] - DEN.x) / DEN.rx); // 2026-10-16 달 요청: 넓힌 맵의 맨 오른쪽 아래 끝(가장 센 숲). 길이 들어오는 쪽(북서쪽)
 const BDEN = {x:1700, y:18700, rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 설산의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
 BDEN.gate = Math.atan2((17500 - BDEN.y) / BDEN.ry, (3000 - BDEN.x) / BDEN.rx); // 북동쪽 설산 길
 const DENS = [DEN], DEN_LEASH = 260; // 2026-10-16 달 요청: 흰곰 굴(BDEN) 삭제
@@ -4931,6 +4965,210 @@ function drawBossFx(c){
     }
     c.restore();
   }
+}
+
+// ===== 2026-10-16 달 요청: 산짐승을 아이들이 좋아하게 더 귀엽고 특색 있게 =====
+// 큰 머리·반짝이는 큰 눈·발그레한 볼의 동글동글한 짐승. 종류마다 한눈에 알아보는 특징을 하나씩 줬어요
+//  멧돼지 = 줄무늬 꽃돼지 등 + 작은 엄니 · 고라니 = 큰 귀 + 뾰족 송곳니 · 산토끼 = 한쪽 접힌 귀 · 구렁이 = 물방울 무늬
+//  너구리 = 눈가 까만 가면 + 줄무늬 꼬리 · 오소리 = 이마의 하얀 줄 · 삵 = 귀 끝 털 + 점무늬 · 들개 = 빨간 손수건
+//  늑대 = 복슬복슬 하얀 목털 · 반달가슴곰 = 가슴의 하얀 반달 · 호랑이 = 이마의 '王' 무늬
+// 센 녀석(★5~★7)은 발밑에 빛나는 기운이 있어요
+const CUTE = {boar:1, deer:1, hare:1, snake:1, raccoon:1, badger:1, lynx:1, wdog:1, wolf:1, bear:1, tiger:1};
+const AURA = [null, null, null, null, '#7fd6ff', '#c49aff', '#ffd23a'];
+function drawCuteBeast(c, kind, t, V){
+  const tier = V.tier || 0, leg = Math.sin(t * 10) * 4, bob = Math.abs(Math.sin(t * 10)) * 1.6, angry = tier >= 3 && !V.boss;
+  // ----- 공통 부품 -----
+  const E = (x, y, rx, ry) => cc => ell(cc, x, y, rx, ry);
+  const eye = (x, y, s = 1, col = INK) => {
+    c.beginPath(); ell(c, x, y, 4.4 * s, 5.4 * s); c.fillStyle = col; c.fill();
+    if (col !== INK) { c.lineWidth = 1.4; c.strokeStyle = INK; c.stroke(); c.beginPath(); ell(c, x + .4 * s, y, 1.6 * s, 4 * s); c.fillStyle = INK; c.fill(); }
+    c.beginPath(); c.arc(x - 1.4 * s, y - 2 * s, 1.8 * s, 0, 7); c.fillStyle = '#fff'; c.fill();
+    c.beginPath(); c.arc(x + 1.5 * s, y + 2 * s, .9 * s, 0, 7); c.fillStyle = '#fff'; c.fill();
+  };
+  const blush = (x, y, s = 1) => { c.beginPath(); ell(c, x, y, 5 * s, 3 * s); c.fillStyle = 'rgba(255,120,140,.45)'; c.fill(); };
+  const smile = (x, y, s = 1) => { c.beginPath(); c.moveTo(x - 3.5 * s, y); c.quadraticCurveTo(x - 1.8 * s, y + 3 * s, x, y); c.quadraticCurveTo(x + 1.8 * s, y + 3 * s, x + 3.5 * s, y); c.lineWidth = 1.6; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); };
+  const brow = (x, y, s = 1) => { if (angry) line(c, [x - 5 * s, y - 2 * s, x + 4 * s, y + 1.5 * s], 2.2, INK); };
+  const crown = (x, y) => cel(c, cc => { cc.moveTo(x - 10, y); cc.lineTo(x - 11, y - 12); cc.lineTo(x - 5, y - 6); cc.lineTo(x, y - 15); cc.lineTo(x + 5, y - 6); cc.lineTo(x + 11, y - 12); cc.lineTo(x + 10, y); cc.closePath(); }, '#ffd23a', '#d4a020', 1, 1, 2);
+  const legs = (xs, w, h, col, sh) => xs.forEach((lx, i) => { const o = (i % 2 ? -leg : leg) * .35; cel(c, cc => rr(cc, lx - w / 2, -h + o, w, h - o, w / 2), col, sh, 1, 0, 2.2); });
+  const tail = (pts, w, col) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = w + 4.5; c.strokeStyle = INK; c.stroke(); c.lineWidth = w; c.strokeStyle = col; c.stroke(); };
+  const sz = {boar:46, deer:40, hare:30, snake:42, raccoon:36, badger:44, lynx:36, wdog:38, wolf:44, bear:54, tiger:66}[kind];
+  // 센 녀석 기운
+  if (AURA[tier] || V.boss) {
+    const col = V.boss ? '#ff9a3a' : AURA[tier], pul = .5 + Math.sin(t * 3) * .5;
+    c.save(); c.globalAlpha = .28 + pul * .14; const g = c.createRadialGradient(0, -4, 4, 0, -4, sz * 1.5); g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.beginPath(); ell(c, 0, -4, sz * 1.5, sz * .55); c.fillStyle = g; c.fill(); c.restore();
+    for (let i = 0; i < 3; i++) { const a = t * 1.7 + i * 2.1, x = Math.cos(a) * sz * 1.1, y = -sz * .9 - Math.abs(Math.sin(a * 1.3)) * sz * .5; c.font = '12px sans-serif'; c.textAlign = 'center'; c.fillText('✨', x, y); }
+  }
+  shadow(c, 0, 0, sz * .8, sz * .2);
+  c.save(); c.translate(0, -bob);
+  if (kind === 'boar') { // 멧돼지: 동글동글 + 등에 수박 줄무늬(꽃돼지) + 삐죽 갈기 + 작은 엄니
+    const B = V.b || '#9a6a48', S = V.bs || '#6a4430', s = 1.05;
+    tail([[-34, -30], [-42, -36], [-38, -42]], 3, B);
+    legs([-20, -9, 12, 23], 10, 16, S, '#3a2618');
+    cel(c, E(0, -30, 36, 22), B, S, 5, 6, 3);
+    c.save(); c.beginPath(); ell(c, 0, -30, 36, 22); c.clip(); c.globalAlpha = .55; for (const k of [-16, -4, 8]) { c.beginPath(); ell(c, k, -40, 3.5, 14); c.fillStyle = '#f2d4a8'; c.fill(); } c.restore();
+    for (let k = 0; k < 6; k++) cel(c, cc => { const x = -18 + k * 7; cc.moveTo(x - 4, -50); cc.lineTo(x + 1, -60 - (k % 2) * 3); cc.lineTo(x + 4, -50); cc.closePath(); }, S, '#3a2618', 0, 0, 1.6);
+    cel(c, E(30, -38, 20, 18), B, S, 3, 4, 3);
+    cel(c, cc => { cc.moveTo(18, -52); cc.lineTo(21, -64); cc.lineTo(28, -54); cc.closePath(); }, B, S, 1, 1, 2.2);
+    cel(c, E(46, -33, 9 * s, 7.5 * s), '#e8a890', '#c47a62', 1, 1, 2.4);
+    for (const nx of [43, 49]) { c.beginPath(); ell(c, nx, -33, 1.6, 2.4); c.fillStyle = '#7a3a2a'; c.fill(); }
+    cel(c, cc => { cc.moveTo(40, -27); cc.quadraticCurveTo(44, -20, 40, -16); cc.quadraticCurveTo(38, -21, 37, -26); cc.closePath(); }, '#fffaf1', '#e0d4c0', 0, 0, 1.6);
+    eye(31, -42, 1); brow(31, -49); blush(36, -32);
+    if (V.crown) crown(28, -58);
+  } else if (kind === 'deer') { // 고라니: 큰 둥근 귀 + 뾰족한 송곳니 두 개(고라니만의 특징) + 단추 코
+    const B = V.b || '#d4a066', S = V.bs || '#a8743a';
+    legs([-16, -8, 10, 18], 6, 26, S, '#6a4a28');
+    cel(c, E(-24, -40, 6, 5), '#fffaf1', '#e0d4c0', 1, 1, 2);
+    cel(c, E(0, -40, 28, 16), B, S, 4, 5, 3);
+    c.beginPath(); ell(c, 2, -32, 18, 6); c.fillStyle = '#f6e2c4'; c.fill();
+    for (const [ex, rot] of [[18, -.6], [36, .5]]) { c.save(); c.translate(ex, -60); c.rotate(rot); cel(c, E(0, -6, 7, 11), B, S, 1, 1, 2.2); c.beginPath(); ell(c, 0, -6, 3.5, 7); c.fillStyle = '#f2b8b0'; c.fill(); c.restore(); }
+    if (V.antler) for (const ax of [23, 31]) { line(c, [ax, -66, ax - 2, -78, ax - 6, -84], 3, '#8a6a3a'); line(c, [ax - 2, -75, ax + 4, -80], 2.4, '#8a6a3a'); }
+    cel(c, E(28, -50, 16, 15), B, S, 2, 3, 3);
+    cel(c, E(41, -44, 7, 6), '#f6e2c4', '#d8c0a0', 1, 1, 2);
+    c.beginPath(); ell(c, 46, -46, 3, 2.4); c.fillStyle = INK; c.fill();
+    for (const fx of [39, 43]) cel(c, cc => { cc.moveTo(fx - 1.6, -39); cc.lineTo(fx, -32); cc.lineTo(fx + 1.6, -39); cc.closePath(); }, '#ffffff', '#e8e8e8', 0, 0, 1.4);
+    eye(30, -53, 1.05); brow(30, -60); blush(33, -45);
+    if (V.crown) crown(28, -70);
+  } else if (kind === 'hare') { // 산토끼: 큰 머리 + 한쪽 귀가 폴짝 접힘 + 하얀 솜꼬리
+    const B = V.b || '#c8945a', S = V.bs || '#946436', hop = Math.max(0, Math.sin(t * 8)) * 8;
+    c.translate(0, -hop);
+    cel(c, E(-20, -20, 8, 8), '#ffffff', '#dcd6e6', 1, 1, 2.2);
+    cel(c, E(14, -6, 9, 5), B, S, 1, 1, 2);
+    cel(c, E(-2, -18, 20, 14), B, S, 3, 4, 2.8);
+    c.save(); c.translate(14, -44); c.rotate(-.2); cel(c, E(0, -12, 5.5, 14), B, S, 1, 1, 2.2); c.beginPath(); ell(c, 0, -12, 2.6, 9.5); c.fillStyle = '#f2a8b8'; c.fill(); c.restore();
+    c.save(); c.translate(24, -46); c.rotate(.9); cel(c, E(0, -8, 5, 11), B, S, 1, 1, 2.2); c.beginPath(); ell(c, 0, -8, 2.4, 7); c.fillStyle = '#f2a8b8'; c.fill(); c.restore();
+    cel(c, E(18, -32, 16, 14), B, S, 2, 3, 2.8);
+    cel(c, E(28, -26, 7, 5), '#fffaf1', '#e8dcc8', 1, 1, 1.8);
+    c.beginPath(); ell(c, 32, -28, 2.2, 1.7); c.fillStyle = '#e86a8a'; c.fill();
+    c.fillStyle = '#fff'; c.fillRect(29.5, -24, 3, 3); c.lineWidth = 1; c.strokeStyle = INK; c.strokeRect(29.5, -24, 3, 3);
+    eye(20, -35, .95); brow(20, -42, .9); blush(24, -27, .9);
+    if (V.crown) crown(14, -60);
+  } else if (kind === 'snake') { // 구렁이: 통통한 몸 + 물방울 무늬 + 노란 배 + 큰 눈
+    const B = V.b || '#7cc04a', S = V.bs || '#4e8a2a', pts = [];
+    for (let x = -46; x <= 18; x += 4) pts.push([x, -9 + Math.sin(x * .12 + t * 6) * 6]);
+    const path = () => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); };
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    path(); c.lineWidth = 21; c.strokeStyle = INK; c.stroke();
+    path(); c.lineWidth = 16; c.strokeStyle = B; c.stroke();
+    c.save(); c.translate(0, 4); path(); c.lineWidth = 6; c.strokeStyle = '#fff0a0'; c.stroke(); c.restore();
+    for (let i = 1; i < pts.length - 2; i += 3) { c.beginPath(); ell(c, pts[i][0], pts[i][1] - 3, 3.4, 2.6); c.fillStyle = '#ffd23a'; c.fill(); c.lineWidth = 1.2; c.strokeStyle = S; c.stroke(); }
+    const [hx, hy] = pts[pts.length - 1];
+    inkLine(c, [hx - 2, hy, hx + 6, hy - 12], 13, B);
+    cel(c, E(hx + 14, hy - 20, 15, 12), B, S, 2, 3, 2.8);
+    c.beginPath(); ell(c, hx + 16, hy - 13, 9, 3.4); c.fillStyle = '#fff0a0'; c.fill();
+    eye(hx + 12, hy - 23, .95); eye(hx + 21, hy - 23, .85); brow(hx + 16, hy - 30, .8); blush(hx + 9, hy - 15, .7);
+    if (Math.sin(t * 9) > .1) { line(c, [hx + 28, hy - 15, hx + 35, hy - 14], 1.8, '#e8423a'); line(c, [hx + 35, hy - 14, hx + 39, hy - 17], 1.6, '#e8423a'); line(c, [hx + 35, hy - 14, hx + 39, hy - 11], 1.6, '#e8423a'); }
+    if (V.crown) crown(hx + 14, hy - 32);
+  } else if (kind === 'raccoon') { // 너구리: 눈가 까만 가면 + 줄무늬 복슬 꼬리
+    const B = V.b || '#9a8c7a', S = V.bs || '#6a5c4c';
+    c.save(); c.translate(-24, -24); c.rotate(-.6 + Math.sin(t * 5) * .12);
+    cel(c, E(-14, 0, 17, 9), B, S, 2, 2, 2.6);
+    for (const x of [-24, -15, -6]) { c.beginPath(); ell(c, x, 0, 2.8, 8.5); c.fillStyle = '#3a2e24'; c.fill(); }
+    c.restore();
+    legs([-13, -5, 9, 17], 7, 14, '#3a2e24', '#1e1610');
+    cel(c, E(0, -22, 24, 15), B, S, 4, 4, 2.8);
+    for (const ex of [14, 32]) { cel(c, E(ex, -54, 6.5, 6.5), B, S, 1, 1, 2.2); c.beginPath(); ell(c, ex, -53, 3, 3); c.fillStyle = '#3a2e24'; c.fill(); }
+    cel(c, E(23, -38, 18, 16), B, S, 2, 3, 2.8);
+    c.beginPath(); c.moveTo(8, -42); c.quadraticCurveTo(22, -50, 38, -42); c.quadraticCurveTo(40, -34, 32, -34); c.quadraticCurveTo(23, -40, 14, -34); c.quadraticCurveTo(6, -35, 8, -42); c.fillStyle = '#2a201a'; c.fill();
+    cel(c, E(33, -30, 8, 6), '#f6efe4', '#d8ccbc', 1, 1, 2);
+    c.beginPath(); ell(c, 39, -32, 2.6, 2); c.fillStyle = INK; c.fill();
+    eye(20, -40, .95, '#fff'); c.beginPath(); ell(c, 20.5, -40, 3, 3.6); c.fillStyle = INK; c.fill(); c.beginPath(); c.arc(19.4, -41.4, 1.2, 0, 7); c.fillStyle = '#fff'; c.fill();
+    eye(31, -40, .85, '#fff'); c.beginPath(); ell(c, 31.4, -40, 2.6, 3.2); c.fillStyle = INK; c.fill(); c.beginPath(); c.arc(30.4, -41.2, 1, 0, 7); c.fillStyle = '#fff'; c.fill();
+    brow(22, -49); blush(14, -31, .8); smile(33, -26, .8);
+    if (V.crown) crown(23, -60);
+  } else if (kind === 'badger') { // 오소리: 낮고 넓적한 몸 + 이마의 하얀 줄 + 작은 발톱
+    const B = V.b || '#8a8480', S = V.bs || '#5a5450';
+    legs([-22, -11, 12, 23], 10, 14, '#2a2422', '#141010');
+    for (const fx of [12, 23]) for (const k of [3, 6]) line(c, [fx + k, -2, fx + k + 3, 0], 1.6, '#fffaf1');
+    cel(c, E(0, -22, 36, 15), B, S, 5, 5, 3);
+    c.save(); c.beginPath(); ell(c, 0, -22, 36, 15); c.clip(); c.beginPath(); ell(c, 0, -6, 36, 8); c.fillStyle = '#4a4440'; c.fill(); c.restore();
+    cel(c, E(32, -28, 17, 14), '#2a2422', '#141010', 2, 2, 2.8);
+    for (const ex of [22, 34]) cel(c, E(ex, -41, 4.5, 4), '#f4f2ee', '#c8c4c0', 1, 1, 2);
+    c.beginPath(); c.moveTo(24, -40); c.quadraticCurveTo(36, -44, 47, -26); c.quadraticCurveTo(42, -26, 38, -30); c.quadraticCurveTo(32, -36, 22, -34); c.closePath(); c.fillStyle = '#f4f2ee'; c.fill();
+    c.beginPath(); ell(c, 47, -25, 3.4, 2.6); c.fillStyle = '#e88a9a'; c.fill(); c.lineWidth = 1.2; c.strokeStyle = INK; c.stroke();
+    eye(34, -28, .8, '#fff'); c.beginPath(); ell(c, 34.4, -28, 2.6, 3.2); c.fillStyle = INK; c.fill(); c.beginPath(); c.arc(33.4, -29.2, 1, 0, 7); c.fillStyle = '#fff'; c.fill();
+    brow(34, -35, .8); blush(40, -21, .7);
+    if (V.crown) crown(32, -46);
+  } else if (kind === 'lynx') { // 삵: 귀 끝 털 + 점무늬 + 줄무늬 꼬리 + 초록 고양이 눈
+    const B = V.b || '#dca468', S = V.bs || '#a8743a';
+    tail([[-22, -26], [-36, -30], [-40, -46 + Math.sin(t * 4) * 4]], 8, B);
+    for (const k of [.45, .8]) { c.beginPath(); ell(c, -22 - 16 * k, -28 - 14 * k, 4.5, 2.4); c.fillStyle = '#5a3a1e'; c.fill(); }
+    legs([-15, -7, 9, 17], 7, 16, B, S);
+    cel(c, E(0, -26, 23, 13), B, S, 4, 4, 2.8);
+    for (const [x, y] of [[-12, -30], [-3, -34], [6, -29], [-8, -22], [3, -22]]) { c.beginPath(); ell(c, x, y, 2.4, 2); c.fillStyle = '#6a4424'; c.fill(); }
+    for (const ex of [16, 34]) { cel(c, cc => { cc.moveTo(ex - 6, -52); cc.lineTo(ex, -66); cc.lineTo(ex + 6, -52); cc.closePath(); }, B, S, 1, 1, 2.2); line(c, [ex, -66, ex, -73], 2.4, INK); c.beginPath(); c.moveTo(ex - 3, -54); c.lineTo(ex, -62); c.lineTo(ex + 3, -54); c.fillStyle = '#f2b8b0'; c.fill(); }
+    cel(c, E(25, -42, 17, 15), B, S, 2, 3, 2.8);
+    cel(c, E(32, -35, 8, 5.5), '#fff8ec', '#e0d4c0', 1, 1, 1.8);
+    for (const [x1, y1, x2, y2] of [[19, -54, 21, -49], [25, -55, 25, -50]]) line(c, [x1, y1, x2, y2], 2, '#6a4424');
+    eye(22, -43, .95, '#b8e05a'); eye(32, -43, .85, '#b8e05a');
+    c.beginPath(); c.moveTo(34.5, -37.5); c.lineTo(38.5, -37.5); c.lineTo(36.5, -35); c.closePath(); c.fillStyle = '#e86a7a'; c.fill();
+    for (const dy of [-1, 2]) line(c, [40, -35 + dy, 48, -36 + dy * 1.8], 1.2, INK);
+    brow(25, -51); blush(18, -36, .8);
+    if (V.crown) crown(25, -66);
+  } else if (kind === 'wdog') { // 들개: 늘어진 귀 + 목의 빨간 손수건 + 흔드는 꼬리 + 혀
+    const B = V.b || '#c89a62', S = V.bs || '#946a3a';
+    tail([[-24, -34], [-34, -42], [-36 + Math.sin(t * 14) * 5, -54]], 6, B);
+    legs([-16, -7, 10, 19], 8, 20, B, S);
+    cel(c, E(0, -32, 26, 14), B, S, 4, 4, 2.8);
+    cel(c, E(26, -48, 17, 15), B, S, 2, 3, 2.8);
+    for (const [ex, r] of [[14, .35], [34, -.15]]) { c.save(); c.translate(ex, -60); c.rotate(r); cel(c, E(0, 8, 6, 11), S, '#6a4a28', 1, 1, 2.2); c.restore(); }
+    cel(c, E(38, -42, 10, 7), '#f6e6cc', '#d8c0a0', 1, 1, 2);
+    c.beginPath(); ell(c, 45, -45, 3.4, 2.6); c.fillStyle = INK; c.fill();
+    cel(c, cc => { cc.moveTo(10, -36); cc.quadraticCurveTo(22, -28, 34, -34); cc.lineTo(26, -22); cc.closePath(); }, '#e8423a', '#b8302a', 1, 1, 2.2);
+    for (const [x, y] of [[18, -31], [24, -29], [22, -25]]) { c.beginPath(); c.arc(x, y, 1.2, 0, 7); c.fillStyle = '#fff'; c.fill(); }
+    if (Math.sin(t * 7) > -.3) cel(c, cc => rr(cc, 39, -38, 6, 8, 3), '#f27a8a', '#c85a6a', 0, 1, 1.4);
+    eye(26, -51, .95); brow(26, -58); blush(31, -42, .8);
+    if (V.crown) crown(26, -68);
+  } else if (kind === 'wolf') { // 늑대: 복슬복슬 하얀 목털 + 뾰족 귀 + 노란 눈 + 큰 꼬리
+    const B = V.b || '#9aa2ae', S = V.bs || '#6a7280';
+    c.save(); c.translate(-28, -34); c.rotate(.6 + Math.sin(t * 4) * .1); cel(c, E(-10, 0, 16, 8), B, S, 2, 2, 2.6); c.beginPath(); ell(c, -22, 0, 5, 5); c.fillStyle = '#f0f2f6'; c.fill(); c.restore();
+    legs([-18, -8, 11, 21], 8, 22, B, S);
+    cel(c, E(0, -34, 28, 15), B, S, 5, 4, 2.8);
+    celBlob(c, [[16, -38, 9], [22, -32, 9], [12, -30, 8], [26, -40, 7]], '#f0f2f6', '#c8ccd4', 1, 1, 1.6);
+    for (const ex of [22, 38]) { cel(c, cc => { cc.moveTo(ex - 6, -60); cc.lineTo(ex, -76); cc.lineTo(ex + 6, -60); cc.closePath(); }, B, S, 1, 1, 2.2); c.beginPath(); c.moveTo(ex - 3, -62); c.lineTo(ex, -70); c.lineTo(ex + 3, -62); c.fillStyle = '#e8b8c4'; c.fill(); }
+    cel(c, E(30, -52, 17, 15), B, S, 2, 3, 2.8);
+    celBlob(c, [[20, -45, 5]], '#f0f2f6', '#c8ccd4', 0, 0, 1.4);
+    cel(c, E(44, -46, 10, 7), B, S, 1, 1, 2.2); c.beginPath(); ell(c, 44, -42, 8, 3); c.fillStyle = '#f0f2f6'; c.fill();
+    c.beginPath(); ell(c, 52, -48, 3, 2.4); c.fillStyle = INK; c.fill();
+    eye(28, -55, .95, '#ffd23a'); eye(38, -55, .85, '#ffd23a'); brow(31, -63); blush(24, -47, .7);
+    if (V.crown) crown(30, -72);
+  } else if (kind === 'bear') { // 반달가슴곰: 동글동글 까만 곰 + 가슴의 하얀 반달 + 갈색 주둥이
+    const B = V.b || '#2e2a28', S = V.bs || '#161412';
+    legs([-24, -11, 14, 27], 15, 16, B, S);
+    cel(c, E(0, -34, 38, 24), B, S, 6, 6, 3);
+    for (const ex of [20, 46]) { cel(c, E(ex, -80, 8, 8), B, S, 1, 1, 2.4); c.beginPath(); ell(c, ex, -79, 4, 4); c.fillStyle = '#7a6050'; c.fill(); }
+    cel(c, E(33, -60, 22, 20), B, S, 3, 3, 3);
+    c.beginPath(); c.moveTo(10, -42); c.quadraticCurveTo(28, -22, 46, -42); c.quadraticCurveTo(28, -32, 10, -42); c.closePath(); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke();
+    cel(c, E(44, -53, 11, 8.5), '#b08a68', '#8a6a4e', 1, 1, 2.2);
+    c.beginPath(); ell(c, 50, -56, 4, 3); c.fillStyle = INK; c.fill();
+    smile(46, -49, .9);
+    eye(31, -64, 1.05, '#fff'); c.beginPath(); ell(c, 31.6, -64, 3.4, 4.2); c.fillStyle = INK; c.fill(); c.beginPath(); c.arc(30.4, -65.6, 1.3, 0, 7); c.fillStyle = '#fff'; c.fill();
+    if (angry) line(c, [25, -73, 36, -70], 2.6, '#fffaf1');
+    blush(26, -54, .9);
+    if (V.crown) crown(33, -86);
+  } else if (kind === 'tiger') { // 전설의 호랑이: 큰 머리 + 이마의 王 무늬 + 줄무늬 + 복슬 볼
+    const B = '#f6982e', S = '#c4661a';
+    tail([[-40, -44], [-66, -54], [-64, -84 + Math.sin(t * 3) * 6]], 10, B);
+    for (const k of [.4, .7, .95]) { c.beginPath(); ell(c, -40 - 26 * k, -50 - 30 * k, 5, 3); c.fillStyle = INK; c.fill(); }
+    legs([-28, -13, 16, 31], 15, 26, B, S);
+    for (const fx of [16, 31]) { c.beginPath(); ell(c, fx, -2, 8, 4); c.fillStyle = '#fff8ec'; c.fill(); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke(); }
+    cel(c, E(0, -44, 44, 24), B, S, 6, 7, 3.2);
+    c.beginPath(); ell(c, 4, -28, 30, 8); c.fillStyle = '#fff8ec'; c.fill();
+    for (let k = -3; k <= 2; k++) { const x = k * 11; c.beginPath(); c.moveTo(x - 3, -66); c.quadraticCurveTo(x + 4, -56, x - 1, -46); c.lineWidth = 4.5; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); }
+    for (const ex of [32, 66]) { cel(c, E(ex, -102, 10, 10), B, S, 1, 1, 2.6); c.beginPath(); ell(c, ex, -101, 5, 5); c.fillStyle = '#fff8ec'; c.fill(); }
+    cel(c, E(49, -74, 32, 29), B, S, 3, 4, 3.2);
+    celBlob(c, [[30, -60, 8], [68, -60, 8], [49, -58, 10]], '#fff8ec', '#e8d8c0', 1, 1, 2);
+    for (const [x1, y1, x2, y2] of [[20, -78, 28, -76], [20, -70, 27, -70], [78, -78, 70, -76], [78, -70, 71, -70]]) line(c, [x1, y1, x2, y2], 3, INK);
+    // 이마의 王
+    line(c, [42, -96, 56, -96], 2.8, INK); line(c, [43, -90, 55, -90], 2.8, INK); line(c, [41, -84, 57, -84], 2.8, INK); line(c, [49, -96, 49, -84], 2.8, INK);
+    eye(38, -74, 1.35, '#ffd23a'); eye(60, -74, 1.35, '#ffd23a');
+    cel(c, cc => { cc.moveTo(45, -64); cc.lineTo(53, -64); cc.lineTo(49, -59); cc.closePath(); }, '#e86a7a', '#b84a5a', 0, 1, 1.8);
+    smile(49, -57, 1.2);
+    for (const dy of [-2, 2]) { line(c, [64, -60 + dy, 80, -62 + dy * 2], 1.3, INK); line(c, [34, -60 + dy, 18, -62 + dy * 2], 1.3, INK); }
+    blush(32, -64, 1.1); blush(66, -64, 1.1);
+    if (V.crown) crown(49, -112);
+  }
+  c.restore();
 }
 
 // ===== 2026-10-13 기상 이벤트 화면 연출 (태풍·우박·늦서리) =====
@@ -5798,7 +6036,12 @@ function drawBigMap(ctx){
   // 버스 길
   ctx.strokeStyle = 'rgba(255,207,61,.9)'; ctx.lineWidth = 4; ctx.setLineDash([10, 8]); ctx.beginPath(); BUS_LINE.forEach(([x, y], i) => i ? ctx.lineTo(mx(x), my(y)) : ctx.moveTo(mx(x), my(y))); ctx.stroke(); ctx.setLineDash([]);
   const lab = (t, x, y, f = 20) => { ctx.font = `${f}px Jua`; ctx.textAlign = 'center'; ctx.lineWidth = 5; ctx.strokeStyle = '#fffaf1'; ctx.strokeText(t, x, y); ctx.fillStyle = INK; ctx.fillText(t, x, y); };
-  for (const A of SAFE) lab(`${A.ic} ${A === HOME ? '우리 과수원' : A.name}`, mx(A.cx), my(A.y0) - 8, 22);
+  // 2026-10-16 가운데서 멀수록 센 숲: 구역 경계를 점선 타원으로
+  ctx.save(); ctx.setLineDash([6, 8]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.45)';
+  ZONE_C.forEach((k, i) => { ctx.beginPath(); ctx.ellipse(mx(MCX), my(MCY), k * MHX * s, k * MHY * s, 0, 0, 7); ctx.stroke(); });
+  ctx.setLineDash([]); ctx.restore();
+  [0, ...ZONE_C].forEach((k, i) => { const k2 = i < ZONE_C.length ? ZONE_C[i] : 2.05, r = (k + k2) / 2; const yy = my(MCY - r * MHY * .72), xx = mx(MCX - r * MHX * .7); if (i) lab(`${'★'.repeat(i + 1)}`, xx, yy, 15); });
+  for (const A of SAFE) lab(`${A.ic} ${A === HOME ? '우리 과수원' : A.name}`, A === HOME ? mx(A.x0) - 48 : mx(A.cx), A === HOME ? my(A.cy) + 6 : my(A.y0) - 8, 19);
   ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
   for (const st of BUS_STOPS) ctx.fillText('🚏', mx(st.px), my(st.py) + 8);
   for (const r of RESTS) if (!restsFound().includes(r)) { ctx.globalAlpha = .6; lab('?', mx(r.x), my(r.y) + 8, 22); ctx.globalAlpha = 1; }
