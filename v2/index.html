@@ -6035,6 +6035,32 @@ function busEntities(ctx, add, vis){
 
 // ----- M: 전체 지도 (한 번 더 누르면 닫혀요) -----
 let BIGMAP = false, BIGMAP_HOT = [], BIGMAP_MOUSE = null;
+// 2026-10-16 달 요청: 마우스 휠로 확대·축소(마우스 자리 기준), 확대하면 끌어서 옮기기
+const BMV = {z:1, cx:0, cy:0, geo:null, drag:null};
+function bmClampView(){
+  const g = BMV.geo; if (!g) return;
+  BMV.z = clamp(BMV.z, 1, 8);
+  const hw = g.w / 2 / (g.s0 * BMV.z), hh = g.h / 2 / (g.s0 * BMV.z);
+  BMV.cx = clamp(BMV.cx, WX0 + hw, WX0 + WORLD_W - hw); BMV.cy = clamp(BMV.cy, WY0 + hh, WY0 + WORLD_H - hh);
+}
+function bmToWorld(p){ const g = BMV.geo, s = g.s0 * BMV.z; return [BMV.cx + (p.x - g.x0 - g.w / 2) / s, BMV.cy + (p.y - g.y0 - g.h / 2) / s]; }
+function bmInside(p){ const g = BMV.geo; return g && p.x > g.x0 && p.x < g.x0 + g.w && p.y > g.y0 && p.y < g.y0 + g.h; }
+function bigMapWheel(p, dy){
+  if (!BMV.geo) return;
+  const [wx, wy] = bmToWorld(p), g = BMV.geo;
+  BMV.z *= dy < 0 ? 1.25 : 0.8; bmClampView();
+  if (BMV.z === 1) { BMV.cx = WX0 + WORLD_W / 2; BMV.cy = WY0 + WORLD_H / 2; return; }
+  const s = g.s0 * BMV.z; // 마우스가 가리키던 땅이 그 자리에 그대로 있게
+  BMV.cx = wx - (p.x - g.x0 - g.w / 2) / s; BMV.cy = wy - (p.y - g.y0 - g.h / 2) / s; bmClampView();
+}
+function bigMapDown(p){ BMV.drag = {x:p.x, y:p.y, sx:p.x, sy:p.y, moved:false}; }
+function bigMapMove(p){
+  const d = BMV.drag; if (!d || !BMV.geo) return;
+  if (Math.hypot(p.x - d.sx, p.y - d.sy) > 8) d.moved = true;
+  if (d.moved) { const s = BMV.geo.s0 * BMV.z; BMV.cx -= (p.x - d.x) / s; BMV.cy -= (p.y - d.y) / s; bmClampView(); }
+  d.x = p.x; d.y = p.y;
+}
+function bigMapUp(p){ const d = BMV.drag; BMV.drag = null; if (d && !d.moved) bigMapClick(p); }
 // 지도 위를 누르면: 순간이동 지점이면 가고, 아니면 아무 일도 안 해요 (지도 켠 동안 공격·걷기 안 함)
 function bigMapClick(p){
   const h = BIGMAP_HOT.find(q => Math.hypot(p.x - q.x, p.y - q.y) < q.r);
@@ -6042,28 +6068,33 @@ function bigMapClick(p){
   if (inCombat()) { toast('⚔️ 싸우는 중엔 순간이동할 수 없어요.', 'bad'); return; }
   BIGMAP = false; cv.style.cursor = ''; BUS.ride = null; sfx('whirl'); h.go();
 }
-function toggleBigMap(){ BIGMAP = !BIGMAP; sfx('pick'); if (!BIGMAP) cv.style.cursor = ''; }
+function toggleBigMap(){ BIGMAP = !BIGMAP; sfx('pick'); BMV.z = 1; BMV.cx = WX0 + WORLD_W / 2; BMV.cy = WY0 + WORLD_H / 2; BMV.drag = null; if (!BIGMAP) cv.style.cursor = ''; }
 function drawBigMap(ctx){
   if (!BIGMAP) return;
   if (!miniBase) buildMiniBase();
-  const h = 760, w = Math.round(h * WORLD_W / WORLD_H), x0 = (W - w) / 2, y0 = 150, s = w / WORLD_W;
-  const mx = x => x0 + (x - WX0) * s, my = y => y0 + (y - WY0) * s;
+  const h = 760, w = Math.round(h * WORLD_W / WORLD_H), x0 = (W - w) / 2, y0 = 150, s0 = w / WORLD_W;
+  BMV.geo = {x0, y0, w, h, s0}; if (!BMV.cx) { BMV.cx = WX0 + WORLD_W / 2; BMV.cy = WY0 + WORLD_H / 2; } bmClampView();
+  const s = s0 * BMV.z, mx = x => x0 + w / 2 + (x - BMV.cx) * s, my = y => y0 + h / 2 + (y - BMV.cy) * s;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = 'rgba(20,30,20,.45)'; ctx.fillRect(0, 0, W, H);
   ctx.beginPath(); rr(ctx, x0 - 14, y0 - 54, w + 28, h + 90, 22); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.stroke();
   ctx.font = '28px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🗺️ 전체 지도', x0 + 6, y0 - 16);
   { const [px, py] = toGrid(P.x, P.y); ctx.font = '18px Jua'; ctx.textAlign = 'right'; ctx.fillText(`📍 내 위치 x ${px} · y ${py}   ·   ${keyName(KB.map[0] || 'KeyM')}를 한 번 더 누르면 닫혀요`, x0 + w - 6, y0 - 18); }
   ctx.save(); ctx.beginPath(); rr(ctx, x0, y0, w, h, 12); ctx.clip();
-  ctx.drawImage(miniBase, x0, y0, w, h);
+  ctx.drawImage(miniBase, mx(WX0), my(WY0), WORLD_W * s, WORLD_H * s);
   // 2026-10-16 좌표 눈금: 10칸마다 옅은 선, 20칸마다 숫자
   ctx.save(); ctx.lineWidth = 1; ctx.font = '13px Jua'; ctx.fillStyle = INK;
   const GW = Math.floor(WORLD_W / GRID), GH = Math.floor(WORLD_H / GRID);
-  for (let g = 10; g < GW; g += 10) { const X = x0 + g * GRID * s; ctx.strokeStyle = g % 20 ? 'rgba(255,255,255,.13)' : 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.moveTo(X, y0); ctx.lineTo(X, y0 + h); ctx.stroke(); }
-  for (let g = 10; g < GH; g += 10) { const Y = y0 + g * GRID * s; ctx.strokeStyle = g % 20 ? 'rgba(255,255,255,.13)' : 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.moveTo(x0, Y); ctx.lineTo(x0 + w, Y); ctx.stroke(); }
+  // 확대할수록 눈금을 더 촘촘하게 (1배: 10칸 선·20칸 숫자 → 2배: 5·10 → 4배: 1·5)
+  const LS = BMV.z >= 4 ? 1 : BMV.z >= 2 ? 5 : 10, NS = BMV.z >= 4 ? 5 : BMV.z >= 2 ? 10 : 20;
+  const gx = g => mx(WX0 + g * GRID), gy = g => my(WY0 + g * GRID);
+  for (let g = LS; g < GW; g += LS) { const X = gx(g); if (X < x0 || X > x0 + w) continue; ctx.strokeStyle = g % NS ? 'rgba(255,255,255,.13)' : 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.moveTo(X, y0); ctx.lineTo(X, y0 + h); ctx.stroke(); }
+  for (let g = LS; g < GH; g += LS) { const Y = gy(g); if (Y < y0 || Y > y0 + h) continue; ctx.strokeStyle = g % NS ? 'rgba(255,255,255,.13)' : 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.moveTo(x0, Y); ctx.lineTo(x0 + w, Y); ctx.stroke(); }
   const tick = (t, x, y, al) => { ctx.textAlign = al; ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(255,250,241,.9)'; ctx.strokeText(t, x, y); ctx.fillText(t, x, y); };
-  for (let g = 20; g < GW - 12; g += 20) tick(g, x0 + g * GRID * s, y0 + 15, 'center');
-  for (let g = 20; g < GH - 8; g += 20) tick(g, x0 + 5, y0 + g * GRID * s + 5, 'left');
-  tick('x →', x0 + w - 8, y0 + 15, 'right'); tick('y ↓', x0 + 5, y0 + h - 8, 'left'); tick('0', x0 + 5, y0 + 15, 'left');
+  for (let g = 0; g < GW; g += NS) { const X = gx(g); if (X > x0 + 40 && X < x0 + w - 50) tick(g, X, y0 + 15, 'center'); }
+  for (let g = 0; g < GH; g += NS) { const Y = gy(g); if (Y > y0 + 30 && Y < y0 + h - 30) tick(g, x0 + 5, Y + 5, 'left'); }
+  tick('x →', x0 + w - 8, y0 + 15, 'right'); tick('y ↓', x0 + 5, y0 + h - 8, 'left');
+  if (BMV.z > 1) tick(`🔍 ${BMV.z.toFixed(1)}배`, x0 + w - 8, y0 + h - 8, 'right');
   ctx.restore();
   // 버스 길
   ctx.strokeStyle = 'rgba(255,207,61,.9)'; ctx.lineWidth = 3; ctx.beginPath(); BUS_LINE.forEach(([x, y], i) => i ? ctx.lineTo(mx(x), my(y)) : ctx.moveTo(mx(x), my(y))); ctx.stroke();
@@ -6080,7 +6111,8 @@ function drawBigMap(ctx){
   // 2026-10-16 달 요청: 순간이동 지점(장치 5곳 + 찾은 쉼터)을 누르면 바로 가요
   BIGMAP_HOT = []; let tip = null;
   const hot = (x, y, ic, name, go) => {
-    const sx = mx(x), sy = my(y), on = BIGMAP_MOUSE && Math.hypot(BIGMAP_MOUSE.x - sx, BIGMAP_MOUSE.y - sy) < 24;
+    const sx = mx(x), sy = my(y); if (sx < x0 || sx > x0 + w || sy < y0 || sy > y0 + h) return;
+    const on = BIGMAP_MOUSE && Math.hypot(BIGMAP_MOUSE.x - sx, BIGMAP_MOUSE.y - sy) < 24;
     BIGMAP_HOT.push({x:sx, y:sy, r:24, go});
     ctx.beginPath(); ctx.arc(sx, sy, on ? 22 : 18, 0, 7); ctx.fillStyle = on ? '#fff2b8' : 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = on ? 4 : 3; ctx.strokeStyle = on ? '#e8a020' : '#7a5af0'; ctx.stroke();
     ctx.font = `${on ? 24 : 20}px sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(ic, sx, sy + 8);
@@ -6096,14 +6128,14 @@ function drawBigMap(ctx){
   // 마우스가 가리키는 곳의 좌표
   const BM = BIGMAP_MOUSE;
   if (!tip && BM && BM.x > x0 && BM.x < x0 + w && BM.y > y0 && BM.y < y0 + h) {
-    const [gx, gy] = toGrid(WX0 + (BM.x - x0) / s, WY0 + (BM.y - y0) / s), t = `x ${gx} · y ${gy}`;
+    const [gx, gy] = toGrid(...bmToWorld(BM)), t = `x ${gx} · y ${gy}`;
     ctx.font = '18px Jua'; const tw = ctx.measureText(t).width + 20, tx = clamp(BM.x + 14, x0, x0 + w - tw), ty = clamp(BM.y - 40, y0 + 4, y0 + h - 34);
     ctx.beginPath(); rr(ctx, tx, ty, tw, 30, 10); ctx.fillStyle = 'rgba(255,250,241,.95)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
     ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText(t, tx + 10, ty + 21);
     ctx.beginPath(); ctx.arc(BM.x, BM.y, 4, 0, 7); ctx.fillStyle = INK; ctx.fill();
   }
   ctx.restore();
-  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🌀·⛺ 누르면 바로 순간이동 · 🚏 버스 정류장 · 🚌 마을버스(노란 선 = 버스 길) · ? 아직 못 찾은 쉼터', x0 + 6, y0 + h + 26);
+  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🌀·⛺ 누르면 바로 순간이동 · 🚏 버스 정류장 · 🚌 마을버스(노란 선 = 버스 길) · ? 아직 못 찾은 쉼터 · 휠 = 확대·축소, 끌기 = 옮기기', x0 + 6, y0 + h + 26);
   ctx.restore();
 }
 // 버스 탄 동안 화면 아래 안내
@@ -8725,7 +8757,7 @@ function mouseBtnDown(btn, p){
 }
 // 다른 버튼을 누른 채로 또 누르면 pointerdown이 안 와요 → pointermove로 알아채요
 cv.addEventListener('pointermove', e => {
-  if (BIGMAP) BIGMAP_MOUSE = stagePt(e);
+  if (BIGMAP) { BIGMAP_MOUSE = stagePt(e); bigMapMove(BIGMAP_MOUSE); return; } // 지도 끄는 동안 공격 안 해요
   if (e.pointerType !== 'mouse' || e.button < 0) return;
   const mask = [1, 4, 2, 8, 16][e.button] || 0, code = 'Mouse' + e.button;
   if (e.buttons & mask) { if (!MB[code]) mouseBtnDown(e.button, stagePt(e)); } else MB[code] = false;
@@ -8733,7 +8765,7 @@ cv.addEventListener('pointermove', e => {
 cv.addEventListener('pointerdown', e => {
   if (!pvLocked()) try { cv.setPointerCapture(e.pointerId); } catch (er) {} // 2026-10-15 마우스가 잠긴 3인칭에선 이게 에러를 내서 공격·막기가 안 됐어요
   const p = stagePt(e);
-  if (BIGMAP && UI.free()) { bigMapClick(p); e.preventDefault(); return; } // 전체 지도: 순간이동 지점 누르기
+  if (BIGMAP && UI.free()) { bigMapDown(p); e.preventDefault(); return; } // 전체 지도: 끌면 옮기고, 그냥 떼면 순간이동 지점 누르기
   if (UI.free() && inMM(p)) { MM_FULL = !MM_FULL; sfx('pick'); e.preventDefault(); return; } // 작은 지도 누르면 온 세상 ↔ 우리 둘레
   // 2026-10-13 마우스 버튼도 키 설정대로 (기본: 왼쪽 = 공격, 오른쪽 = 막기)
   if (e.pointerType === 'mouse' && mouseBtnDown(e.button, p)) { e.preventDefault(); return; }
@@ -8757,8 +8789,8 @@ const endPtr = e => {
   if (drag && !drag.moved && e.type === 'pointerup' && UI.free() && !pvLocked()) clickWorld(toWorld(stagePt(e)));
   if (!ptrs.size) drag = null;
 };
-cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
-cv.addEventListener('wheel', e => e.preventDefault(), {passive:false}); // 확대·축소 없음 (시점 고정)
+cv.addEventListener('pointerup', e => { if (BIGMAP && BMV.drag) bigMapUp(stagePt(e)); }); cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+cv.addEventListener('wheel', e => { e.preventDefault(); if (BIGMAP && UI.free()) { const p = stagePt(e); if (bmInside(p)) bigMapWheel(p, e.deltaY); } }, {passive:false}); // 게임 화면은 시점 고정, 전체 지도만 휠로 확대·축소
 function clickWorld(w){
   if (ssAnim) return;
   // 나무나 사람을 눌렀으면 거기로 가서 일하기
