@@ -6926,13 +6926,13 @@ function rankWire(o){
 }
 
 // ===== 소매 판매 + 포장 (2026-10-13) =====
-// 손님이 직접 사 가는 주문. 경매 상한(상자당 PRICE_CAP만원, 지금 20만원)의 최대 2배까지 받아요.
+// 손님이 직접 사 가는 주문. 2026-10-16 달 요청: 경매와 똑같이 상자당 최고 20만원(PRICE_CAP)까지 받아요.
 // 포장은 주문 하나당 한 번: 상자 펴기 → 사과 담기 → 완충제 넣기 하면 그 주문 전체가 포장돼요.
 const RETAIL_C = [
   {name:'서울 단골 손님', ic:'📮'}, {name:'캠핑장 사장님', ic:'🏕️'}, {name:'옆 마을 빵집', ic:'🥐'}, {name:'유치원 간식', ic:'🧸'},
   {name:'등산객 가족', ic:'🥾'}, {name:'카페 사장님', ic:'☕'}, {name:'할머니 손주 선물', ic:'🎀'}, {name:'동네 반찬가게', ic:'🍱'}
 ];
-const RETAIL_MAX = PRICE_CAP * 20000, RETAIL_P = .35;
+const RETAIL_MAX = PRICE_CAP * 10000, RETAIL_P = .35;
 const RETAIL_LOW = [{name:'사과즙 공방', ic:'🧃'}, {name:'잼 만드는 할머니', ic:'🍯'}, {name:'마을 식당', ic:'🍲'}, {name:'주스 가게', ic:'🥤'}], RETAIL_LOW_P = .25;
 function retailUnit(gk){ const hi = clamp(gByK(gk).base * 1.07 * (G.b.cold ? 1.1 : 1) * shedMult(), 3, PRICE_CAP); return Math.min(RETAIL_MAX, Math.round(hi * 2 * 10) * 1000); }
 function retailWeek(){
