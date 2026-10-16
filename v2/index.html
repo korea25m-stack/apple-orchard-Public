@@ -4217,7 +4217,9 @@ const RESTS = [
   {id:'n', name:'북서쪽 숲 쉼터', x:-25864, y:-21789}, {id:'on', name:'북쪽 끝 쉼터', x:24712, y:-26956}, {id:'e', name:'북동쪽 숲 쉼터', x:40399, y:-17900},
   {id:'ow', name:'서쪽 끝 쉼터', x:-27367, y:1417}, {id:'oe', name:'동쪽 끝 쉼터', x:44552, y:2849},
   {id:'m', name:'서쪽 숲 쉼터', x:-11477, y:13479}, {id:'s', name:'동쪽 숲 쉼터', x:25442, y:-8150},
-  {id:'w', name:'남서쪽 끝 쉼터', x:-22402, y:27813}, {id:'os', name:'남쪽 끝 쉼터', x:10478, y:29973}, {id:'v', name:'남동쪽 끝 쉼터', x:38106, y:25110}
+  {id:'w', name:'남서쪽 끝 쉼터', x:-22402, y:27813}, {id:'os', name:'남쪽 끝 쉼터', x:10478, y:29973}, {id:'v', name:'남동쪽 끝 쉼터', x:38106, y:25110},
+  // 2026-10-16 달 요청: 확장 부지 2 승차장 자리에 통나무 정자 쉼터
+  {id:'f3', name:'통나무 정자 쉼터', x:F3.cx + 1300, y:F3.cy + 700, log:1}
 ];
 function restAt(x, y, pad = 0){ return RESTS.find(r => Math.hypot(x - r.x, (y - r.y) * 1.2) < 160 + pad); }
 function restsFound(){ if (!G.rests) G.rests = {}; return RESTS.filter(r => G.rests[r.id]); }
@@ -4244,8 +4246,43 @@ function uiRest(r){
   }});
 }
 function unlockRestToast(r){ floats.push({x:r.x, y:r.y - 200, s:'⛺ 새 쉼터 발견!', t:2, c:'#ff6b57'}); gainXp(20); }
+// 통나무 정자(현실 고증): 주춧돌 위 통나무 기둥 넷, 껍질 벗긴 통나무 난간, 마루, 너와(나무 조각) 지붕
+function drawLogJeongja(c, x, y){
+  c.save(); c.translate(x, y);
+  const LOG = '#c48a52', LOGS = '#8a5a30', END = '#e8c48e', BARK = '#6e4424';
+  const logH = (x0, x1, yy, r) => { cel(c, cc => rr(cc, x0, yy - r, x1 - x0, r * 2, r), LOG, LOGS, 0, 2, 2.4);
+    line(c, [x0 + r, yy - r * .3, x1 - r, yy - r * .3], 1.2, LOGS);
+    for (const ex of [x0, x1]) { c.beginPath(); ell(c, ex, yy, r * .8, r); c.fillStyle = END; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); c.beginPath(); ell(c, ex, yy, r * .35, r * .45); c.strokeStyle = '#b8864e'; c.lineWidth = 1.2; c.stroke(); } };
+  const post = (px, top, bot, r, stone) => { cel(c, cc => rr(cc, px - r, top, r * 2, bot - top, r * .6), LOG, LOGS, 2, 0, 2.4);
+    for (let k = top + 14; k < bot - 6; k += 17) line(c, [px - r + 3, k, px - r + 7, k + 6], 1.2, BARK); // 나뭇결
+    if (stone) { c.beginPath(); ell(c, px, bot + 4, r + 7, 6); c.fillStyle = '#9a9a94'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); } }; // 주춧돌
+  shadow(c, 0, 8, 130, 24, .24);
+  // 마루 밑 받침 통나무와 마루
+  for (const px of [-96, 0, 96]) post(px, -34, -2, 9, 1);
+  logH(-118, 118, -36, 11);
+  cel(c, cc => rr(cc, -112, -56, 224, 16, 3), '#d8a46a', '#a4703e', 0, 3, 2.4);
+  for (let k = -104; k < 112; k += 16) line(c, [k, -56, k, -40], 1.2, '#a4703e');
+  // 기둥 넷(뒤 둘은 조금 위·안쪽)
+  for (const px of [-80, 80]) post(px, -150, -60, 8);
+  for (const px of [-104, 104]) post(px, -158, -50, 10);
+  // 통나무 난간(앞쪽 가운데는 오르는 자리로 비워요)
+  logH(-104, -30, -84, 6); logH(30, 104, -84, 6);
+  for (const px of [-70, -46, 46, 70]) line(c, [px, -78, px, -56], 4, LOGS);
+  // 도리(지붕 받치는 통나무)
+  logH(-122, 122, -160, 9);
+  // 너와 지붕: 나무 조각이 겹겹이, 처마는 넉넉하게
+  cel(c, cc => { cc.moveTo(-150, -158); cc.lineTo(-62, -226); cc.lineTo(62, -226); cc.lineTo(150, -158); cc.quadraticCurveTo(0, -150, -150, -158); cc.closePath(); }, '#8a6a4a', '#5e4430', 0, 6, 3);
+  c.save(); c.beginPath(); c.moveTo(-150, -158); c.lineTo(-62, -226); c.lineTo(62, -226); c.lineTo(150, -158); c.quadraticCurveTo(0, -150, -150, -158); c.clip();
+  for (let row = 0; row < 5; row++) { const yy = -222 + row * 14, half = 62 + row * 18;
+    for (let k = -half; k < half; k += 20) { c.beginPath(); rr(c, k + (row % 2) * 10, yy, 19, 15, 2); c.fillStyle = (k / 20 + row) % 3 ? '#9a7652' : '#a8845e'; c.fill(); c.lineWidth = 1.2; c.strokeStyle = '#5e4430'; c.stroke(); } }
+  c.restore();
+  // 용마루 통나무와 누름돌
+  logH(-66, 66, -228, 8);
+  for (const sx of [-40, 8, 46]) { c.beginPath(); ell(c, sx, -196 + Math.abs(sx) * .1, 9, 6); c.fillStyle = '#8e8e88'; c.fill(); c.lineWidth = 1.8; c.strokeStyle = INK; c.stroke(); }
+  c.restore();
+}
 function drawRest(c, r, T){
-  drawJeongja(c, r.x, r.y - 30);
+  if (r.log) drawLogJeongja(c, r.x, r.y - 30); else drawJeongja(c, r.x, r.y - 30);
   // 모닥불
   c.save(); c.translate(r.x + 120, r.y + 40);
   for (const a of [-.5, .5]) { c.save(); c.rotate(a); cel(c, cc => rr(cc, -26, -5, 52, 10, 4), '#9a6a44', '#6a4428', 1, 1, 2.2); c.restore(); }
@@ -4472,9 +4509,6 @@ function drawHuntOverlay(ctx, T){
   // 짐승 점은 우주 점 위에 그려서 가까이 있어도 안 가려져요
   for (const m of MONS) if (!m.dead) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), m.boss ? 4.5 : m.raid ? 4 : 3, 0, 7); ctx.fillStyle = m.raid || m.eng ? '#ff3b30' : '#d6372c'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = '#fffaf1'; ctx.stroke(); }
   ctx.restore();
-  { const t = MM_FULL ? '🗺️ 온 세상 · 누르면 크게' : '🔍 누르면 온 세상'; ctx.font = '12px Jua'; const tw = ctx.measureText(t).width + 12;
-    ctx.beginPath(); rr(ctx, MM.x + MM.w - tw - 4, MM.y + MM.h - 22, tw, 18, 9); ctx.fillStyle = 'rgba(255,250,241,.88)'; ctx.fill();
-    ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(t, MM.x + MM.w - tw / 2 - 4, MM.y + MM.h - 9); }
   // 습격한 산짐승이 화면 밖이면 화살표
   for (const m of MONS) {
     if (!m.raid || m.dead) continue;
@@ -6608,9 +6642,8 @@ const PORTALS = [
   {id:'home', name:'우리 과수원', x:SPOT.portal.x, y:SPOT.portal.y},
   {id:'v1', name:'강변 마을', x:V1.cx + 620, y:V1.cy + 260},
   {id:'v2', name:'사과골 마을', x:V2.cx + 950, y:V2.cy - 850},
-  {id:'f2', name:'확장 부지 1', x:F2.cx + 1300, y:F2.cy + 700},
-  {id:'f3', name:'확장 부지 2', x:F3.cx + 1300, y:F3.cy + 700}
 ];
+// 2026-10-16 달 요청: 확장 부지 1·2 승차장은 없앴어요. 확장 부지 2 승차장 자리는 통나무 정자 쉼터(RESTS 'f3')
 function uiPortalAt(p){
   p = p || PORTALS[0];
   sfx('pop');
@@ -6833,7 +6866,7 @@ function bigMapMove(p){
 function bigMapUp(p){ const d = BMV.drag; BMV.drag = null; if (d && !d.moved) bigMapClick(p); }
 // 지도 위를 누르면: 순간이동 지점이면 가고, 아니면 아무 일도 안 해요 (지도 켠 동안 공격·걷기 안 함)
 function bigMapClick(p){
-  const h = BIGMAP_HOT.find(q => Math.hypot(p.x - q.x, p.y - q.y) < q.r);
+  const h = BIGMAP_HOT.find(q => q.w ? p.x > q.x && p.x < q.x + q.w && p.y > q.y && p.y < q.y + q.h : Math.hypot(p.x - q.x, p.y - q.y) < q.r);
   if (!h) return;
   BIGMAP = false; cv.style.cursor = ''; h.go();
 }
@@ -6841,14 +6874,17 @@ function toggleBigMap(){ BIGMAP = !BIGMAP; sfx('pick'); BMV.z = 1; BMV.cx = WX0 
 function drawBigMap(ctx){
   if (!BIGMAP) return;
   if (!miniBase) buildMiniBase();
-  const h = 760, w = Math.round(h * WORLD_W / WORLD_H), x0 = (W - w) / 2, y0 = 150, s0 = w / WORLD_W;
+  // 승차장 화물차에 타 있으면 작은 지도로 목적지를 골라요
+  const pickTx = BUS.ride && BUS.ride.taxi && BUS.ride.st === 'idle' ? BUS.ride : null;
+  const h = pickTx ? 560 : 760, w = Math.round(h * WORLD_W / WORLD_H), x0 = (W - w) / 2, y0 = pickTx ? 230 : 150, s0 = w / WORLD_W;
   BMV.geo = {x0, y0, w, h, s0}; if (!BMV.cx) { BMV.cx = WX0 + WORLD_W / 2; BMV.cy = WY0 + WORLD_H / 2; } bmClampView();
   const s = s0 * BMV.z, mx = x => x0 + w / 2 + (x - BMV.cx) * s, my = y => y0 + h / 2 + (y - BMV.cy) * s;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = 'rgba(20,30,20,.45)'; ctx.fillRect(0, 0, W, H);
   ctx.beginPath(); rr(ctx, x0 - 14, y0 - 54, w + 28, h + 90, 22); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.stroke();
-  ctx.font = '28px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🗺️ 전체 지도', x0 + 6, y0 - 16);
-  { const [px, py] = toGrid(P.x, P.y); ctx.font = '18px Jua'; ctx.textAlign = 'right'; ctx.fillText(`📍 내 위치 x ${px} · y ${py}   ·   ${keyName(KB.map[0] || 'KeyM')}를 한 번 더 누르면 닫혀요`, x0 + w - 6, y0 - 18); }
+  ctx.font = '28px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText(pickTx ? '🛻 어디로 갈까요?' : '🗺️ 전체 지도', x0 + 6, y0 - 16);
+  if (pickTx) { ctx.font = '18px Jua'; ctx.textAlign = 'right'; ctx.fillText('🛻 승차장 · ⛺ 찾은 쉼터를 누르세요', x0 + w - 6, y0 - 18); }
+  else { const [px, py] = toGrid(P.x, P.y); ctx.font = '18px Jua'; ctx.textAlign = 'right'; ctx.fillText(`📍 내 위치 x ${px} · y ${py}   ·   ${keyName(KB.map[0] || 'KeyM')}를 한 번 더 누르면 닫혀요`, x0 + w - 6, y0 - 18); }
   ctx.save(); ctx.beginPath(); rr(ctx, x0, y0, w, h, 12); ctx.clip();
   ctx.drawImage(miniBase, mx(WX0), my(WY0), WORLD_W * s, WORLD_H * s);
   // 2026-10-16 좌표 눈금: 10칸마다 옅은 선, 20칸마다 숫자
@@ -6877,7 +6913,7 @@ function drawBigMap(ctx){
   lab('동계천', ...[mx(mapXY(300, 262)[0]), my(mapXY(300, 262)[1])], 18);
   for (const m of MONS) if (!m.dead && (m.raid || m.boss)) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), 5, 0, 7); ctx.fillStyle = '#ff3b30'; ctx.fill(); }
   // 2026-10-16 달 요청: 순간이동은 없어요. 승차장 화물차에 타 있을 때 승차장·찾은 쉼터를 누르면 그리로 태워다 줘요
-  BIGMAP_HOT = []; let tip = null; const pickTx = BUS.ride && BUS.ride.taxi && BUS.ride.st === 'idle' ? BUS.ride : null;
+  BIGMAP_HOT = []; let tip = null;
   const hot = (x, y, ic, name, go) => {
     const sx = mx(x), sy = my(y); if (sx < x0 || sx > x0 + w || sy < y0 || sy > y0 + h) return;
     const on = BIGMAP_MOUSE && Math.hypot(BIGMAP_MOUSE.x - sx, BIGMAP_MOUSE.y - sy) < 24;
@@ -6902,14 +6938,21 @@ function drawBigMap(ctx){
     ctx.beginPath(); ctx.arc(BM.x, BM.y, 4, 0, 7); ctx.fillStyle = INK; ctx.fill();
   }
   ctx.restore();
-  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText((pickTx ? '🛻·⛺ 눌러서 목적지 고르기' : '🛻 화물차 승차장 · ⛺ 찾은 쉼터(승차장 화물차로 가요)') + ' · 노란 선 = 동네 아저씨 화물차 길 · ? 아직 못 찾은 쉼터 · 휠 = 확대·축소, 끌기 = 옮기기', x0 + 6, y0 + h + 26);
+  if (pickTx) { // 작은 지도 아래: 안내 + 내리기 단추
+    const bw = 130, bh = 30, bx = x0 + w - bw, by = y0 + h + 4, on = BIGMAP_MOUSE && BIGMAP_MOUSE.x > bx && BIGMAP_MOUSE.x < bx + bw && BIGMAP_MOUSE.y > by && BIGMAP_MOUSE.y < by + bh;
+    BIGMAP_HOT.push({x:bx, y:by, w:bw, h:bh, go:() => taxiGetOff(pickTx)});
+    ctx.beginPath(); rr(ctx, bx, by, bw, bh, 12); ctx.fillStyle = on ? '#fff2b8' : '#ffe0d0'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.font = '18px Jua'; ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText('🚶 내리기', bx + bw / 2, by + 21);
+    if (on) cv.style.cursor = 'pointer';
+    ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillText(`길 따라 태워다 줘요 · 가는 중 ${tipKey('interact')} = 바로 내리기 · 휠 = 확대`, x0 + 6, y0 + h + 26);
+  } else ctx.font = '16px Jua', ctx.textAlign = 'left', ctx.fillStyle = INK, ctx.fillText('🛻 화물차 승차장 · ⛺ 찾은 쉼터(승차장 화물차로 가요) · 노란 선 = 동네 아저씨 화물차 길 · ? 아직 못 찾은 쉼터 · 휠 = 확대·축소, 끌기 = 옮기기', x0 + 6, y0 + h + 26);
   ctx.restore();
 }
 // 버스 탄 동안 화면 아래 안내
 function drawBusHint(ctx){
   drawRecallBar(ctx);
   const b = BUS.ride; if (!b) return;
-  const t = b.taxi ? (b.st === 'idle' ? `🛻 목적지를 고르세요 (${tipKey('map')} 지도에서 눌러도 돼요) · ${tipKey('interact')} = 내리기` : `🛻 ${b.dest.name}로 가는 중 · ${tipKey('interact')}를 누르면 바로 내려요`) : b.wait > 0 ? `🛻 ${BUS_STOPS[b.cur].name} · F를 누르면 내려요 (${Math.ceil(b.wait)}초 뒤 출발)` : `🛻 화물차 짐칸에 탔어요 · 다음: ${BUS_STOPS[b.ni].name}`;
+  const t = b.taxi ? (b.st === 'idle' ? `🛻 지도에서 목적지를 누르세요 (${tipKey('map')} = 지도 다시 열기) · ${tipKey('interact')} = 내리기` : `🛻 ${b.dest.name}로 가는 중 · ${tipKey('interact')}를 누르면 바로 내려요`) : b.wait > 0 ? `🛻 ${BUS_STOPS[b.cur].name} · F를 누르면 내려요 (${Math.ceil(b.wait)}초 뒤 출발)` : `🛻 화물차 짐칸에 탔어요 · 다음: ${BUS_STOPS[b.ni].name}`;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = '28px Jua'; ctx.textAlign = 'center'; const tw = ctx.measureText(t).width + 50;
   ctx.beginPath(); rr(ctx, W / 2 - tw / 2, H - 196, tw, 50, 18); ctx.fillStyle = b.wait > 0 ? '#fff2b8' : '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
   ctx.fillStyle = INK; ctx.fillText(t, W / 2, H - 162); ctx.restore();
@@ -7439,7 +7482,7 @@ const riding = () => !!G.ride;
 function toggleRide(){
   if (!hasMount()) { toast(`🐯 호랑이 탈것이 없어요. 호랑이 가죽 ${MOUNT_SKIN}장으로 장비 창에서 만들 수 있어요.`); return; }
   if (!G.ride && inTown()) { toast('🌲 호랑이는 숲(사냥터)에서만 탈 수 있어요.', 'bad'); return; }
-  if (!G.ride && inCombat()) { toast('⚔️ 싸우는 중엔 탈 수 없어요. 산짐승을 떼어 내고 타요.', 'bad'); return; }
+  if (!G.ride && P.hurtT < 3) { toast('⚔️ 방금 맞아서 바로는 못 타요. 잠깐 떨어진 다음 타요.', 'bad'); return; } // 2026-10-16 짐승이 보기만 해선 막지 않아요
   G.ride = !G.ride; sfx(G.ride ? 'roar' : 'pick');
   burst(P.x, P.y - 20, 10, ['#f2922c', '#fff2c4', '#fffaf1'], 300, .4);
   floats.push({x:P.x, y:P.y - 160, s:G.ride ? '🐯 호랑이를 탔어요! 빠르기 +30%' : '🐯 호랑이에서 내렸어요', t:1.4, c:'#c4661a'});
@@ -7452,11 +7495,10 @@ function dismount(msg){
   if (msg) toast(msg); rideBtnSync(true);
 }
 const fightDismount = () => dismount('⚔️ 싸움이 시작돼서 호랑이에서 내렸어요.');
-// 매 프레임: 버튼 모양을 맞추고, 마을·싸움이면 내려요
+// 매 프레임: 버튼 모양을 맞추고, 마을이면 내려요. 2026-10-16 달 요청: 짐승이 나를 봐도 안 내리고, 내가 때리거나 맞을 때만 내려요
 let rideSig = '';
 function updateMount(){
   if (G.ride && (!hasMount() || inTown())) dismount('🏡 마을에서는 호랑이에서 내려요.');
-  else if (G.ride && inCombat()) fightDismount();
   rideBtnSync();
 }
 function rideBtnSync(force){
@@ -8470,17 +8512,8 @@ function taxiBoard(tx){
   BUS.ride = tx; sfx('pop');
   uiTaxiDest(tx);
 }
-function uiTaxiDest(tx){
-  const list = taxiDests().filter(d => Math.hypot(d.x - tx.x, d.y - tx.y) > 400);
-  UI.open({ic:'🛻', title:`화물차 승차장 · ${tx.home.name}`, w:900, render(o){
-    o.body.innerHTML = `<p style="margin-top:0">🧑‍🌾 기사 아저씨: "어디로 모셔다 드릴까?"</p>
-      <p class="gnote">길을 따라 태워다 줘요. 가는 중에 <b>${esc(tipKey('interact'))}</b>를 누르면 그 자리에서 바로 내려요 · 숲속 쉼터는 한 번 찾아야 목적지에 나와요(${restsFound().length}/${RESTS.length}곳) · 돌아올 땐 <b>${esc(tipKey('recall'))}</b> 귀환으로 과수원에 와요.</p>`;
-    o.footEl.innerHTML = list.map(d => `<button class="btn" data-tx="${d.id}">${d.ic} ${d.name}</button>`).join('') + `<button class="btn" id="txMap">🗺️ 지도에서 고르기</button><button class="btn" id="txOff">🚶 내리기</button>`;
-    o.footEl.querySelectorAll('[data-tx]').forEach(b => b.onclick = () => { UI.close(); taxiGo(tx, list.find(d => d.id === b.dataset.tx)); });
-    $('#txMap').onclick = () => { UI.close(); setTimeout(() => { if (!BIGMAP) toggleBigMap(); }, 0); };
-    $('#txOff').onclick = () => { UI.close(); taxiGetOff(tx); };
-  }});
-}
+// 2026-10-16 달 요청: 목적지 고르는 창 대신 작은 전체 지도를 띄워서 승차장·찾은 쉼터를 눌러 골라요
+function uiTaxiDest(tx){ if (!BIGMAP) toggleBigMap(); }
 function taxiGo(tx, d){
   if (!d || BUS.ride !== tx || tx.st !== 'idle') return;
   tx.dest = d; tx.path = txPath(txRoute(tx.x, tx.y, d.x, d.y)); tx.s = 0; tx.st = 'go';
@@ -8489,7 +8522,7 @@ function taxiGo(tx, d){
 function taxiReturn(tx){ tx.dest = null; tx.path = txPath(txRoute(tx.x, tx.y, tx.home.x, tx.home.y)); tx.s = 0; tx.st = 'back'; }
 function taxiGetOff(tx){
   if (BUS.ride !== tx) return false;
-  BUS.ride = null;
+  BUS.ride = null; if (BIGMAP) { BIGMAP = false; cv.style.cursor = ''; }
   const px = tx.x + 40, py = tx.y + 150; P.x = px; P.y = py; if (blocked(P.x, P.y)) { P.x = tx.x; P.y = tx.y + 110; }
   P.tgt = null; cam.x = P.x; cam.y = P.y; sfx('pick');
   if (tx.st === 'go') { toast(tx.dest && tx.s >= tx.path.len - 2 ? `🛻 ${tx.dest.name}에 왔어요. "조심히 가거라~"` : '🛻 여기서 내렸어요. 화물차는 승차장으로 돌아가요.'); taxiReturn(tx); }
@@ -9425,6 +9458,7 @@ for (const k in NEW_BEAST) BEAST[k] = NEW_BEAST[k].map(v => ({pay:0, rep:0, ...v
 const BEAST_NOUN = {boar:'멧돼지', deer:'고라니', hare:'산토끼', snake:'구렁이', raccoon:'너구리', badger:'오소리', lynx:'삵', wdog:'들개', wolf:'늑대', bear:'반달가슴곰'};
 const UP_TIER = [{pre:'바위산 ', hp:1.35, dmg:1.1, sc:1.06, xp:1.3}, {pre:'구름산 ', hp:1.7, dmg:1.2, sc:1.12, xp:1.65}, {pre:'산의 왕 ', hp:2.1, dmg:1.3, sc:1.18, xp:2}];
 for (const k in BEAST_NOUN) { const v = BEAST[k][3]; for (const u of UP_TIER) BEAST[k].push({...v, name:u.pre + BEAST_NOUN[k], hp:Math.round(v.hp * u.hp), dmg:+(v.dmg * u.dmg).toFixed(2), sc:+(v.sc * u.sc).toFixed(2), xp:Math.round(v.xp * u.xp), pay:0, rep:0, crown:1}); }
+for (const k in BEAST) for (const v of BEAST[k]) if (!v.boss) delete v.crown; // 2026-10-16 달 요청: 왕관은 보스만
 const TIER_POWER = [0, 28, 55, 95];
 function farmerPower(){ const f = farmer(); return f.atk + f.def * 1.5 + (f.hp - 100) / 5 + f.lv * 2; }
 function raidTier(){
@@ -9705,7 +9739,7 @@ cv.addEventListener('pointerdown', e => {
   if (!pvLocked()) try { cv.setPointerCapture(e.pointerId); } catch (er) {} // 2026-10-15 마우스가 잠긴 3인칭에선 이게 에러를 내서 공격·막기가 안 됐어요
   const p = stagePt(e);
   if (BIGMAP && UI.free()) { bigMapDown(p); e.preventDefault(); return; } // 전체 지도: 끌면 옮기고, 그냥 떼면 순간이동 지점 누르기
-  if (UI.free() && inMM(p)) { MM_FULL = !MM_FULL; sfx('pick'); e.preventDefault(); return; } // 작은 지도 누르면 온 세상 ↔ 우리 둘레
+  if (UI.free() && inMM(p)) { e.preventDefault(); return; } // 2026-10-16 달 요청: 작은 지도 '누르면 온 세상' 없앰
   // 2026-10-13 마우스 버튼도 키 설정대로 (기본: 왼쪽 = 공격, 오른쪽 = 막기)
   if (e.pointerType === 'mouse' && mouseBtnDown(e.button, p)) { e.preventDefault(); return; }
   ptrs.set(e.pointerId, p);
