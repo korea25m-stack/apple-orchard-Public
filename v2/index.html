@@ -376,6 +376,7 @@ const PYEONG_PER_ROW = 43.6;        // 2026-10-16 (6+6그루 x 3m) x 4m = 144㎡
 const PYEONG_PRICE = 50000;         // 2026-10-13 평당 10만 → 5만원(절반)
 const ROW_PRICE = Math.round(PYEONG_PER_ROW * PYEONG_PRICE / 100000) * 100000;
 const START_MONEY = 10000000;
+const PRICE_CAP = 20;                // 2026-10-16 달 요청: 경매 사과값 상한 상자당 10만 → 20만원 (만원 단위)
 const SAPLING = 30000;              // 2026-10-12: 2년생 묘목 (2만 → 3만원)
 const SPRAY_UNIT = 60000;           // 300평당 1회
 const RISK_HIGH = 65;
@@ -444,7 +445,7 @@ const TASKS = {
 const BUILD = {
   wondumak:{name:'원두막', ic:'⛺', price:2000000, tab:'b', desc:'인부가 쉬었다 일해서 하루에 일하는 양이 25% 늘어요.'},
   beehive: {name:'꿀벌통', ic:'🐝', price:500000, max:3, tab:'b', desc:'꽃 필 때 벌이 꽃가루를 옮겨 줘요. 통마다 사과 품질 +2.'},
-  cold:    {name:'저온저장고', ic:'❄️', price:15000000, tab:'b', desc:'사과를 싱싱하게 보관해서 경매값이 10% 올라요(상자당 최고 10만원).'},
+  cold:    {name:'저온저장고', ic:'❄️', price:15000000, tab:'b', desc:'사과를 싱싱하게 보관해서 경매값이 10% 올라요(상자당 최고 20만원).'},
   factory: {name:'사과 가공실', ic:'🫙', price:8000000, tab:'b', desc:'하 등급은 사과즙(상자당 5만원), 보통 등급은 잼(6만원)으로 만들어 팔 수 있어요.'},
   sarang:  {name:'한옥 사랑채', ic:'🏯', price:20000000, tab:'b', desc:'인부가 묵을 방이 생겨서 인부 일당이 10만원으로 내려가요.'},
   fence:   {name:'전기 울타리', ic:'⚡', price:6000000, tab:'d', desc:'멧돼지·고라니가 과수원에 아예 못 내려와요.'},
@@ -1031,9 +1032,9 @@ function totalStock(){ let n = 0; for (const k in G.stock) n += G.stock[k]; retu
 function auctionPlan(key){
   const [v, gk] = key.split('|');
   let base = gByK(gk).base * VARS[v].mult * (G.b.cold ? 1.1 : 1) * shedMult();
-  const bids = BIDDERS.map(n => ({n, p:Math.round(clamp(base * rnd(.84, 1.07), 3, 10) * 10) / 10}));
+  const bids = BIDDERS.map(n => ({n, p:Math.round(clamp(base * rnd(.84, 1.07), 3, PRICE_CAP) * 10) / 10}));
   const big = Math.random() < .1;
-  if (big) bids[rint(0, 9)] = {n:'큰손 상인', p:10, big:true};
+  if (big) bids[rint(0, 9)] = {n:'큰손 상인', p:PRICE_CAP, big:true};
   let win = 0; bids.forEach((b, i) => { if (b.p > bids[win].p) win = i; });
   return {bids, win, big, price:bids[win].p * 10000};
 }
@@ -5570,10 +5571,10 @@ function uiStore(tab){
         const canP = G.b.factory && (gk === 'B' || gk === 'C');
         return `<tr><td><span class="dot" style="background:${VARS[v].col}"></span>${VARS[v].name}</td><td><b style="color:${g.col}">${g.name}</b></td><td>${G.stock[k]}</td>
           <td>${(f => f == null ? '—' : f <= 7 ? `<b style="color:#c4402f">🍂 ${Math.max(0, f)}일 뒤 40%↓</b>` : `${f}일 뒤 40%↓`)(freshLeft(k))}</td>
-          <td>${clamp(base * .84, 3, 10).toFixed(1)}~${clamp(base * 1.07, 3, 10).toFixed(1)}만원</td>
+          <td>${clamp(base * .84, 3, PRICE_CAP).toFixed(1)}~${clamp(base * 1.07, 3, PRICE_CAP).toFixed(1)}만원</td>
           <td style="text-align:right"><button class="btn y" data-sell="${k}">경매</button> ${canP ? `<button class="btn" data-proc="${k}">${gk === 'C' ? '즙' : '잼'}(${gk === 'C' ? 5 : 6}만)</button>` : ''}</td></tr>`; }).join('')}</table>`
         : `<p>창고가 비어 있어요. 사과를 따면 여기에 상자로 쌓여요.</p>`;
-      body += `<div class="fact">💡 사과는 오래 두면 등급이 떨어질 수 있어요: 부사는 수확 4개월 뒤, 다른 품종은 2개월 뒤부터 한 달마다 상자마다 40% 확률로 한 단계씩. 경매에는 중도매인 10명이 와요. 가끔(10%) 큰손 상인이 와서 상자당 10만원에 사 가요.${G.b.cold ? ' 저온저장고 덕분에 10% 더 받아요.' : ''}</div>`;
+      body += `<div class="fact">💡 사과는 오래 두면 등급이 떨어질 수 있어요: 부사는 수확 4개월 뒤, 다른 품종은 2개월 뒤부터 한 달마다 상자마다 40% 확률로 한 단계씩. 경매에는 중도매인 10명이 와요. 가끔(10%) 큰손 상인이 와서 상자당 ${PRICE_CAP}만원에 사 가요.${G.b.cold ? ' 저온저장고 덕분에 10% 더 받아요.' : ''}</div>`;
     } else if (tab === 'retail') {
       body = retailBody();
     } else {
@@ -5605,7 +5606,7 @@ function uiShip(keys){
   const cnt = {}; for (const k of keys) cnt[k] = G.stock[k];
   const pctOf = (k, p) => Math.round(G.stock[k] * p / 100);
   const pick = k => G.ship.mode === 'pct' ? pctOf(k, G.ship.pct) : cnt[k];
-  const est = k => { const [v, gk] = k.split('|'); return clamp(gByK(gk).base * VARS[v].mult * (G.b.cold ? 1.1 : 1) * shedMult(), 3, 10) * 10000; };
+  const est = k => { const [v, gk] = k.split('|'); return clamp(gByK(gk).base * VARS[v].mult * (G.b.cold ? 1.1 : 1) * shedMult(), 3, PRICE_CAP) * 10000; };
   const sum = f => keys.reduce((s, k) => s + f(k), 0);
   const CH = [[25, '🍎', '조금', '4개 중 1개'], [50, '🍎🍎', '반만', '절반'], [75, '🍎🍎🍎', '많이', '4개 중 3개'], [100, '📦', '전부', '모두']];
   UI.open({ic:'🚚', title:'사과 팔러 가기', w:1000, render(o){
@@ -5668,7 +5669,7 @@ function auction(keys, fast, qty){
       $('#bd' + plan.win).classList.add('win');
       const got = sellLot(key, plan, n); total += got; boxes += n; sfx('coin');
       lots.push({v, gk, n, p:plan.bids[plan.win].p, got, big:plan.big});
-      $('#alog').innerHTML = plan.big ? `💎 큰손 상인이 상자당 10만원에 몽땅 사 갔어요! +${won(got)}` : `🎉 ${esc(plan.bids[plan.win].n)}에 팔았어요! 상자당 ${plan.bids[plan.win].p.toFixed(1)}만원, +${won(got)}`;
+      $('#alog').innerHTML = plan.big ? `💎 큰손 상인이 상자당 ${PRICE_CAP}만원에 몽땅 사 갔어요! +${won(got)}` : `🎉 ${esc(plan.bids[plan.win].n)}에 팔았어요! 상자당 ${plan.bids[plan.win].p.toFixed(1)}만원, +${won(got)}`;
       $('#aTot').textContent = won(total);
       i++;
       setTimeout(i < keys.length ? lot : done, quick || skip ? 350 : 1300);
@@ -6925,15 +6926,15 @@ function rankWire(o){
 }
 
 // ===== 소매 판매 + 포장 (2026-10-13) =====
-// 손님이 직접 사 가는 주문. 경매 상한(상자당 10만원)의 최대 2배까지 받아요.
+// 손님이 직접 사 가는 주문. 경매 상한(상자당 PRICE_CAP만원, 지금 20만원)의 최대 2배까지 받아요.
 // 포장은 주문 하나당 한 번: 상자 펴기 → 사과 담기 → 완충제 넣기 하면 그 주문 전체가 포장돼요.
 const RETAIL_C = [
   {name:'서울 단골 손님', ic:'📮'}, {name:'캠핑장 사장님', ic:'🏕️'}, {name:'옆 마을 빵집', ic:'🥐'}, {name:'유치원 간식', ic:'🧸'},
   {name:'등산객 가족', ic:'🥾'}, {name:'카페 사장님', ic:'☕'}, {name:'할머니 손주 선물', ic:'🎀'}, {name:'동네 반찬가게', ic:'🍱'}
 ];
-const RETAIL_MAX = 200000, RETAIL_P = .35;
+const RETAIL_MAX = PRICE_CAP * 20000, RETAIL_P = .35;
 const RETAIL_LOW = [{name:'사과즙 공방', ic:'🧃'}, {name:'잼 만드는 할머니', ic:'🍯'}, {name:'마을 식당', ic:'🍲'}, {name:'주스 가게', ic:'🥤'}], RETAIL_LOW_P = .25;
-function retailUnit(gk){ const hi = clamp(gByK(gk).base * 1.07 * (G.b.cold ? 1.1 : 1) * shedMult(), 3, 10); return Math.min(RETAIL_MAX, Math.round(hi * 2 * 10) * 1000); }
+function retailUnit(gk){ const hi = clamp(gByK(gk).base * 1.07 * (G.b.cold ? 1.1 : 1) * shedMult(), 3, PRICE_CAP); return Math.min(RETAIL_MAX, Math.round(hi * 2 * 10) * 1000); }
 function retailWeek(){
   if (!G.retail) G.retail = [];
   G.retail = G.retail.filter(o => { if (o.year < G.year || o.due < G.week) { toast(`${o.name} 소매 주문 날짜가 지났어요`, 'bad'); return false; } return true; });
@@ -6954,7 +6955,7 @@ function auctionEst(gk){
   const ok = GRADES.slice(0, GRADES.findIndex(g => g.k === gk) + 1).map(g => g.k);
   let n = 0, m = 0; for (const k in G.stock) { const [v, g] = k.split('|'); if (ok.includes(g) && G.stock[k] > 0) { n += G.stock[k]; m += VARS[v].mult * G.stock[k]; } }
   const vm = n ? m / n : 1;
-  return Math.round(clamp(gByK(gk).base * vm * (G.b.cold ? 1.1 : 1) * shedMult() * .955, 3, 10) * 10) * 1000;
+  return Math.round(clamp(gByK(gk).base * vm * (G.b.cold ? 1.1 : 1) * shedMult() * .955, 3, PRICE_CAP) * 10) * 1000;
 }
 let offerOpen = false;
 const wonU = n => Math.abs(n) >= 10000 ? `${+(n / 10000).toFixed(1)}만원` : won(n); // 7.8만원처럼 소수 한 자리
