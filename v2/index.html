@@ -2236,13 +2236,13 @@ function drawPortrait(cv, who){
 
 // ===== 과수원 세상 =====
 const SPOT = {
-  hanok:{x:-450, y:900}, shed:{x:510, y:830} /* 2026-10-13 저장하는 한옥은 왼쪽 빈 터로, 사과 창고가 한옥 자리로 크게 */, grandma:{x:480, y:1440}, chief:{x:270, y:1440}, hunter:{x:110, y:1440},
+  hanok:{x:-450, y:900}, shed:{x:510, y:830} /* 2026-10-13 저장하는 한옥은 왼쪽 빈 터로, 사과 창고가 한옥 자리로 크게 */, grandma:{x:170, y:1440}, chief:{x:-40, y:1440}, hunter:{x:-230, y:1440}, /* 2026-10-16 달 요청: 세 분을 왼쪽으로, 농막 자리 넓게 */
   // 2026-10-16 달 요청: 옹기종기 모여 있던 건물을 넓게. 사랑채·저온저장고·가공실은 이장님 아래 빈 터로 줄지어 옮겼어요
   sarang:{x:-560, y:1800}, cold:{x:-80, y:1780}, factory:{x:360, y:1780}, wondumak:{x:3200, y:780},
   hives:[[3180, 1040], [3230, 1075], [3180, 1110]], drone:{x:900, y:830},
-  pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
+  pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [-150, 1560]],
   rabbit:{x:3300, y:1360}, chicken:{x:680, y:1760}, cat:{x:250, y:880}, dog:{x:690, y:980},
-  jangdok:{x:110, y:960}, sotdae:{x:-90, y:1560}, nongmak:{x:650, y:1400} /* 2026-10-16 울타리(x 850)에 안 걸리게 왼쪽으로 */, portal:{x:110, y:1680} /* 2026-10-13 이장님 아래 순간이동 포탈 */ // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
+  jangdok:{x:110, y:960}, sotdae:{x:-420, y:1560}, nongmak:{x:560, y:1420} /* 2026-10-16 울타리(x 850)에서 떨어진 넓은 자리(3단계 폭 310) */, portal:{x:110, y:1680} /* 2026-10-13 이장님 아래 순간이동 포탈 */ // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
 };
 const ROAD = [[HOME.x0 - 40, 1250], [930, 1250], [930, 1150]]; // 2026-10-16 서쪽 입구에서 마당까지 // 2026-10-14 달 요청: 마을 길은 반듯하게(가로·세로로만)
 const YARD = {x:520, y:925, rx:270, ry:85}, HYARD = {x:-450, y:1000, rx:230, ry:72};
@@ -2667,7 +2667,7 @@ function solids(){
   if (G.b.factory) s.push({x:SPOT.factory.x - 82, y:SPOT.factory.y - 64, w:164, h:64});
   if (G.b.wondumak) s.push({x:SPOT.wondumak.x - 70, y:SPOT.wondumak.y - 50, w:140, h:50});
   villageSolids(s);
-  s.push({x:SPOT.nongmak.x - 95, y:SPOT.nongmak.y - 70, w:190, h:70});
+  { const w2 = NONGMAK_LV[nongmakLv()].w / 2 - 14; s.push({x:SPOT.nongmak.x - w2, y:SPOT.nongmak.y - 80, w:w2 * 2, h:72}); }
   return s;
 }
 function blocked(x, y){
@@ -2940,6 +2940,7 @@ const mist = [];
 let raidAnim = null;
 function blockedSpot(x, y){
   const all = [SPOT.hanok, SPOT.shed, SPOT.grandma, SPOT.chief, SPOT.hunter, SPOT.portal, SPOT.sarang, SPOT.cold, SPOT.factory, SPOT.wondumak, SPOT.pond, SPOT.jangdok, SPOT.sotdae, SPOT.rabbit, SPOT.chicken, ...SPOT.blossom.map(([x2, y2]) => ({x:x2, y:y2})), ...SPOT.flowers.map(([x2, y2]) => ({x:x2, y:y2}))];
+  if (Math.abs(SPOT.nongmak.x - x) < 230 && y > SPOT.nongmak.y - 260 && y < SPOT.nongmak.y + 140) return true; // 2026-10-16 농막(3단계 폭) 앞뒤는 비워요
   return all.some(s => Math.abs(s.x - x) < 200 && Math.abs(s.y - y) < 150);
 }
 function drawFlowerBed(c, x, y){
@@ -4429,20 +4430,75 @@ function drawForage(c, f){
   c.font = '30px sans-serif'; c.textAlign = 'center'; c.fillText(LOOT[f.item].ic, f.x, f.y - 6 + b);
   for (let k = 0; k < 3; k++) { const a = f.t * 2 + k * 2.1, x = f.x + Math.cos(a) * 24, y = f.y - 26 + Math.sin(a) * 12; c.font = '14px sans-serif'; c.fillText('✨', x, y); }
 }
+// 2026-10-16 달 요청: 농막 3단계 업그레이드(1단계도 더 크고 깔끔하게). 사과 창고처럼 단계마다 커지고 좋아져요
+const NONGMAK_LV = [
+  {name:'나무 농막', w:220},
+  {name:'황토 농막', w:260, price:3000000, spd:8, desc:'방이 넓어지고 툇마루가 생겨요. 자고 일어난 날은 개운해서 이동 속도 +8%'},
+  {name:'전원 농막', w:310, price:8000000, spd:15, hp:30, rep:3, desc:'다락방·테라스가 생겨요. 자고 일어난 날 이동 속도 +15%, 최대 체력 +30, 평판 +3'}
+];
+const nongmakLv = () => clamp(G.nmLv || 0, 0, 2);
+// 자고 일어난 그날 하루만 받는 '개운함'
+function restBuff(){ const L = NONGMAK_LV[nongmakLv()]; return G.restDay === absDay() ? {spd:L.spd || 0, hp:L.hp || 0} : {spd:0, hp:0}; }
+function upgradeNongmak(){
+  const lv = nongmakLv(), nx = NONGMAK_LV[lv + 1]; if (!nx || G.money < nx.price) return false;
+  G.money -= nx.price; G.nmLv = lv + 1; if (nx.rep) G.rep += nx.rep;
+  sfx('fanfare'); toast(`🛖 농막이 <${nx.name}>(으)로 바뀌었어요!`, 'gold');
+  burst(SPOT.nongmak.x, SPOT.nongmak.y - 100, 24, ['#ffd23a', '#fffaf1', '#7cc58a'], 520, .7); updateHUD(true);
+  return true;
+}
+function nmWindow(c, x, y, w, h, box){
+  cel(c, cc => rr(cc, x, y, w, h, 3), '#cfeeff', '#9ccbe8', 2, 2, 2.4); line(c, [x + w / 2, y, x + w / 2, y + h], 2, INK); line(c, [x, y + h / 2, x + w, y + h / 2], 1.6, INK);
+  hl(c, x + w * .28, y + h * .28, w * .12, h * .1, .7);
+  if (box) { cel(c, cc => rr(cc, x - 4, y + h, w + 8, 10, 2), '#a8704a', '#7a4a2c', 1, 1, 2); for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(x + 4 + k * (w / 3.4), y + h - 1, 4.5, 0, 7); c.fillStyle = ['#ff6b8a', '#ffd23a', '#ffffff', '#b98cff'][k]; c.fill(); } }
+}
 function drawNongmak(c, x, y){
+  const lv = nongmakLv(), W2 = NONGMAK_LV[lv].w / 2;
   c.save(); c.translate(x, y);
-  shadow(c, 0, 4, 120, 18, .22);
-  cel(c, cc => rr(cc, -88, -76, 176, 76, 3), '#d9b07a', '#a8804a', 5, 5, 3);
-  for (let k = -3; k <= 3; k++) line(c, [k * 24, -76, k * 24, 0], 1.4, '#a8804a');
-  cel(c, cc => { cc.moveTo(-104, -70); cc.lineTo(0, -138); cc.lineTo(104, -70); cc.closePath(); }, '#5a8ad0', '#3a5a9a', 6, 6, 3);
-  cel(c, cc => rr(cc, -16, -52, 32, 52, 3), '#8a5432', '#5e3420', 2, 2, 2.4);
-  c.beginPath(); c.arc(9, -26, 2.4, 0, 7); c.fillStyle = '#ffd25e'; c.fill();
-  cel(c, cc => rr(cc, 34, -56, 34, 26, 3), '#cfeeff', '#9ccbe8', 2, 2, 2.2); line(c, [51, -56, 51, -30], 1.8, INK);
-  // 굴뚝 + 간판
-  cel(c, cc => rr(cc, 50, -128, 16, 30, 2), '#a8a092', '#7a7266', 2, 2, 2.2);
-  c.font = '16px Jua'; const tw = c.measureText(`🛖 ${HN()}네 농막`).width + 18;
-  cel(c, cc => rr(cc, -tw / 2, -100, tw, 24, 7), '#fffaf1', '#e8dcc4', 2, 2, 2.2);
-  c.fillStyle = INK; c.textAlign = 'center'; c.fillText(`🛖 ${HN()}네 농막`, 0, -82);
+  shadow(c, 0, 6, W2 + 30, 22, .22);
+  if (lv === 0) { // 나무 농막: 가로 판자 벽, 짙은 초록 골강판 지붕, 작은 데크
+    cel(c, cc => rr(cc, -W2 + 6, -12, W2 * 2 - 12, 12, 2), '#b98a5a', '#8a5e36', 2, 2, 2.4); // 데크
+    cel(c, cc => rr(cc, -W2 + 14, -96, W2 * 2 - 28, 84, 3), '#d8ae78', '#a8804a', 5, 5, 3);
+    for (let yy = -84; yy < -12; yy += 12) line(c, [-W2 + 16, yy, W2 - 16, yy], 1.3, '#a8804a');
+    cel(c, cc => { cc.moveTo(-W2 - 6, -90); cc.lineTo(-W2 + 30, -146); cc.lineTo(W2 - 30, -146); cc.lineTo(W2 + 6, -90); cc.closePath(); }, '#4f8a5a', '#336440', 6, 6, 3);
+    for (let k = -W2 + 10; k < W2; k += 16) line(c, [k, -92, k + (k < 0 ? 12 : -12) * .6, -144], 1.2, '#336440');
+    cel(c, cc => rr(cc, -22, -70, 40, 58, 3), '#8a5432', '#5e3420', 2, 2, 2.4); c.beginPath(); c.arc(10, -40, 2.6, 0, 7); c.fillStyle = '#ffd25e'; c.fill();
+    nmWindow(c, 34, -74, 44, 32, 1); nmWindow(c, -84, -74, 40, 30, 0);
+    cel(c, cc => rr(cc, 60, -176, 14, 40, 2), '#a8a092', '#7a7266', 2, 2, 2.2); // 연통
+    for (const k of [0, 1]) { c.beginPath(); c.arc(-W2 + 24 + k * 14, -6, 9, 0, 7); c.fillStyle = '#b98a5a'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); c.beginPath(); c.arc(-W2 + 24 + k * 14, -6, 4, 0, 7); c.strokeStyle = '#8a5e36'; c.stroke(); } // 장작
+  } else if (lv === 1) { // 황토 농막: 황토 벽 + 나무 기둥, 기와지붕, 툇마루
+    cel(c, cc => rr(cc, -W2 + 4, -26, W2 * 2 - 8, 26, 3), '#c8935e', '#8e6038', 3, 3, 2.6); // 툇마루
+    for (let k = -W2 + 26; k < W2; k += 26) line(c, [k, -26, k, 0], 1.3, '#8e6038');
+    cel(c, cc => rr(cc, -W2 + 16, -116, W2 * 2 - 32, 90, 3), '#e8b878', '#c48a4e', 5, 5, 3);
+    for (const px of [-W2 + 16, -40, 40, W2 - 24]) cel(c, cc => rr(cc, px, -116, 8, 90, 2), '#8a5a34', '#5e3a20', 1, 0, 2);
+    line(c, [-W2 + 16, -112, W2 - 16, -112], 5, '#8a5a34');
+    cel(c, cc => rr(cc, -26, -96, 52, 70, 3), '#fffaf0', '#e8dcc4', 2, 2, 2.4); for (const k of [-13, 0, 13]) line(c, [k, -96, k, -26], 1.4, '#c8b48a'); for (const k of [-73, -50]) line(c, [-26, k, 26, k], 1.4, '#c8b48a'); // 한지 미닫이문
+    nmWindow(c, 54, -96, 46, 36, 1); nmWindow(c, -100, -96, 46, 36, 1);
+    cel(c, cc => { cc.moveTo(-W2 - 26, -108); cc.quadraticCurveTo(-W2 - 4, -116, -W2 + 22, -168); cc.lineTo(W2 - 22, -168); cc.quadraticCurveTo(W2 + 4, -116, W2 + 26, -108); cc.quadraticCurveTo(W2 + 30, -122, W2 + 14, -126); cc.lineTo(-W2 - 14, -126); cc.quadraticCurveTo(-W2 - 30, -122, -W2 - 26, -108); cc.closePath(); }, '#6a5a52', '#4a3e38', 6, 6, 3);
+    for (let k = -W2 + 4; k < W2; k += 18) line(c, [k, -128, k * .82, -166], 1.4, '#4a3e38');
+    cel(c, cc => rr(cc, -W2 + 16, -178, W2 * 2 - 32, 12, 4), '#4a3e38', '#2e2622', 2, 2, 2.4);
+    c.beginPath(); ell(c, W2 - 2, -88, 9, 13); c.fillStyle = '#ff6b4a'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); line(c, [W2 - 2, -101, W2 - 2, -110], 2, INK); // 초롱
+    for (let k = 0; k < 3; k++) for (let j = 0; j <= k; j++) { const lx = -W2 - 10 + j * 14 + (2 - k) * 7, ly = -8 - (2 - k) * 12; c.beginPath(); c.arc(lx, ly, 7, 0, 7); c.fillStyle = '#b98a5a'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); } // 장작더미
+  } else { // 전원 농막: 흰 벽 + 나무 사이딩, 빨간 지붕에 다락 창, 테라스
+    cel(c, cc => rr(cc, -W2, -22, W2 * 2, 22, 3), '#c8935e', '#8e6038', 3, 3, 2.6); // 테라스
+    for (let k = -W2 + 22; k < W2; k += 22) line(c, [k, -22, k, 0], 1.2, '#8e6038');
+    cel(c, cc => rr(cc, -W2 + 20, -130, W2 * 2 - 40, 108, 3), '#fffaf2', '#e4dccc', 5, 5, 3);
+    cel(c, cc => rr(cc, 20, -130, W2 - 40, 108, 0), '#c98a52', '#93603a', 3, 3, 2.4); for (let yy = -118; yy < -22; yy += 12) line(c, [22, yy, W2 - 22, yy], 1.2, '#93603a'); // 나무 사이딩
+    cel(c, cc => rr(cc, -24, -96, 44, 74, 3), '#3a6a8a', '#28506a', 2, 2, 2.4); nmWindow(c, -16, -88, 28, 24, 0); c.beginPath(); c.arc(14, -56, 2.6, 0, 7); c.fillStyle = '#ffd25e'; c.fill();
+    nmWindow(c, -W2 + 40, -104, 54, 42, 1); nmWindow(c, 44, -104, 54, 42, 1);
+    cel(c, cc => { cc.moveTo(-W2 - 14, -122); cc.lineTo(0, -222); cc.lineTo(W2 + 14, -122); cc.closePath(); }, '#d24a3a', '#9a2e24', 6, 6, 3);
+    for (let k = 1; k < 5; k++) line(c, [-W2 - 14 + k * 20, -122 - k * 20 * 100 / (W2 + 14), W2 + 14 - k * 20, -122 - k * 20 * 100 / (W2 + 14)], 1.2, '#9a2e24');
+    cel(c, cc => { cc.moveTo(-26, -150); cc.lineTo(0, -184); cc.lineTo(26, -150); cc.closePath(); }, '#fffaf2', '#e4dccc', 2, 2, 2.4); nmWindow(c, -12, -170, 24, 18, 0); // 다락 창
+    cel(c, cc => rr(cc, W2 - 70, -214, 16, 50, 2), '#c0563e', '#8e3a28', 2, 2, 2.2); // 굴뚝
+    for (const s of [-1, 1]) { line(c, [s * W2, -22, s * W2, -50], 3, INK); line(c, [s * W2, -48, s * (W2 - 70), -48], 3, '#8e6038'); for (let k = 0; k < 4; k++) line(c, [s * (W2 - k * 18), -22, s * (W2 - k * 18), -48], 2, '#8e6038'); } // 난간
+    c.beginPath(); c.arc(-W2 + 8, -34, 9, 0, 7); c.fillStyle = '#7cc58a'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); // 화분
+    cel(c, cc => { cc.moveTo(W2 + 26, -96); cc.quadraticCurveTo(W2 - 6, -116, W2 - 38, -96); cc.closePath(); }, '#ffd23a', '#e8a020', 2, 2, 2.2); line(c, [W2 - 6, -100, W2 - 6, -20], 2.4, INK); // 파라솔
+    cel(c, cc => rr(cc, W2 - 26, -40, 40, 8, 2), '#fffaf1', '#e8dcc4', 1, 1, 2);
+  }
+  // 간판
+  const top = lv === 0 ? -176 : lv === 1 ? -200 : -250;
+  c.font = '16px Jua'; const t = `🛖 ${HN()}네 ${NONGMAK_LV[lv].name}`, tw = c.measureText(t).width + 18;
+  cel(c, cc => rr(cc, -tw / 2, top, tw, 24, 7), '#fffaf1', '#e8dcc4', 2, 2, 2.2);
+  c.fillStyle = INK; c.textAlign = 'center'; c.fillText(t, 0, top + 18);
   c.restore();
 }
 function huntEntities(ctx, add, vis, T){
@@ -4628,9 +4684,10 @@ function sleepUntilWork(){
   fadeScreen('😴 쿨쿨…', () => {
     toMorning();
     let n = 0; while (n++ < 400 && !hasWork()) { advance(14); G.hour = 6; }
+    G.restDay = absDay(); // 2026-10-16 농막 단계에 따라 그날 하루 개운함
     P.hp = P.max; P.x = SPOT.nongmak.x; P.y = SPOT.nongmak.y + 50; P.dir = 0; P.d8 = 2; P.tgt = null; cam.x = P.x; cam.y = P.y;
     saveLocal(); todoSig = ''; updateHUD(true);
-  }, () => toast(`🌅 ${absDay() - start}일 푹 자고 일어났어요! ${G.year}년차 ${weekLabel(G.week).m}월 ${weekLabel(G.week).wk}째 주 아침이에요. 체력도 가득!`, 'good'), sleepTip(), 1600);
+  }, () => toast(`🌅 ${absDay() - start}일 푹 자고 일어났어요! ${G.year}년차 ${weekLabel(G.week).m}월 ${weekLabel(G.week).wk}째 주 아침이에요. 체력도 가득!${nongmakLv() ? ` 개운해서 오늘 하루 이동 +${NONGMAK_LV[nongmakLv()].spd}%${NONGMAK_LV[nongmakLv()].hp ? ' · 체력 +' + NONGMAK_LV[nongmakLv()].hp : ''}` : ''}`, 'good'), sleepTip(), 1600);
 }
 function heroFaint(){
   P.hp = 0;
@@ -4644,6 +4701,9 @@ function uiNongmak(){
     o.body.innerHTML = `<canvas id="roomCv" width="880" height="330" style="width:100%;border:3px solid var(--ink);border-radius:18px;display:block"></canvas>
       <p>🛻 마을·숲속 쉼터에 가려면 <b>화물차 승차장</b>에서 화물차를 타세요. 돌아올 땐 <b>${esc(tipKey('recall'))}</b> 귀환이에요.</p>
       <p>푹 자고 일어나면 <b>다음 할 일이 생기는 날 아침</b>까지 시간이 가요. 체력도 가득 차요. ${hasWork() ? '지금은 할 일이 남아 있어서 내일 아침에 깨요.' : ''}</p>`;
+    { const lv = nongmakLv(), nx = NONGMAK_LV[lv + 1], cur = NONGMAK_LV[lv];
+      o.body.insertAdjacentHTML('afterbegin', `<div class="opt" style="margin-bottom:10px"><span class="t">🛖 ${cur.name} <small>(${lv + 1}/3단계)</small></span><span>${nx ? `다음: <b>${nx.name}</b> · ${nx.desc}` : `최고 단계예요! ✨ 자고 일어난 날 이동 +${cur.spd}% · 체력 +${cur.hp}`}</span>${nx ? `<span class="p">${won(nx.price)}</span><button class="btn y" id="nmUp" ${G.money < nx.price ? 'disabled' : ''}>업그레이드</button>` : ''}</div>`);
+      if (nx) $('#nmUp').onclick = () => { if (upgradeNongmak()) { UI.close(); setTimeout(uiNongmak, 200); } }; }
     drawRoom($('#roomCv'));
     o.footEl.innerHTML = `<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기 (F)</button>`;
     $('#nmSave').onclick = () => { UI.close(); setTimeout(uiSave, 160); };
@@ -8856,8 +8916,9 @@ function bindSellBtns(root, o){
 // 능력치: 레벨이 오르면 힘·체력·솜씨가 늘어요
 function farmer(){
   const g = ensureGear(), lv = G.fm.lv;
-  return {lv, xp:G.fm.xp, need:xpNeed(lv), atk:slotStat('weapon') + (lv - 1) * 2, def:slotStat('armor'), spd:slotStat('boots') + (lv - 1),
-    hp:100 + slotStat('hat') + (lv - 1) * 6, skill:Math.min(15, lv - 1), reach:gearItem('weapon', g.weapon).reach || 1};
+  const rb = typeof restBuff === 'function' && G ? restBuff() : {spd:0, hp:0}; // 2026-10-16 농막에서 자고 일어난 날
+  return {lv, xp:G.fm.xp, need:xpNeed(lv), atk:slotStat('weapon') + (lv - 1) * 2, def:slotStat('armor'), spd:slotStat('boots') + (lv - 1) + rb.spd,
+    hp:100 + slotStat('hat') + (lv - 1) * 6 + rb.hp, skill:Math.min(15, lv - 1), reach:gearItem('weapon', g.weapon).reach || 1};
 }
 const xpNeed = lv => 60 + lv * 40;
 function gainXp(n){
