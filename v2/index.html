@@ -574,6 +574,7 @@ const ORDERS = [
 const ACH = {
   plant1:  ['🌱','첫 묘목','묘목을 처음 심었어요'],
   tiger:   ['🐯','호랑이를 이긴 농부','전설의 호랑이를 이겼어요'],
+  pbear:   ['🐻‍❄️','북쪽 숲의 영웅','전설의 흰곰을 이겼어요'],
   orchard: ['🌳','과수원 완성','빈 자리 없이 다 심었어요'],
   harvest1:['🍎','첫 수확','사과를 처음 땄어요'],
   gradeS:  ['🏅','특 등급','특 등급 사과를 땄어요'],
@@ -667,7 +668,7 @@ const FOREST_PATHS = [
   [MP(458, 712), MP(330, 700), MP(200, 760), MP(70, 800)],
   [MP(1000, 22), MP(1050, 160), MP(1120, 260)],
   // 2026-10-16 넓힌 바깥 숲: 지도 끝에서 바깥으로 뻗는 길 + 바깥을 크게 한 바퀴 도는 길
-  [MP(575, 0), MP(555, -150), MP(595, -320), MP(570, -500)],
+  [MP(575, 0), MP(560, -130), MP(590, -210), MP(606, -255)],   // 2026-10-16 흰곰 굴(지도 좌표 100, 20) 입구로
   [MP(1289, 68), MP(1450, 40), MP(1650, -60), MP(1880, -200)],
   [MP(0, 925), MP(-180, 900), MP(-380, 960), MP(-600, 1000)],
   [MP(445, 1072), MP(430, 1250), MP(470, 1420), MP(440, 1580)],
@@ -680,7 +681,7 @@ const FOREST_PATHS = [
 ];
 // 지도 왼쪽 위의 강(동계천)과 큰 도로(농암로): 그림만
 const RIVER = [MP(700, -536), MP(660, -250), MP(640, 0), MP(600, 70), MP(560, 150), MP(500, 200), MP(430, 225), MP(330, 238), MP(220, 228), MP(120, 205), MP(40, 178), MP(0, 165), MP(-300, 140), MP(-644, 160)];
-const HIGHWAY = [MP(620, -536), MP(600, -250), MP(590, 0), MP(560, 50), MP(520, 85), MP(440, 125), MP(370, 155), MP(300, 175), MP(200, 190), MP(120, 175), MP(60, 130), MP(0, 85), MP(-300, 40), MP(-644, 20)];
+const HIGHWAY = [MP(470, -536), MP(530, -250), MP(590, 0), MP(560, 50), MP(520, 85), MP(440, 125), MP(370, 155), MP(300, 175), MP(200, 190), MP(120, 175), MP(60, 130), MP(0, 85), MP(-300, 40), MP(-644, 20)];
 
 // ===== 게임 상태와 규칙 (그림과 분리) =====
 let G = null;
@@ -4340,7 +4341,7 @@ function buildMiniBase(){
   c.fillStyle = 'rgba(255,255,255,.35)'; for (const p of PEAKS) { c.beginPath(); c.moveTo((p.x - 160 * p.s) * s, p.y * s); c.lineTo(p.x * s, (p.y - 300 * p.s) * s); c.lineTo((p.x + 160 * p.s) * s, p.y * s); c.fill(); }
 }
 // 글자는 지도 크기와 상관없이 같은 크기로 보이게 덮어 그려요
-const MM_LABELS = () => [['과수원', OX + ORCH_W / 2, OY - 150], ...SAFE.filter(A => A !== HOME).map(A => [A.name, A.cx, A.y0 - 300]), ['호랑이 굴', DEN.x, DEN.y - DEN.ry - 300], ['동계천', ...mapXY(300, 262)]];
+const MM_LABELS = () => [['과수원', OX + ORCH_W / 2, OY - 150], ...SAFE.filter(A => A !== HOME).map(A => [A.name, A.cx, A.y0 - 300]), ['호랑이 굴', DEN.x, DEN.y - DEN.ry - 300], ['흰곰 굴', BDEN.x, BDEN.y - BDEN.ry - 300], ['동계천', ...mapXY(300, 262)]];
 function drawHuntOverlay(ctx, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (!miniBase) buildMiniBase();
@@ -4564,9 +4565,9 @@ NEW_BEAST.pbear = Array(7).fill(PBEAR);
 const PBEAR_NEED = 34;
 const DEN = {x:fromGrid(133, 133)[0], y:fromGrid(133, 133)[1], rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
 DEN.gate = Math.atan2((mapXY(1018, 1100)[1] - DEN.y) / DEN.ry, (mapXY(1018, 1100)[0] - DEN.x) / DEN.rx); // 2026-10-16 달 요청: M 지도 좌표 (133, 133). 길이 들어오는 쪽(북쪽)
-const BDEN = {x:1700, y:18700, rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 설산의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
-BDEN.gate = Math.atan2((17500 - BDEN.y) / BDEN.ry, (3000 - BDEN.x) / BDEN.rx); // 북동쪽 설산 길
-const DENS = [DEN], DEN_LEASH = 260; // 2026-10-16 달 요청: 흰곰 굴(BDEN) 삭제
+const BDEN = {x:fromGrid(100, 20)[0], y:fromGrid(100, 20)[1], rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 북쪽 숲의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
+BDEN.gate = Math.PI / 2; // 2026-10-16 달 요청: 흰곰을 M 지도 좌표 (100, 20)에 되살림. 길은 남쪽(다리 쪽)에서 들어와요
+const DENS = [DEN, BDEN], DEN_LEASH = 260; // 2026-10-16 흰곰 굴은 지웠다가 같은 날 (100, 20)에 되살렸어요
 const DEN_GATE = DEN.gate;
 const inDenOf = (D, x, y, pad = 0) => ((x - D.x) / (D.rx + pad)) ** 2 + ((y - D.y) / (D.ry + pad)) ** 2 < 1;
 const inDen = (x, y, pad = 0) => DENS.some(D => inDenOf(D, x, y, pad));
@@ -4993,7 +4994,7 @@ function drawBossFx(c){
 //  너구리 = 눈가 까만 가면 + 줄무늬 꼬리 · 오소리 = 이마의 하얀 줄 · 삵 = 귀 끝 털 + 점무늬 · 들개 = 빨간 손수건
 //  늑대 = 복슬복슬 하얀 목털 · 반달가슴곰 = 가슴의 하얀 반달 · 호랑이 = 이마의 '王' 무늬
 // 센 녀석(★5~★7)은 발밑에 빛나는 기운이 있어요
-const CUTE = {boar:1, deer:1, hare:1, snake:1, raccoon:1, badger:1, lynx:1, wdog:1, wolf:1, bear:1, tiger:1};
+const CUTE = {pbear:1, boar:1, deer:1, hare:1, snake:1, raccoon:1, badger:1, lynx:1, wdog:1, wolf:1, bear:1, tiger:1};
 const AURA = [null, null, null, null, '#7fd6ff', '#c49aff', '#ffd23a'];
 function drawCuteBeast(c, kind, t, V){
   const tier = V.tier || 0, leg = Math.sin(t * 10) * 4, bob = Math.abs(Math.sin(t * 10)) * 1.6, angry = tier >= 3 && !V.boss;
@@ -5011,10 +5012,10 @@ function drawCuteBeast(c, kind, t, V){
   const crown = (x, y) => cel(c, cc => { cc.moveTo(x - 10, y); cc.lineTo(x - 11, y - 12); cc.lineTo(x - 5, y - 6); cc.lineTo(x, y - 15); cc.lineTo(x + 5, y - 6); cc.lineTo(x + 11, y - 12); cc.lineTo(x + 10, y); cc.closePath(); }, '#ffd23a', '#d4a020', 1, 1, 2);
   const legs = (xs, w, h, col, sh) => xs.forEach((lx, i) => { const o = (i % 2 ? -leg : leg) * .35; cel(c, cc => rr(cc, lx - w / 2, -h + o, w, h - o, w / 2), col, sh, 1, 0, 2.2); });
   const tail = (pts, w, col) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = w + 4.5; c.strokeStyle = INK; c.stroke(); c.lineWidth = w; c.strokeStyle = col; c.stroke(); };
-  const sz = {boar:46, deer:40, hare:30, snake:42, raccoon:36, badger:44, lynx:36, wdog:38, wolf:44, bear:54, tiger:66}[kind];
+  const sz = {boar:46, deer:40, hare:30, snake:42, raccoon:36, badger:44, lynx:36, wdog:38, wolf:44, bear:54, tiger:66, pbear:60}[kind];
   // 센 녀석 기운
   if (AURA[tier] || V.boss) {
-    const col = V.boss ? '#ff9a3a' : AURA[tier], pul = .5 + Math.sin(t * 3) * .5;
+    const col = kind === 'pbear' ? '#9ad7ff' : V.boss ? '#ff9a3a' : AURA[tier], pul = .5 + Math.sin(t * 3) * .5;
     c.save(); c.globalAlpha = .28 + pul * .14; const g = c.createRadialGradient(0, -4, 4, 0, -4, sz * 1.5); g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,255,255,0)');
     c.beginPath(); ell(c, 0, -4, sz * 1.5, sz * .55); c.fillStyle = g; c.fill(); c.restore();
     for (let i = 0; i < 3; i++) { const a = t * 1.7 + i * 2.1, x = Math.cos(a) * sz * 1.1, y = -sz * .9 - Math.abs(Math.sin(a * 1.3)) * sz * .5; c.font = '12px sans-serif'; c.textAlign = 'center'; c.fillText('✨', x, y); }
@@ -5152,14 +5153,15 @@ function drawCuteBeast(c, kind, t, V){
     c.beginPath(); ell(c, 52, -48, 3, 2.4); c.fillStyle = INK; c.fill();
     eye(23, -55, .95, '#ffd23a'); eye(37, -55, .9, '#ffd23a'); brow(30, -63); blush(24, -47, .7);
     if (V.crown) crown(30, -72);
-  } else if (kind === 'bear') { // 반달가슴곰: 동글동글 까만 곰 + 가슴의 하얀 반달 + 갈색 주둥이
-    const B = V.b || '#2e2a28', S = V.bs || '#161412';
+  } else if (kind === 'bear' || kind === 'pbear') { // 반달가슴곰: 동글동글 까만 곰 + 가슴의 하얀 반달 + 갈색 주둥이 · 흰곰(전설 보스): 하얀 털 + 까만 코 + 목도리 같은 털
+    const pb = kind === 'pbear', B = pb ? '#f6f9fc' : V.b || '#2e2a28', S = pb ? '#c4d4e2' : V.bs || '#161412';
     legs([-24, -11, 14, 27], 15, 16, B, S);
     cel(c, E(0, -34, 38, 24), B, S, 6, 6, 3);
-    for (const ex of [20, 46]) { cel(c, E(ex, -80, 8, 8), B, S, 1, 1, 2.4); c.beginPath(); ell(c, ex, -79, 4, 4); c.fillStyle = '#7a6050'; c.fill(); }
+    for (const ex of [20, 46]) { cel(c, E(ex, -80, 8, 8), B, S, 1, 1, 2.4); c.beginPath(); ell(c, ex, -79, 4, 4); c.fillStyle = pb ? '#f2b8c4' : '#7a6050'; c.fill(); }
     cel(c, E(33, -60, 22, 20), B, S, 3, 3, 3);
-    c.beginPath(); c.moveTo(10, -42); c.quadraticCurveTo(28, -22, 46, -42); c.quadraticCurveTo(28, -32, 10, -42); c.closePath(); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke();
-    cel(c, E(44, -53, 11, 8.5), '#b08a68', '#8a6a4e', 1, 1, 2.2);
+    if (pb) celBlob(c, [[16, -40, 9], [26, -36, 10], [36, -38, 9]], '#ffffff', '#d8e4ee', 1, 1, 1.6);
+    else { c.beginPath(); c.moveTo(10, -42); c.quadraticCurveTo(28, -22, 46, -42); c.quadraticCurveTo(28, -32, 10, -42); c.closePath(); c.fillStyle = '#fffaf1'; c.fill(); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke(); }
+    cel(c, E(44, -53, 11, 8.5), pb ? '#ffffff' : '#b08a68', pb ? '#d8e4ee' : '#8a6a4e', 1, 1, 2.2);
     c.beginPath(); ell(c, 50, -56, 4, 3); c.fillStyle = INK; c.fill();
     smile(46, -49, .9);
     eye(31, -64, 1.05, '#fff'); c.beginPath(); ell(c, 31.6, -64, 3.4, 4.2); c.fillStyle = INK; c.fill(); c.beginPath(); c.arc(30.4, -65.6, 1.3, 0, 7); c.fillStyle = '#fff'; c.fill();
@@ -6075,7 +6077,7 @@ function drawBigMap(ctx){
   ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
   for (const st of BUS_STOPS) ctx.fillText('🚏', mx(st.px), my(st.py) + 8);
   for (const r of RESTS) if (!restsFound().includes(r)) { ctx.globalAlpha = .6; lab('?', mx(r.x), my(r.y) + 8, 22); ctx.globalAlpha = 1; }
-  ctx.font = '26px sans-serif'; ctx.fillText(DEN.ic, mx(DEN.x), my(DEN.y) + 9); lab('호랑이 굴', mx(DEN.x), my(DEN.y) - 22, 18);
+  for (const D of DENS) { ctx.font = '26px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(D.ic, mx(D.x), my(D.y) + 9); lab(D === DEN ? '호랑이 굴' : '흰곰 굴', mx(D.x), my(D.y) - 22, 18); }
   ctx.font = '26px sans-serif'; for (const b of BUSES) if (b.x != null) ctx.fillText('🚌', mx(b.x), my(b.y) + 9);
   lab('동계천', ...[mx(mapXY(300, 262)[0]), my(mapXY(300, 262)[1])], 18);
   for (const m of MONS) if (!m.dead && (m.raid || m.boss)) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), 5, 0, 7); ctx.fillStyle = '#ff3b30'; ctx.fill(); }
@@ -6525,7 +6527,7 @@ const HQ_PW = [0, 30, 95, 125, 165, 195, 260];
 const HQ_MONEY = [150000, 300000, 600000, 1000000, 1600000, 2400000, 3500000];
 const HQ_XP = [80, 150, 250, 400, 600, 850, 1200];
 const HQ_LV = {easy:{name:'쉬움', d:-1, n:5, mul:.7, col:'#5cc46c'}, fit:{name:'알맞음', d:0, n:4, mul:1, col:'#ffb13b'}, hard:{name:'도전', d:1, n:3, mul:1.4, col:'#ff6b57'}};
-const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'확장 부지 2 남쪽 호랑이 굴 (지도 x 133 · y 133)'}}; // 2026-10-16 흰곰 삭제
+const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'확장 부지 2 남쪽 호랑이 굴 (지도 x 133 · y 133)'}, pbear:{min:5, money:8000000, xp:900, stones:4, rep:6, where:'북쪽 숲 흰곰 굴 (지도 x 100 · y 20)'}}; // 2026-10-16 흰곰 삭제
 const HUNTER_NAME = '윤산들 사냥꾼';
 // 2026-10-14 달 요청: 난이도마다 한 번 끝내면 한 달(28일, 4주) 뒤에 다시 받을 수 있어요 (처음엔 1년이었어요)
 const HQ_REST = 28;
@@ -6552,8 +6554,6 @@ function hqMake(lv){
 // 사냥꾼이 이번에 내놓는 의뢰(받기 전까지는 같은 날 같은 의뢰)
 function hqOffers(){
   const day = absDay();
-  if (G.hq && G.hq.kind === 'pbear') G.hq = null; // 2026-10-16 흰곰이 없어져서 옛 저장의 흰곰 의뢰는 지워요
-  if (G.hqOff && G.hqOff.list.some(q => q.kind === 'pbear')) G.hqOff = null;
   if (!G.hqOff || G.hqOff.day !== day || G.hqOff.T !== hqTier() || G.hqOff.p !== HQ_PAY) {
     const list = ['easy', 'fit', 'hard'].map(hqMake), T = hqTier();
     for (const k in HQ_BOSS) if (T >= HQ_BOSS[k].min) list.push(hqMake(k));
@@ -7804,7 +7804,7 @@ function uiGear(){
     const card = slot => {
       const S = GEAR[slot];
       return `<div class="gslot"><div class="gh">${S.ic} ${S.name} <small>${S.unit} ${slotStat(slot)}</small></div>
-        ${S.items.filter(it => it.id !== 'pcoat' || it.id in g.own).map(it => { // 2026-10-16 흰곰 삭제: 흰곰 털 외투는 이미 가진 사람만 보여요
+        ${S.items.map(it => {
           const own = it.id in g.own, lv = g.own[it.id] || 0, on = g[slot] === it.id, lock = G.rep < it.rep;
           let btn;
           const moneyBtn = () => `<button class="btn pri" data-up="${slot}|${it.id}" ${G.rep < upRep(it, lv) || G.money < upCost(it, lv) ? 'disabled' : ''}>💰 강화 ${won(upCost(it, lv))}${G.rep < upRep(it, lv) ? ` · ⭐${upRep(it, lv)}` : ''}</button>`;
