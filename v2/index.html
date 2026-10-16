@@ -1468,6 +1468,7 @@ function drawHat(c, L, side, back, hy){
 // ----- 동물 -----
 function drawAnimal(c, kind, x, y, t, flip, V){
   c.save(); c.translate(x, y); if (flip) c.scale(-1, 1);
+  if (V && kind === 'tiger') { drawFierceTiger(c, t, V); c.restore(); return; } // 2026-10-16 포스 넘치는 호랑이(보스·탈것)
   if (V && kind === 'bwolf') { drawBlackWolf(c, t, V); c.restore(); return; } // 2026-10-16 사납고 무서운 검은 늑대(초심자 보스)
   if (V && CUTE[kind]) { drawCuteBeast(c, kind, t, V); c.restore(); return; } // 2026-10-16 귀여운 새 그림
   if (V && NEW_BEAST[kind]) { drawNewBeast(c, kind, t, V); c.restore(); return; }
@@ -5014,6 +5015,7 @@ function drawBossFx(c){
 }
 
 // ===== 2026-10-16 달 요청: 산짐승을 아이들이 좋아하게 더 귀엽고 특색 있게 =====
+// 2026-10-16 달 요청: 옆모습이라 눈은 하나만 보여요
 // 큰 머리·반짝이는 큰 눈·발그레한 볼의 동글동글한 짐승. 종류마다 한눈에 알아보는 특징을 하나씩 줬어요
 //  멧돼지 = 줄무늬 꽃돼지 등 + 작은 엄니 · 고라니 = 큰 귀 + 뾰족 송곳니 · 산토끼 = 한쪽 접힌 귀 · 구렁이 = 물방울 무늬
 //  너구리 = 눈가 까만 가면 + 줄무늬 꼬리 · 오소리 = 이마의 하얀 줄 · 삵 = 귀 끝 털 + 점무늬 · 들개 = 빨간 손수건
@@ -5102,7 +5104,7 @@ function drawCuteBeast(c, kind, t, V){
     inkLine(c, [hx - 2, hy, hx + 6, hy - 12], 13, B);
     cel(c, E(hx + 14, hy - 20, 15, 12), B, S, 2, 3, 2.8);
     c.beginPath(); ell(c, hx + 16, hy - 13, 9, 3.4); c.fillStyle = '#fff0a0'; c.fill();
-    eye(hx + 7, hy - 22, .95); eye(hx + 21, hy - 22, .9); brow(hx + 14, hy - 30, .8); blush(hx + 9, hy - 15, .7);
+    eye(hx + 18, hy - 22, .95); brow(hx + 18, hy - 30, .8); blush(hx + 9, hy - 15, .7);
     if (Math.sin(t * 9) > .1) { line(c, [hx + 28, hy - 15, hx + 35, hy - 14], 1.8, '#e8423a'); line(c, [hx + 35, hy - 14, hx + 39, hy - 17], 1.6, '#e8423a'); line(c, [hx + 35, hy - 14, hx + 39, hy - 11], 1.6, '#e8423a'); }
     if (V.crown) crown(hx + 14, hy - 32);
   } else if (kind === 'raccoon') { // 너구리: 눈가 까만 가면 + 줄무늬 복슬 꼬리
@@ -5118,9 +5120,8 @@ function drawCuteBeast(c, kind, t, V){
     c.beginPath(); c.moveTo(8, -42); c.quadraticCurveTo(22, -50, 38, -42); c.quadraticCurveTo(40, -34, 32, -34); c.quadraticCurveTo(23, -40, 14, -34); c.quadraticCurveTo(6, -35, 8, -42); c.fillStyle = '#2a201a'; c.fill();
     cel(c, E(33, -30, 8, 6), '#f6efe4', '#d8ccbc', 1, 1, 2);
     c.beginPath(); ell(c, 39, -32, 2.6, 2); c.fillStyle = INK; c.fill();
-    eye(15, -40, .95, '#fff'); c.beginPath(); ell(c, 15.3, -40, 3, 3.6); c.fillStyle = INK; c.fill(); c.beginPath(); c.arc(14.2, -41.4, 1.2, 0, 7); c.fillStyle = '#fff'; c.fill();
     eye(31, -40, .9, '#fff'); c.beginPath(); ell(c, 31.3, -40, 2.8, 3.4); c.fillStyle = INK; c.fill(); c.beginPath(); c.arc(30.2, -41.3, 1.1, 0, 7); c.fillStyle = '#fff'; c.fill();
-    brow(22, -49); blush(14, -31, .8); smile(33, -26, .8);
+    brow(31, -49); blush(22, -31, .8); smile(33, -26, .8);
     if (V.crown) crown(23, -60);
   } else if (kind === 'badger') { // 오소리: 낮고 넓적한 몸 + 이마의 하얀 줄 + 작은 발톱
     const B = V.b || '#8a8480', S = V.bs || '#5a5450';
@@ -5146,10 +5147,10 @@ function drawCuteBeast(c, kind, t, V){
     cel(c, E(25, -42, 17, 15), B, S, 2, 3, 2.8);
     cel(c, E(32, -35, 8, 5.5), '#fff8ec', '#e0d4c0', 1, 1, 1.8);
     for (const [x1, y1, x2, y2] of [[19, -54, 21, -49], [25, -55, 25, -50]]) line(c, [x1, y1, x2, y2], 2, '#6a4424');
-    eye(17, -43, .95, '#b8e05a'); eye(31, -43, .9, '#b8e05a');
+    eye(30, -43, .95, '#b8e05a');
     c.beginPath(); c.moveTo(34.5, -37.5); c.lineTo(38.5, -37.5); c.lineTo(36.5, -35); c.closePath(); c.fillStyle = '#e86a7a'; c.fill();
     for (const dy of [-1, 2]) line(c, [40, -35 + dy, 48, -36 + dy * 1.8], 1.2, INK);
-    brow(25, -51); blush(18, -36, .8);
+    brow(30, -51); blush(22, -36, .8);
     if (V.crown) crown(25, -66);
   } else if (kind === 'wdog') { // 들개: 늘어진 귀 + 목의 빨간 손수건 + 흔드는 꼬리 + 혀
     const B = V.b || '#c89a62', S = V.bs || '#946a3a';
@@ -5176,7 +5177,7 @@ function drawCuteBeast(c, kind, t, V){
     celBlob(c, [[20, -45, 5]], '#f0f2f6', '#c8ccd4', 0, 0, 1.4);
     cel(c, E(44, -46, 10, 7), B, S, 1, 1, 2.2); c.beginPath(); ell(c, 44, -42, 8, 3); c.fillStyle = '#f0f2f6'; c.fill();
     c.beginPath(); ell(c, 52, -48, 3, 2.4); c.fillStyle = INK; c.fill();
-    eye(23, -55, .95, '#ffd23a'); eye(37, -55, .9, '#ffd23a'); brow(30, -63); blush(24, -47, .7);
+    eye(35, -55, .95, '#ffd23a'); brow(35, -63); blush(24, -47, .7);
     if (V.crown) crown(30, -72);
   } else if (kind === 'bear' || kind === 'pbear') { // 반달가슴곰: 동글동글 까만 곰 + 가슴의 하얀 반달 + 갈색 주둥이 · 흰곰(전설 보스): 하얀 털 + 까만 코 + 목도리 같은 털
     const pb = kind === 'pbear', B = pb ? '#f6f9fc' : V.b || '#2e2a28', S = pb ? '#c4d4e2' : V.bs || '#161412';
@@ -5208,7 +5209,7 @@ function drawCuteBeast(c, kind, t, V){
     for (const [x1, y1, x2, y2] of [[20, -78, 28, -76], [20, -70, 27, -70], [78, -78, 70, -76], [78, -70, 71, -70]]) line(c, [x1, y1, x2, y2], 3, INK);
     // 이마의 王
     line(c, [42, -96, 56, -96], 2.8, INK); line(c, [43, -90, 55, -90], 2.8, INK); line(c, [41, -84, 57, -84], 2.8, INK); line(c, [49, -96, 49, -84], 2.8, INK);
-    eye(34, -74, 1.35, '#ffd23a'); eye(64, -74, 1.35, '#ffd23a');
+    eye(60, -74, 1.35, '#ffd23a');
     cel(c, cc => { cc.moveTo(45, -64); cc.lineTo(53, -64); cc.lineTo(49, -59); cc.closePath(); }, '#e86a7a', '#b84a5a', 0, 1, 1.8);
     smile(49, -57, 1.2);
     for (const dy of [-2, 2]) { line(c, [64, -60 + dy, 80, -62 + dy * 2], 1.3, INK); line(c, [34, -60 + dy, 18, -62 + dy * 2], 1.3, INK); }
@@ -5271,6 +5272,152 @@ function drawBlackWolf(c, t, V){
   line(c, [26, -60, 41, -57], 2.6, '#000'); // 찌푸린 눈썹
   // 이마의 흉터 세 줄
   for (const k of [0, 1, 2]) line(c, [22 + k * 3.5, -64 + k, 27 + k * 3.5, -56 + k], 1.6, '#8a7a84');
+  c.restore();
+}
+
+// ===== 2026-10-16 달 요청: 호랑이 보스를 포스 넘치고 무섭게 =====
+// 귀여운 호랑이 대신: 짙은 주황 털 + 끝이 뾰족한 검은 줄무늬 + 하얀 볼 갈기 + 노란 눈의 세로 동공 + 드러낸 송곳니 + 굵은 발톱
+// 보스 그림(옆모습)과 호랑이 탈것 8방향(05m_mount.js)이 이 부품들을 같이 써요
+const TG = {B:'#e8761c', S:'#a8460e', W:'#fff3dc', Ws:'#d8c8ae', K:'#17100c', E:'#ffc81e', M:'#5a0e14'};
+// 끝이 뾰족한 줄무늬: (x, y)에서 각도 a로 길이 L, 굵기 w
+function tgStripe(c, x, y, a, L, w){
+  const ux = Math.cos(a), uy = Math.sin(a), nx = -uy, ny = ux;
+  c.beginPath(); c.moveTo(x + nx * w / 2, y + ny * w / 2);
+  c.quadraticCurveTo(x + ux * L * .5 + nx * w * .45, y + uy * L * .5 + ny * w * .45, x + ux * L, y + uy * L);
+  c.quadraticCurveTo(x + ux * L * .5 - nx * w * .45, y + uy * L * .5 - ny * w * .45, x - nx * w / 2, y - ny * w / 2);
+  c.closePath(); c.fillStyle = TG.K; c.fill();
+}
+// 굵은 다리 + 큰 발 + 하얀 발톱. o = 걸음 흔들림, dark = 먼 다리
+function tgLeg(c, x, top, h, w, o, dark){
+  const col = dark ? TG.S : TG.B;
+  // 위는 굵은 허벅지·어깨, 아래로 가늘어졌다가 큰 발
+  cel(c, cc => { cc.moveTo(x - w * .7, top); cc.quadraticCurveTo(x, top - 6, x + w * .7, top); cc.quadraticCurveTo(x + w * .55, top + h * .45, x + w * .32, -22 + o * .6); cc.lineTo(x + w * .42, -8 + o); cc.lineTo(x - w * .42, -8 + o); cc.lineTo(x - w * .36, -22 + o * .6); cc.quadraticCurveTo(x - w * .75, top + h * .4, x - w * .7, top); cc.closePath(); }, col, TG.S, 1, 0, 2.6);
+  tgStripe(c, x - w * .62, top + h * .3, .1, w * .7, 4.5); tgStripe(c, x + w * .5, top + h * .5, Math.PI - .1, w * .55, 4);
+  cel(c, cc => ell(cc, x + 3, -5 + o * .4, w * .62, 7), dark ? TG.S : TG.W, TG.Ws, 1, 1, 2.4);
+  for (const k of [-1, 0, 1]) cel(c, cc => { const fx = x + 3 + k * w * .3 + w * .32; cc.moveTo(fx - 2, -4 + o * .4); cc.lineTo(fx + 4, 1 + o * .4); cc.lineTo(fx + 1, -6 + o * .4); cc.closePath(); }, '#fffaf1', '#cfc4b4', 0, 0, 1.4);
+}
+// 고리 무늬 꼬리 (pts는 곡선 점 3개)
+function tgTail(c, a, b, d, w = 12){
+  c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo(b[0], b[1], d[0], d[1]); c.lineCap = 'round';
+  c.lineWidth = w + 5; c.strokeStyle = INK; c.stroke(); c.lineWidth = w; c.strokeStyle = TG.B; c.stroke();
+  for (const k of [.35, .55, .75]) { const u = 1 - k, x = u * u * a[0] + 2 * u * k * b[0] + k * k * d[0], y = u * u * a[1] + 2 * u * k * b[1] + k * k * d[1]; c.beginPath(); c.arc(x, y, w * .48, 0, 7); c.fillStyle = TG.K; c.fill(); }
+  c.beginPath(); c.arc(d[0], d[1], w * .55, 0, 7); c.fillStyle = TG.K; c.fill(); // 까만 꼬리 끝
+}
+// 앞모습 머리 (cx, cy가 머리 가운데). turn: -1~1 얼굴을 옆으로 살짝 돌려요(대각선 모습). jaw: 입 벌림
+function tgHeadFront(c, cx, cy, s = 1, turn = 0, jaw = 1){
+  c.save(); c.translate(cx, cy); c.scale(s, s);
+  const tx = turn * 7;
+  // 볼 갈기: 하얀 털이 삐죽삐죽
+  cel(c, cc => { const n = 14; for (let i = 0; i <= n; i++) { const a = Math.PI * (.05 + .9 * i / n), r = i % 2 ? 31 : 40; const x = Math.cos(a) * r * 1.12 + tx * .3, y = Math.sin(a) * r * .78 + 2; i ? cc.lineTo(x, y) : cc.moveTo(x, y); } cc.closePath(); }, TG.W, TG.Ws, 2, 2, 2.6);
+  // 귀
+  for (const ex of [-23, 23]) { const x = ex + tx * .4; cel(c, cc => { cc.moveTo(x - 10, -14); cc.quadraticCurveTo(x - 9, -34, x, -34); cc.quadraticCurveTo(x + 9, -34, x + 10, -14); cc.closePath(); }, TG.K, '#000', 1, 1, 2.4); c.beginPath(); ell(c, x, -24, 3.6, 4); c.fillStyle = '#fffaf1'; c.fill(); }
+  // 머리
+  cel(c, cc => ell(cc, tx * .3, -4, 31, 25), TG.B, TG.S, 3, 4, 3);
+  c.save(); c.beginPath(); ell(c, tx * .3, -4, 31, 25); c.clip();
+  // 이마·볼 줄무늬
+  tgStripe(c, tx, -29, Math.PI / 2, 12, 6); tgStripe(c, tx - 7, -28, Math.PI / 2 + .25, 10, 4.5); tgStripe(c, tx + 7, -28, Math.PI / 2 - .25, 10, 4.5);
+  for (const sd of [-1, 1]) { tgStripe(c, tx + sd * 31, -12, sd < 0 ? -.15 : Math.PI + .15, 13, 5); tgStripe(c, tx + sd * 31, -3, sd < 0 ? .1 : Math.PI - .1, 11, 4.5); tgStripe(c, tx + sd * 26, -22, sd < 0 ? .45 : Math.PI - .45, 9, 4); }
+  c.restore();
+  // 눈 위 하얀 털 + 화난 눈썹
+  for (const sd of [-1, 1]) { c.beginPath(); ell(c, tx + sd * 12, -15, 7, 3); c.fillStyle = TG.W; c.fill(); }
+  // 주둥이(하얀 수염 볼 두 개) + 코
+  cel(c, cc => { ell(cc, tx - 7, 9, 10, 8); }, TG.W, TG.Ws, 1, 1, 2.2); cel(c, cc => { ell(cc, tx + 7, 9, 10, 8); }, TG.W, TG.Ws, 1, 1, 2.2);
+  for (const sd of [-1, 1]) for (const [dx, dy] of [[5, 7], [8, 10], [5, 12]]) { c.beginPath(); c.arc(tx + sd * dx, dy, 1, 0, 7); c.fillStyle = TG.K; c.fill(); }
+  // 눈: 노란 아몬드 + 세로 동공 + 까만 눈테
+  for (const sd of [-1, 1]) {
+    const ex = tx + sd * 12;
+    c.beginPath(); c.moveTo(ex - sd * 8, -7); c.quadraticCurveTo(ex, -14, ex + sd * 8, -10); c.quadraticCurveTo(ex, -2, ex - sd * 8, -7); c.closePath();
+    c.fillStyle = TG.E; c.fill(); c.lineWidth = 2.6; c.strokeStyle = TG.K; c.stroke();
+    c.beginPath(); ell(c, ex, -7.5, 1.4, 3.6); c.fillStyle = TG.K; c.fill();
+    c.beginPath(); c.arc(ex - 2.2, -9, 1, 0, 7); c.fillStyle = '#fff'; c.fill();
+    line(c, [ex - sd * 10, -16, ex + sd * 7, -11], 3.4, TG.K); // 찌푸린 눈썹
+  }
+  line(c, [tx - 2, -16, tx - 1, -6], 1.8, TG.S); line(c, [tx + 2, -16, tx + 1, -6], 1.8, TG.S); // 미간 주름
+  cel(c, cc => { cc.moveTo(tx - 6, 1); cc.lineTo(tx + 6, 1); cc.quadraticCurveTo(tx + 5, 6, tx, 7); cc.quadraticCurveTo(tx - 5, 6, tx - 6, 1); cc.closePath(); }, '#3a1e1a', '#1a0c0a', 0, 1, 2);
+  // 으르렁 벌린 입 + 큰 송곳니
+  const mh = 6 + jaw * 5;
+  cel(c, cc => { cc.moveTo(tx - 11, 15); cc.quadraticCurveTo(tx, 12, tx + 11, 15); cc.quadraticCurveTo(tx + 8, 15 + mh, tx, 16 + mh); cc.quadraticCurveTo(tx - 8, 15 + mh, tx - 11, 15); cc.closePath(); }, TG.M, '#2a0408', 0, 0, 2.4);
+  c.beginPath(); ell(c, tx, 15 + mh * .7, 5, 2.4); c.fillStyle = '#c84a5a'; c.fill(); // 혀
+  for (const sd of [-1, 1]) {
+    cel(c, cc => { cc.moveTo(tx + sd * 8.5, 14.5); cc.lineTo(tx + sd * 6.6, 22 + jaw * 2); cc.lineTo(tx + sd * 4.4, 14); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.4);
+    cel(c, cc => { cc.moveTo(tx + sd * 7, 16 + mh); cc.lineTo(tx + sd * 5.6, 10 + mh); cc.lineTo(tx + sd * 4, 16 + mh); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.2);
+  }
+  // 수염
+  for (const sd of [-1, 1]) for (const k of [-1, 0, 1]) line(c, [tx + sd * 14, 8 + k * 3, tx + sd * 36, 4 + k * 7], 1.2, 'rgba(255,255,255,.85)');
+  c.restore();
+}
+// 뒷머리 (탈것 뒷모습): 귀 + 줄무늬
+function tgHeadBack(c, cx, cy, s = 1){
+  c.save(); c.translate(cx, cy); c.scale(s, s);
+  for (const ex of [-20, 20]) cel(c, cc => { cc.moveTo(ex - 9, -6); cc.quadraticCurveTo(ex - 8, -24, ex, -24); cc.quadraticCurveTo(ex + 8, -24, ex + 9, -6); cc.closePath(); }, TG.K, '#000', 1, 1, 2.4);
+  for (const ex of [-20, 20]) { c.beginPath(); ell(c, ex, -14, 4, 4.4); c.fillStyle = '#fffaf1'; c.fill(); }
+  cel(c, cc => ell(cc, 0, 4, 27, 21), TG.B, TG.S, 3, 3, 3);
+  c.save(); c.beginPath(); ell(c, 0, 4, 27, 21); c.clip();
+  for (const x of [-12, 0, 12]) tgStripe(c, x, -17, Math.PI / 2 + x * .01, 16, 6);
+  for (const sd of [-1, 1]) tgStripe(c, sd * 27, 6, sd < 0 ? 0 : Math.PI, 12, 5);
+  c.restore(); c.restore();
+}
+// 옆모습 머리 (오른쪽 보기). hx, hy = 머리 가운데. 뒤통수에서 코끝까지 이어지는 옆얼굴 윤곽
+function tgHeadSide(c, hx, hy, t, s = 1){
+  const jaw = 3 + Math.max(0, Math.sin(t * 2)) * 4;
+  c.save(); c.translate(hx, hy); c.scale(s, s);
+  // 볼 갈기 (뒤·아래로 삐죽)
+  cel(c, cc => { const pts = [[-20, -10], [-34, -4], [-26, 2], [-38, 10], [-24, 12], [-32, 22], [-16, 18], [-18, 30], [-4, 22], [2, 30], [6, 18]]; pts.forEach(([x, y], i) => i ? cc.lineTo(x, y) : cc.moveTo(x, y)); cc.closePath(); }, TG.W, TG.Ws, 2, 2, 2.6);
+  // 귀 (뒤로 젖힘)
+  cel(c, cc => { cc.moveTo(-18, -14); cc.quadraticCurveTo(-24, -34, -12, -36); cc.quadraticCurveTo(-2, -32, -4, -18); cc.closePath(); }, TG.K, '#000', 1, 1, 2.4);
+  c.beginPath(); ell(c, -12, -27, 3, 4); c.fillStyle = '#fffaf1'; c.fill();
+  // 옆얼굴 윤곽
+  const head = cc => { cc.moveTo(-22, -6); cc.quadraticCurveTo(-20, -26, -2, -26); cc.quadraticCurveTo(12, -26, 18, -18); cc.quadraticCurveTo(28, -14, 38, -10); cc.quadraticCurveTo(43, -7, 41, -2); cc.quadraticCurveTo(40, 5, 34, 7); cc.lineTo(16, 9); cc.quadraticCurveTo(6, 18, -8, 16); cc.quadraticCurveTo(-22, 12, -22, -6); cc.closePath(); };
+  cel(c, head, TG.B, TG.S, 3, 4, 3);
+  c.save(); c.beginPath(); head(c); c.clip();
+  tgStripe(c, -6, -27, Math.PI / 2 + .35, 13, 6); tgStripe(c, 4, -26, Math.PI / 2 + .15, 10, 5); tgStripe(c, 12, -22, Math.PI / 2 - .05, 7, 4);
+  tgStripe(c, -23, -8, .05, 15, 6); tgStripe(c, -23, 2, -.12, 13, 5.5); tgStripe(c, -18, 12, -.4, 12, 5);
+  // 하얀 주둥이·볼·턱
+  c.beginPath(); c.moveTo(14, -6); c.quadraticCurveTo(28, -8, 42, -4); c.lineTo(40, 6); c.lineTo(16, 10); c.quadraticCurveTo(4, 18, -6, 18); c.quadraticCurveTo(4, 4, 14, -6); c.closePath(); c.fillStyle = TG.W; c.fill();
+  c.restore();
+  // 코
+  cel(c, cc => { cc.moveTo(36, -11); cc.quadraticCurveTo(43, -11, 43, -5); cc.lineTo(37, -3); cc.closePath(); }, '#3a1e1a', '#1a0c0a', 0, 0, 2);
+  line(c, [18, -17, 34, -11], 1.6, TG.S); // 콧등 주름
+  line(c, [21, -14, 31, -10], 1.4, TG.S);
+  for (const [dx, dy] of [[26, 0], [30, 2], [26, 4], [22, 2]]) { c.beginPath(); c.arc(dx, dy, 1, 0, 7); c.fillStyle = TG.K; c.fill(); }
+  // 쩍 벌린 입 + 아래턱
+  cel(c, cc => { cc.moveTo(14, 9); cc.lineTo(36, 7); cc.lineTo(33, 10 + jaw); cc.lineTo(12, 12 + jaw * .7); cc.closePath(); }, TG.M, '#2a0408', 0, 0, 2.2);
+  cel(c, cc => { cc.moveTo(10, 12 + jaw * .7); cc.lineTo(33, 10 + jaw); cc.quadraticCurveTo(28, 19 + jaw, 6, 18 + jaw * .7); cc.closePath(); }, TG.W, TG.Ws, 0, 0, 2.2);
+  for (const [fx, fy, d, L] of [[32, 7.5, 1, 9], [22, 8.5, 1, 6], [29, 10 + jaw, -1, 7], [19, 11 + jaw * .8, -1, 5]]) cel(c, cc => { cc.moveTo(fx - 2.2, fy); cc.lineTo(fx, fy + d * L); cc.lineTo(fx + 2.2, fy); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.3);
+  // 노란 눈 + 세로 동공 + 짙은 눈썹(흰 털 위)
+  c.beginPath(); ell(c, 10, -18, 7, 2.6); c.fillStyle = TG.W; c.fill();
+  c.beginPath(); c.moveTo(5, -11); c.quadraticCurveTo(12, -17, 21, -13); c.quadraticCurveTo(14, -7, 5, -11); c.closePath(); c.fillStyle = TG.E; c.fill(); c.lineWidth = 2.6; c.strokeStyle = TG.K; c.stroke();
+  c.beginPath(); ell(c, 14, -12, 1.3, 3.2); c.fillStyle = TG.K; c.fill(); c.beginPath(); c.arc(12, -13.5, 1, 0, 7); c.fillStyle = '#fff'; c.fill();
+  line(c, [2, -19, 22, -14], 3.4, TG.K);
+  for (const k of [-1, 0, 1]) line(c, [26, 3 + k * 2.5, 52, -1 + k * 6], 1.2, 'rgba(255,255,255,.85)'); // 수염
+  c.restore();
+}
+// 줄무늬 몸통(옆모습). 동그라미 여러 개를 합친 근육질 몸
+function tgBodySide(c, front = 1){
+  const blob = [[-36, -50, 23], [-16, -46, 22], [6, -47, 23], [28, -55, 28]]; // 엉덩이 → 크고 높은 어깨
+  celBlob(c, blob, TG.B, TG.S, 5, 6, 3.2);
+  c.save(); c.beginPath(); for (const [x, y, r] of blob) { c.moveTo(x + r, y); c.arc(x, y, r, 0, 7); } c.clip();
+  c.beginPath(); ell(c, 2, -24, 54, 10); c.fillStyle = TG.W; c.fill(); // 하얀 배
+  for (let k = 0; k < 8; k++) { const x = -48 + k * 12.5; tgStripe(c, x, -82, Math.PI / 2 + .18 - k * .03, 20 + (k % 2) * 8, 7.5); }
+  tgStripe(c, -55, -50, .05, 16, 6); tgStripe(c, -55, -38, -.05, 14, 5); // 엉덩이 줄
+  c.beginPath(); ell(c, 4, -70, 34, 4); c.fillStyle = 'rgba(255,220,170,.35)'; c.fill(); // 등 윤기
+  c.restore();
+}
+// 보스 옆모습 (오른쪽 보기, 발밑 가운데가 0,0)
+function drawFierceTiger(c, t, V){
+  const leg = Math.sin(t * 10) * 4, bob = Math.abs(Math.sin(t * 10)) * 1.4;
+  if (V && V.boss) { // 발밑의 이글이글 붉은 기운
+    const pul = .5 + Math.sin(t * 3) * .5;
+    c.save(); c.globalAlpha = .3 + pul * .15; const g = c.createRadialGradient(0, -4, 6, 0, -4, 110); g.addColorStop(0, '#ff5a1a'); g.addColorStop(1, 'rgba(120,10,0,0)');
+    c.beginPath(); ell(c, 0, -4, 110, 30); c.fillStyle = g; c.fill(); c.restore();
+  }
+  shadow(c, 0, 0, 62, 13, .32);
+  c.save(); c.translate(0, -bob);
+  tgTail(c, [-52, -56], [-96, -60], [-86, -104 + Math.sin(t * 3) * 6]);
+  tgLeg(c, -42, -42, 42, 18, -leg, 1); tgLeg(c, 20, -42, 42, 18, leg, 1);   // 먼 다리
+  tgBodySide(c);
+  tgLeg(c, -28, -40, 40, 21, leg, 0); tgLeg(c, 36, -44, 44, 23, -leg, 0); // 가까운 다리
+  tgHeadSide(c, 58, -70, t, 1.18);
   c.restore();
 }
 
@@ -6731,6 +6878,7 @@ function drawHunterSpot(c, t){
 
 // ===== 호랑이 탈것 (2026-10-14 달 요청) =====
 // 호랑이 가죽 10장으로 만들어요(마을 장비 창). 숲(사냥터)에서만 탈 수 있고, 마을로 들어오면 저절로 내려요. 타면 이동 속도 +30%.
+const RIDE_TIGER = {name:'호랑이 탈것'}; // 보스 기운(붉은 빛) 없이 그려요
 const MOUNT_SKIN = 10, MOUNT_SPD = 1.3, RIDE_UP = 46, RIDE_SC = 1.12;
 const hasMount = () => !!(G.gear && G.gear.mount);
 const riding = () => !!G.ride;
@@ -6788,7 +6936,7 @@ function mountBind(o){
 // 우주 밑에 깔리는 호랑이 (오른쪽 보는 그림을 face에 맞춰 뒤집어요)
 function drawRideTiger(c, left = P.face < 0){
   c.save(); c.translate(P.x, P.y); c.scale(RIDE_SC, RIDE_SC);
-  drawAnimal(c, 'tiger', 0, 0, P.walk / 11, left, TIGER);
+  drawAnimal(c, 'tiger', 0, 0, P.walk / 11, left, RIDE_TIGER);
   c.restore();
 }
 // 2026-10-14 달 요청: 8방향. P.d8 = 0 오른쪽, 1 오른아래, 2 아래, 3 왼아래, 4 왼쪽, 5 왼위, 6 위, 7 오른위
@@ -6804,77 +6952,50 @@ function drawRideOver(c, d8){
   if (d8 === 2) drawRideTigerFB(c, 0, 'over');
   else if (d8 === 1 || d8 === 3) drawRideTiger34(c, d8, 'over');
 }
+// 2026-10-16 달 요청: 탈것도 보스와 같은 무서운 호랑이(04ye_tiger.js 부품)로 8방향 모두 다시 그렸어요
+// 타원 몸통 + 끝이 뾰족한 줄무늬. side = 옆구리(위에서 아래로 줄), 아니면 앞·뒤(양옆에서 안쪽으로 줄)
+function tgBodyOval(c, x, y, rx, ry, rot, side, belly){
+  c.save(); c.translate(x, y); c.rotate(rot);
+  cel(c, cc => ell(cc, 0, 0, rx, ry), TG.B, TG.S, 4, 6, 3.2);
+  c.save(); c.beginPath(); ell(c, 0, 0, rx, ry); c.clip();
+  if (belly) { c.beginPath(); ell(c, belly, ry * .62, rx * .7, ry * .3); c.fillStyle = TG.W; c.fill(); }
+  if (side) for (let k = -2; k <= 2; k++) tgStripe(c, k * rx * .34, -ry - 2, Math.PI / 2 + .15, ry * 1.05 + (k % 2 ? 6 : 0), 7.5);
+  else for (const sd of [-1, 1]) for (let k = 0; k < 3; k++) tgStripe(c, sd * (rx + 2), -ry * .55 + k * ry * .5, sd < 0 ? .12 - k * .1 : Math.PI - .12 + k * .1, rx * .62, 7);
+  c.beginPath(); ell(c, 0, -ry * .62, rx * .6, 3.4); c.fillStyle = 'rgba(255,220,170,.3)'; c.fill();
+  c.restore(); c.restore();
+}
 // 대각선(3/4) 모습: 오른쪽 기준으로 그리고 왼쪽은 뒤집어요. 아래 대각선은 얼굴이 보이고, 위 대각선은 엉덩이·꼬리가 보여요
 function drawRideTiger34(c, d8, layer){
-  const B = '#f2922c', S = '#c4661a', W = '#fff8ec', t = P.walk / 11, leg = Math.sin(t * 10) * 4;
+  const t = P.walk / 11, leg = Math.sin(t * 10) * 4;
   const front = d8 === 1 || d8 === 3, left = d8 === 3 || d8 === 5;
   c.save(); c.translate(P.x, P.y); c.scale(RIDE_SC * (left ? -1 : 1), RIDE_SC);
-  const legs = pts => pts.forEach(([lx, o, h, dk]) => cel(c, cc => rr(cc, lx - 7, -h + o, 14, h - o * .3, 4), dk ? S : B, S, 1, 0, 2.4));
   if (layer === 'under') {
-    shadow(c, 0, 0, 50, 13, .3);
-    if (!front) { // 머리는 몸 너머 오른쪽 위
-      for (const ex of [22, 42]) cel(c, cc => ell(cc, ex, -84, 8, 8), B, S, 1, 1, 2.4);
-      cel(c, cc => ell(cc, 32, -66, 22, 18), B, S, 3, 3, 3);
-      for (const x of [26, 33, 40]) line(c, [x, -80, x - 1, -71], 3, INK);
-    } else { // 꼬리는 몸 너머 왼쪽 위
-      c.beginPath(); c.moveTo(-34, -52); c.quadraticCurveTo(-62, -58, -58, -90 + Math.sin(T * 3) * 5); c.lineWidth = 11; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 7; c.strokeStyle = B; c.stroke();
-      for (const k of [.4, .75]) { c.beginPath(); ell(c, -34 - 26 * k, -55 - 28 * k, 4, 2.6); c.fillStyle = INK; c.fill(); }
-    }
-    legs(front ? [[-24, -leg, 38, 1], [20, leg, 38, 1]] : [[-18, -leg, 38, 1], [26, leg, 38, 1]]); // 먼 다리
-    c.save(); c.translate(0, -44); c.rotate(front ? .2 : -.2);
-    cel(c, cc => ell(cc, 0, 0, 42, 26), B, S, 4, 6, 3.2);
-    c.beginPath(); ell(c, front ? 4 : -2, 14, 28, 7); c.fillStyle = W; c.fill();
-    for (let k = -2; k <= 2; k++) { const x = k * 13; c.beginPath(); c.moveTo(x - 4, -22); c.quadraticCurveTo(x + 4, -10, x - 2, 2); c.lineWidth = 4.2; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); }
-    c.restore();
-    if (!front) { // 엉덩이 쪽 꼬리 (화면 앞, 왼쪽 아래)
-      c.beginPath(); c.moveTo(-32, -30); c.quadraticCurveTo(-52, -8, -60, -26 + Math.sin(T * 3) * 4); c.quadraticCurveTo(-66, -40, -58, -50); c.lineWidth = 11; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 7; c.strokeStyle = B; c.stroke();
-      for (const [x, y] of [[-44, -14], [-58, -26]]) { c.beginPath(); ell(c, x, y, 3.4, 2.4); c.fillStyle = INK; c.fill(); }
-    }
-    legs(front ? [[-12, leg, 32], [32, -leg, 30]] : [[-30, leg, 30], [12, -leg, 32]]); // 가까운 다리
-  } else if (front) { // 얼굴: 오른쪽 아래 앞, 우주 다리 앞
-    c.translate(34, 4); c.scale(.92, .92);
-    for (const ex of [-17, 19]) { cel(c, cc => ell(cc, ex, -55, 8, 8), B, S, 1, 1, 2.4); c.beginPath(); ell(c, ex, -54, 4, 4); c.fillStyle = W; c.fill(); }
-    cel(c, cc => ell(cc, 2, -34, 26, 22), B, S, 3, 4, 3);
-    cel(c, cc => ell(cc, 8, -23, 15, 9), W, '#e0d4c0', 1, 2, 2.2);
-    for (const [x1, y1, x2, y2] of [[-4, -52, -3, -45], [2, -54, 2, -46], [8, -52, 7, -45], [-22, -36, -14, -35], [-21, -28, -14, -29]]) line(c, [x1, y1, x2, y2], 3, INK);
-    for (const ex of [-6, 14]) { c.beginPath(); ell(c, ex, -38, 4.4, 4.2); c.fillStyle = '#ffd23a'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); c.beginPath(); ell(c, ex + .8, -38, 1.5, 3.4); c.fillStyle = INK; c.fill(); }
-    cel(c, cc => { cc.moveTo(4, -28); cc.lineTo(14, -28); cc.lineTo(9, -23); cc.closePath(); }, '#e86a7a', '#b84a5a', 0, 1, 1.8);
-    line(c, [9, -23, 9, -19], 2, INK);
-  }
+    shadow(c, 0, 0, 52, 13, .32);
+    if (!front) tgHeadBack(c, 32, -70, .8);                                       // 머리는 몸 너머 오른쪽 위
+    else tgTail(c, [-34, -52], [-66, -58], [-60, -94 + Math.sin(T * 3) * 5], 10); // 꼬리는 몸 너머 왼쪽 위
+    if (front) { tgLeg(c, -24, -40, 38, 16, -leg, 1); tgLeg(c, 20, -40, 38, 16, leg, 1); } // 먼 다리
+    else { tgLeg(c, -18, -40, 38, 16, -leg, 1); tgLeg(c, 26, -40, 38, 16, leg, 1); }
+    tgBodyOval(c, 0, -46, 44, 27, front ? .2 : -.2, true, front ? 4 : -2);
+    if (!front) tgTail(c, [-32, -30], [-58, -4], [-62, -50 + Math.sin(T * 3) * 4], 10); // 엉덩이 쪽 꼬리(화면 앞)
+    if (front) { tgLeg(c, -12, -36, 34, 19, leg, 0); tgLeg(c, 32, -34, 32, 19, -leg, 0); } // 가까운 다리
+    else { tgLeg(c, -30, -34, 32, 19, leg, 0); tgLeg(c, 12, -36, 34, 19, -leg, 0); }
+  } else if (front) tgHeadFront(c, 38, -30, .96, .55, .8 + Math.max(0, Math.sin(T * 2)) * .4); // 얼굴: 오른쪽 아래 앞, 우주 다리 앞
   c.restore();
 }
-// 2026-10-14 달 요청: 위·아래로 갈 때도 호랑이가 몸을 틀어요. 아래(dir 0) = 앞모습, 위(dir 1) = 뒷모습
+// 위·아래로 갈 때도 호랑이가 몸을 틀어요. 아래(dir 0) = 앞모습, 위(dir 1) = 뒷모습
 // layer 'under'는 우주보다 먼저(몸·다리·뒷머리), 'over'는 우주 다음(앞모습 머리)
 function drawRideTigerFB(c, dir, layer){
-  const B = '#f2922c', S = '#c4661a', W = '#fff8ec', t = P.walk / 11, leg = Math.sin(t * 10) * 4;
+  const t = P.walk / 11, leg = Math.sin(t * 10) * 4;
   c.save(); c.translate(P.x, P.y); c.scale(RIDE_SC, RIDE_SC);
-  const legs = pts => pts.forEach(([lx, o, h]) => cel(c, cc => rr(cc, lx - 7, -h + o, 14, h - o * .3, 4), B, S, 1, 0, 2.4));
-  const stripes = (cx, cy, rx) => { for (const k of [-1, 0, 1]) { const x = cx + k * rx * .55; c.beginPath(); c.moveTo(x - 6, cy - 12); c.quadraticCurveTo(x + 3, cy - 2, x - 3, cy + 8); c.lineWidth = 4; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); } };
   if (layer === 'under') {
-    shadow(c, 0, 0, 44, 12, .3);
-    if (dir === 1) { // 뒷모습: 머리는 몸 너머(위)에 조금만 보여요
-      for (const ex of [-17, 17]) cel(c, cc => ell(cc, ex, -82, 8, 8), B, S, 1, 1, 2.4);
-      cel(c, cc => ell(cc, 0, -66, 22, 18), B, S, 3, 3, 3);
-      for (const x of [-8, 0, 8]) line(c, [x, -80, x, -70], 3, INK);
-    }
-    legs([[-17, -leg, 40], [17, leg, 40]]);                    // 뒷다리(멀리)
-    cel(c, cc => ell(cc, 0, -44, 38, 27), B, S, 4, 6, 3.2);    // 몸통
-    if (dir === 1) {
-      for (const y of [-58, -46, -34]) { c.beginPath(); c.moveTo(-26, y); c.quadraticCurveTo(0, y + 7, 26, y); c.lineWidth = 4; c.strokeStyle = INK; c.stroke(); }
-      // 꼬리 (엉덩이 쪽, 화면 앞)
-      c.beginPath(); c.moveTo(0, -26); c.quadraticCurveTo(-6, 2, 16, -6 + Math.sin(T * 3) * 4); c.quadraticCurveTo(30, -12, 26, -30); c.lineWidth = 11; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 7; c.strokeStyle = B; c.stroke();
-      for (const [x, y] of [[4, -6], [18, -8], [26, -22]]) { c.beginPath(); ell(c, x, y, 3.4, 2.4); c.fillStyle = INK; c.fill(); }
-    } else stripes(0, -50, 34);
-    legs([[-25, leg, 30], [25, -leg, 30]]);                    // 앞다리(가까이)
-  } else if (dir === 0) { // 앞모습 머리: 우주 다리 앞을 가려서 올라탄 것처럼 보여요
-    for (const ex of [-19, 19]) { cel(c, cc => ell(cc, ex, -55, 8, 8), B, S, 1, 1, 2.4); c.beginPath(); ell(c, ex, -54, 4, 4); c.fillStyle = W; c.fill(); }
-    cel(c, cc => ell(cc, 0, -34, 26, 22), B, S, 3, 4, 3);
-    cel(c, cc => ell(cc, 0, -23, 15, 9), W, '#e0d4c0', 1, 2, 2.2);
-    for (const [x1, y1, x2, y2] of [[-6, -52, -5, -45], [0, -54, 0, -46], [6, -52, 5, -45], [-24, -36, -16, -35], [24, -36, 16, -35], [-23, -28, -16, -29], [23, -28, 16, -29]]) line(c, [x1, y1, x2, y2], 3, INK);
-    for (const ex of [-10, 10]) { c.beginPath(); ell(c, ex, -38, 4.6, 4.2); c.fillStyle = '#ffd23a'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); c.beginPath(); ell(c, ex, -38, 1.5, 3.4); c.fillStyle = INK; c.fill(); }
-    cel(c, cc => { cc.moveTo(-5, -28); cc.lineTo(5, -28); cc.lineTo(0, -23); cc.closePath(); }, '#e86a7a', '#b84a5a', 0, 1, 1.8);
-    line(c, [0, -23, 0, -19], 2, INK);
-  }
+    shadow(c, 0, 0, 46, 12, .32);
+    if (dir === 1) tgHeadBack(c, 0, -72, .85);                         // 뒷모습: 머리는 몸 너머(위)
+    tgLeg(c, -17, -42, 40, 16, -leg, 1); tgLeg(c, 17, -42, 40, 16, leg, 1); // 먼 다리
+    tgBodyOval(c, 0, -46, 39, 28, 0, false, dir === 1 ? 0 : 0.01);
+    if (dir === 1) tgTail(c, [0, -26], [-10, 4], [22, -12 + Math.sin(T * 3) * 4], 10); // 꼬리 (엉덩이 쪽, 화면 앞)
+    else { c.beginPath(); ell(c, 0, -40, 15, 20); c.fillStyle = TG.W; c.fill(); }          // 앞모습: 하얀 가슴 털
+    tgLeg(c, -25, -32, 30, 19, leg, 0); tgLeg(c, 25, -32, 30, 19, -leg, 0); // 가까운 다리
+  } else if (dir === 0) tgHeadFront(c, 0, -36, 1.04, 0, .8 + Math.max(0, Math.sin(T * 2)) * .4); // 앞모습 머리: 우주 다리 앞을 가려요
   c.restore();
 }
 // 나무 뒤 반투명 한 번 더 그리기: 타고 있을 땐 호랑이·우주를 따로 그린 다음 한 장으로 겹쳐요
