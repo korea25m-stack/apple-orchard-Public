@@ -4205,7 +4205,7 @@ function uiRest(r){
   UI.open({ic:'⛺', title:r.name, w:860, render(o){
     o.body.innerHTML = `<p style="margin-top:0">모닥불 옆에서 쉬었더니 <b>체력이 가득 찼어요!</b> ❤️ ${Math.round(P.hp)}/${P.max}</p>
       <p>${zoneLv(Math.max(0, zoneAt(r.x, r.y)))} ${zoneName(Math.max(0, zoneAt(r.x, r.y)), r.x, r.y)} 한가운데예요. 쉼터 안에는 산짐승이 못 들어와요.</p>
-      <p class="gnote">찾은 쉼터 ${restsFound().length}/${RESTS.length}곳 · 찾은 쉼터는 과수원·마을의 🛻 포터 승차장에서 목적지로 고를 수 있어요. 돌아갈 땐 <b>${esc(tipKey('recall'))}</b> 귀환으로 과수원에 가요.</p>`;
+      <p class="gnote">찾은 쉼터 ${restsFound().length}/${RESTS.length}곳 · 찾은 쉼터는 과수원·마을의 🛻 화물차 승차장에서 목적지로 고를 수 있어요. 돌아갈 땐 <b>${esc(tipKey('recall'))}</b> 귀환으로 과수원에 가요.</p>`;
     o.footEl.innerHTML = `<button class="btn pri" id="rsOk">더 둘러보기</button>`;
     $('#rsOk').onclick = () => UI.close();
   }});
@@ -4283,7 +4283,7 @@ function drawSpinGlow(c, sk, back){
 }
 // 2026-10-14 호랑이 탈것: 타고 있으면 호랑이를 먼저 그리고 우주는 그 위(RIDE_UP)에 앉혀요
 function drawHero(c){
-  if (BUS.ride) return; // 포터 짐칸에 타 있어요 (트럭 그림에서 같이 그려요)
+  if (BUS.ride) return; // 화물차 짐칸에 타 있어요 (트럭 그림에서 같이 그려요)
   if (!riding()) return drawHeroBody(c);
   ensureHero(); const d8 = rideDir();
   drawRideUnder(c, d8);
@@ -4511,7 +4511,7 @@ function fadeScreen(txt, mid, done, tip, hold){
 // ----- 2026-10-14 잘 때 보여 주는 게임 팁 (지금 게임 수치와 맞는 것만) -----
 const tipKey = a => (KB[a] || []).filter(Boolean).map(keyName)[0] || '키 설정';
 const SLEEP_TIPS = [
-  () => '🛻 과수원·마을의 포터 승차장에서 포터를 타면 목적지까지 길을 따라 태워다 줘요. 한 번 찾은 숲속 쉼터도 고를 수 있어요.',
+  () => '🛻 과수원·마을의 화물차 승차장에서 화물차를 타면 목적지까지 길을 따라 태워다 줘요. 한 번 찾은 숲속 쉼터도 고를 수 있어요.',
   () => `🏡 ${tipKey('recall')}를 누르고 3초 가만히 있으면 과수원으로 귀환해요. 싸우는 중엔 못 써요.`,
   () => '⛺ 숲속 쉼터에서 쉬면 체력이 가득 차요. 산짐승도 못 들어와요.',
   () => '💎 장비 강화는 강화석으로도, 돈으로도 할 수 있어요.',
@@ -4566,7 +4566,7 @@ function heroFaint(){
 function uiNongmak(){
   UI.open({ic:'🛖', title:HN() + '네 농막', w:960, render(o){
     o.body.innerHTML = `<canvas id="roomCv" width="880" height="330" style="width:100%;border:3px solid var(--ink);border-radius:18px;display:block"></canvas>
-      <p>🛻 마을·숲속 쉼터에 가려면 <b>포터 승차장</b>에서 포터를 타세요. 돌아올 땐 <b>${esc(tipKey('recall'))}</b> 귀환이에요.</p>
+      <p>🛻 마을·숲속 쉼터에 가려면 <b>화물차 승차장</b>에서 화물차를 타세요. 돌아올 땐 <b>${esc(tipKey('recall'))}</b> 귀환이에요.</p>
       <p>푹 자고 일어나면 <b>다음 할 일이 생기는 날 아침</b>까지 시간이 가요. 체력도 가득 차요. ${hasWork() ? '지금은 할 일이 남아 있어서 내일 아침에 깨요.' : ''}</p>`;
     drawRoom($('#roomCv'));
     o.footEl.innerHTML = `<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기 (F)</button>`;
@@ -6568,7 +6568,7 @@ function bindUI(){
   $('#todoH').onclick = () => { const f = !$('#todo').classList.contains('fold'); $('#todo').classList.toggle('fold', f); $('#todoArrow').textContent = f ? '▸' : '▾'; store.set('haru-todo', f ? '1' : '0'); };
 }
 
-// ===== 2026-10-16 달 요청: M 전체 지도 · 과수원·마을 순간이동 장치 · 동네 아저씨 포터(마을버스 대신) =====
+// ===== 2026-10-16 달 요청: M 전체 지도 · 과수원·마을 순간이동 장치 · 동네 아저씨 화물차(마을버스 대신) =====
 
 // ----- 순간이동 장치: 과수원·마을 두 곳·확장 부지 두 곳에 하나씩, 서로 다 이어져 있어요 -----
 const PORTALS = [
@@ -6584,7 +6584,7 @@ function uiPortalAt(p){
   UI.open({ic:'🌀', title:`순간이동 장치 · ${p.name}`, w:900, render(o){
     const n = restsFound().length;
     o.body.innerHTML = `<p style="margin-top:0">빙글빙글 도는 빛 속으로 들어가면 <b>과수원·마을·확장 부지</b>, 그리고 <b>찾아 둔 숲속 쉼터</b>로 순식간에 갈 수 있어요.</p>
-      <p class="gnote">찾은 쉼터 ${n}/${RESTS.length}곳${n ? '' : ' · 숲길을 따라가다 정자를 찾으면 여기서도 갈 수 있어요.'} · 🛻 동네 아저씨 포터를 얻어 타면 길 구경을 하며 갈 수 있어요.</p>`;
+      <p class="gnote">찾은 쉼터 ${n}/${RESTS.length}곳${n ? '' : ' · 숲길을 따라가다 정자를 찾으면 여기서도 갈 수 있어요.'} · 🛻 동네 아저씨 화물차를 얻어 타면 길 구경을 하며 갈 수 있어요.</p>`;
     o.footEl.innerHTML = PORTALS.filter(q => q !== p).map(q => `<button class="btn" data-pt="${q.id}">🌀 ${q.name}</button>`).join('') + warpButtons(null) + `<button class="btn pri" id="ptOk">닫기</button>`;
     o.footEl.querySelectorAll('[data-pt]').forEach(b => b.onclick = () => { const q = PORTALS.find(z => z.id === b.dataset.pt); sfx('whirl'); warpTo(q.x, q.y + 90, `🌀 ${q.name}로 순간이동!`); });
     o.footEl.querySelectorAll('[data-warp]').forEach(b => b.onclick = () => { const r = RESTS.find(q => q.id === b.dataset.warp); sfx('whirl'); warpTo(r.x, r.y + 70, `🌀 ${r.name}로 순간이동!`); });
@@ -6592,7 +6592,7 @@ function uiPortalAt(p){
   }});
 }
 
-// ----- 2026-10-16 달 요청: 마을버스·정류장은 없애고, 동네 아저씨 포터(픽업트럭) 한 대가 다녀요 -----
+// ----- 2026-10-16 달 요청: 마을버스·정류장은 없애고, 동네 아저씨 화물차 한 대가 다녀요 -----
 // 강변 마을 → 우리 과수원 → 사과골 마을 → (고갯길) → 강변 마을 … 한 방향으로 계속 돌아요. 정류장 표지판은 없고 세 곳에서 30초씩 서요.
 // 가는 길에 짐칸에 태워 줘요(설 때 F로 타고, 설 때 F로 내려요)
 const BUS_V = 680, BUS_DWELL = 30;
@@ -6629,7 +6629,7 @@ function updateBus(dt){
     if (b.wait > 0) { b.wait -= dt; if (b.wait <= 0 && BUS.ride === b) toast(`🛻 출발! 다음은 ${BUS_STOPS[b.ni].name}이에요.`); }
     else {
       const tgt = BUS_STOPS[b.ni].s + (b.ni === 0 ? BUS_LEN : 0), from = BUS_STOPS[b.cur].s, left = tgt - b.s, gone = b.s - from;
-      const v = clamp(Math.min(left, gone) * 1.3 + 90, 90, BUS_V), step = v * dt; // 서기 전후엔 천천히
+      const V = truckV(), v = clamp(Math.min(left, gone) * 1.3 + 90, 90, V), step = v * dt; // 2026-10-16 호랑이보다 10% 빠르게 // 서기 전후엔 천천히
       if (left <= step) { b.s = tgt % BUS_LEN; b.wait = BUS_DWELL; b.cur = b.ni; b.ni = (b.ni + 1) % BUS_STOPS.length;
         if (BUS.ride === b) { sfx('pick'); toast(`🛻 ${BUS_STOPS[b.cur].name}에 왔어요. F를 누르면 내려요 (30초 서요)`); } }
       else b.s += step;
@@ -6643,11 +6643,12 @@ function updateBus(dt){
   if (BUS.ride) { const b = BUS.ride; P.x = b.x; P.y = b.y + 6; if (b.d8 != null) P.d8 = b.d8; P.tgt = null; P.pend = null; P.kb = null; P.inv = Math.max(P.inv || 0, .3); P.walk = 0; }
 }
 function busTargets(cands){
+  txInit();
   if (BUS.ride) return;
   for (const b of BUSES) if (b.wait > .3 && b.x != null) cands.push({kind:'bus', b, x:b.x, y:b.y + 20});
-  for (const tx of TAXIS) if (tx.st === 'idle') cands.push({kind:'taxi', tx, x:tx.x, y:tx.y + 20}); // 2026-10-16 순간이동 대신 승차장 포터
+  for (const tx of TAXIS) if (tx.st === 'idle') cands.push({kind:'taxi', tx, x:tx.x, y:tx.y + 20}); // 2026-10-16 순간이동 대신 승차장 화물차
 }
-function busLabel(t){ return t.kind === 'bus' ? `🛻 포터 얻어 타기 → ${BUS_STOPS[t.b.ni].name} (${Math.ceil(t.b.wait)}초 뒤 출발)` : `🛻 포터 타기 · 목적지 고르기`; }
+function busLabel(t){ return t.kind === 'bus' ? `🛻 화물차 얻어 타기 → ${BUS_STOPS[t.b.ni].name} (${Math.ceil(t.b.wait)}초 뒤 출발)` : `🛻 화물차 타기 · 목적지 고르기`; }
 function busBoard(b){
   if (riding && riding()) { toast('🐯 호랑이에서 내린 다음 타요.'); return; }
   BUS.ride = b; sfx('pop');
@@ -6662,8 +6663,8 @@ function busGetOff(){
   cam.x = P.x; cam.y = P.y; sfx('pick'); toast(`🛻 ${st.name}에서 내렸어요. "조심히 가거라~"`);
   return true;
 }
-// 포터 그림 (옆모습, 오른쪽이 앞, 발밑 가운데가 0,0): 파란 운전석 + 뒤 짐칸(사과 상자)
-// 2026-10-16 달 규칙: 움직이는 건 전부 8방향 → 포터도 옆·앞·뒤·대각선 그림. 포터는 앞이 평평한 캡오버 트럭이에요.
+// 화물차 그림 (옆모습, 오른쪽이 앞, 발밑 가운데가 0,0): 파란 운전석 + 뒤 짐칸(사과 상자)
+// 2026-10-16 달 규칙: 움직이는 건 전부 8방향 → 화물차도 옆·앞·뒤·대각선 그림. 화물차는 앞이 평평한 캡오버 트럭이에요.
 const TK_A = .74, TK_K = .3, TK_W = 150; // 대각선: 옆판은 (TK_A, ±TK_K)로 비스듬히, 앞·뒤판 폭은 반으로
 function truckHero(c, x, y, a = 1, k = 0, mir = false){ // 짐칸의 주인공은 비스듬한 판 위에서도 똑바로 서 있게
   c.save(); c.translate(x, y); if (a !== 1 || k) c.transform(1 / a, -k / a, 0, 1, 0, 0); if (mir) c.scale(-1, 1); c.scale(.62, .62); c.translate(-P.x, -P.y);
@@ -6756,11 +6757,12 @@ function drawBus(c, b, T){
   c.translate(0, bob);
   drawTruck8(c, b, d8);
   c.restore();
-  c.save(); c.font = '20px Jua'; c.textAlign = 'center'; const t = b.taxi ? (b.st === 'idle' ? (BUS.ride === b ? '🛻 포터 · 목적지를 골라 주세요' : `🛻 포터 승차장 · ${tipKey('interact')}로 타기`) : b.st === 'go' ? `🛻 ${b.dest.name}로 가는 중` : '🛻 승차장으로 돌아가는 중') : b.wait > 0 ? `🛻 동네 아저씨 포터 · ${Math.ceil(b.wait)}초 뒤 ${BUS_STOPS[b.ni].name}로` : '🛻 동네 아저씨 포터', tw = c.measureText(t).width + 18;
+  c.save(); c.font = '20px Jua'; c.textAlign = 'center'; const t = b.taxi ? (b.st === 'idle' ? (BUS.ride === b ? '🛻 화물차 · 목적지를 골라 주세요' : `🛻 화물차 승차장 · ${tipKey('interact')}로 타기`) : b.st === 'go' ? `🛻 ${b.dest.name}로 가는 중` : '🛻 승차장으로 돌아가는 중') : b.wait > 0 ? `🛻 동네 아저씨 화물차 · ${Math.ceil(b.wait)}초 뒤 ${BUS_STOPS[b.ni].name}로` : '🛻 동네 아저씨 화물차', tw = c.measureText(t).width + 18;
   c.beginPath(); rr(c, b.x - tw / 2, b.y - 206, tw, 28, 10); c.fillStyle = 'rgba(255,250,241,.95)'; c.fill(); c.lineWidth = 2.4; c.strokeStyle = INK; c.stroke();
   c.fillStyle = INK; c.fillText(t, b.x, b.y - 185); c.restore();
 }
 function busEntities(ctx, add, vis){
+  txInit();
   const T = performance.now() / 1000;
   for (const p of PORTALS) if (vis(p.x - 190, p.y, 300)) add(p.y, p.x - 190, () => drawTaxiStand(ctx, p));
   for (const tx of TAXIS) if (vis(tx.x, tx.y, 300)) add(tx.y, tx.x, () => drawBus(ctx, tx, T));
@@ -6830,7 +6832,7 @@ function drawBigMap(ctx){
   tick('x →', x0 + w - 8, y0 + 15, 'right'); tick('y ↓', x0 + 5, y0 + h - 8, 'left');
   if (BMV.z > 1) tick(`🔍 ${BMV.z.toFixed(1)}배`, x0 + w - 8, y0 + h - 8, 'right');
   ctx.restore();
-  // 포터 다니는 길
+  // 화물차 다니는 길
   ctx.strokeStyle = 'rgba(255,207,61,.9)'; ctx.lineWidth = 3; ctx.beginPath(); BUS_LINE.forEach(([x, y], i) => i ? ctx.lineTo(mx(x), my(y)) : ctx.moveTo(mx(x), my(y))); ctx.stroke();
   const lab = (t, x, y, f = 20) => { ctx.font = `${f}px Jua`; ctx.textAlign = 'center'; ctx.lineWidth = 5; ctx.strokeStyle = '#fffaf1'; ctx.strokeText(t, x, y); ctx.fillStyle = INK; ctx.fillText(t, x, y); };
   // 2026-10-16 달 요청: 구역 점선·★ 표시는 정신없어서 뺐어요
@@ -6841,7 +6843,7 @@ function drawBigMap(ctx){
   ctx.font = '26px sans-serif'; for (const b of BUSES) if (b.x != null) ctx.fillText('🛻', mx(b.x), my(b.y) + 9);
   lab('동계천', ...[mx(mapXY(300, 262)[0]), my(mapXY(300, 262)[1])], 18);
   for (const m of MONS) if (!m.dead && (m.raid || m.boss)) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), 5, 0, 7); ctx.fillStyle = '#ff3b30'; ctx.fill(); }
-  // 2026-10-16 달 요청: 순간이동은 없어요. 승차장 포터에 타 있을 때 승차장·찾은 쉼터를 누르면 그리로 태워다 줘요
+  // 2026-10-16 달 요청: 순간이동은 없어요. 승차장 화물차에 타 있을 때 승차장·찾은 쉼터를 누르면 그리로 태워다 줘요
   BIGMAP_HOT = []; let tip = null; const pickTx = BUS.ride && BUS.ride.taxi && BUS.ride.st === 'idle' ? BUS.ride : null;
   const hot = (x, y, ic, name, go) => {
     const sx = mx(x), sy = my(y); if (sx < x0 || sx > x0 + w || sy < y0 || sy > y0 + h) return;
@@ -6849,7 +6851,7 @@ function drawBigMap(ctx){
     if (go) BIGMAP_HOT.push({x:sx, y:sy, r:24, go});
     ctx.beginPath(); ctx.arc(sx, sy, on ? 22 : 18, 0, 7); ctx.fillStyle = on ? '#fff2b8' : 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = on ? 4 : 3; ctx.strokeStyle = on ? '#e8a020' : '#7a5af0'; ctx.stroke();
     ctx.font = `${on ? 24 : 20}px sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(ic, sx, sy + 8);
-    if (on) tip = [go ? `🛻 ${name}로 가기 (누르기)` : `${ic} ${name}${ic === '⛺' ? ' · 승차장 포터로 갈 수 있어요' : ' 승차장'}`, sx, sy - 34];
+    if (on) tip = [go ? `🛻 ${name}로 가기 (누르기)` : `${ic} ${name}${ic === '⛺' ? ' · 승차장 화물차로 갈 수 있어요' : ' 승차장'}`, sx, sy - 34];
   };
   for (const d of taxiDests()) hot(d.x, d.y, d.ic, d.name, pickTx && Math.hypot(d.x - pickTx.x, d.y - pickTx.y) > 400 ? () => { BIGMAP = false; taxiGo(pickTx, d); } : null);
   drawFacingFan(ctx, mx(P.x), my(P.y), 42);
@@ -6867,14 +6869,14 @@ function drawBigMap(ctx){
     ctx.beginPath(); ctx.arc(BM.x, BM.y, 4, 0, 7); ctx.fillStyle = INK; ctx.fill();
   }
   ctx.restore();
-  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText((pickTx ? '🛻·⛺ 눌러서 목적지 고르기' : '🛻 포터 승차장 · ⛺ 찾은 쉼터(승차장 포터로 가요)') + ' · 노란 선 = 동네 아저씨 포터 길 · ? 아직 못 찾은 쉼터 · 휠 = 확대·축소, 끌기 = 옮기기', x0 + 6, y0 + h + 26);
+  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText((pickTx ? '🛻·⛺ 눌러서 목적지 고르기' : '🛻 화물차 승차장 · ⛺ 찾은 쉼터(승차장 화물차로 가요)') + ' · 노란 선 = 동네 아저씨 화물차 길 · ? 아직 못 찾은 쉼터 · 휠 = 확대·축소, 끌기 = 옮기기', x0 + 6, y0 + h + 26);
   ctx.restore();
 }
 // 버스 탄 동안 화면 아래 안내
 function drawBusHint(ctx){
   drawRecallBar(ctx);
   const b = BUS.ride; if (!b) return;
-  const t = b.taxi ? (b.st === 'idle' ? `🛻 목적지를 고르세요 (${tipKey('map')} 지도에서 눌러도 돼요) · ${tipKey('interact')} = 내리기` : `🛻 ${b.dest.name}로 가는 중 · ${tipKey('interact')}를 누르면 바로 내려요`) : b.wait > 0 ? `🛻 ${BUS_STOPS[b.cur].name} · F를 누르면 내려요 (${Math.ceil(b.wait)}초 뒤 출발)` : `🛻 포터 짐칸에 탔어요 · 다음: ${BUS_STOPS[b.ni].name}`;
+  const t = b.taxi ? (b.st === 'idle' ? `🛻 목적지를 고르세요 (${tipKey('map')} 지도에서 눌러도 돼요) · ${tipKey('interact')} = 내리기` : `🛻 ${b.dest.name}로 가는 중 · ${tipKey('interact')}를 누르면 바로 내려요`) : b.wait > 0 ? `🛻 ${BUS_STOPS[b.cur].name} · F를 누르면 내려요 (${Math.ceil(b.wait)}초 뒤 출발)` : `🛻 화물차 짐칸에 탔어요 · 다음: ${BUS_STOPS[b.ni].name}`;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = '28px Jua'; ctx.textAlign = 'center'; const tw = ctx.measureText(t).width + 50;
   ctx.beginPath(); rr(ctx, W / 2 - tw / 2, H - 196, tw, 50, 18); ctx.fillStyle = b.wait > 0 ? '#fff2b8' : '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
   ctx.fillStyle = INK; ctx.fillText(t, W / 2, H - 162); ctx.restore();
@@ -8324,43 +8326,81 @@ function blemTalk(n){
   return true;
 }
 
-// ===== 2026-10-16 달 요청: 순간이동은 전부 없애고, 순간이동 장치가 있던 다섯 곳마다 포터가 한 대씩 기다려요 =====
-// 타면 목적지(과수원·마을·확장 부지 + 찾은 숲속 쉼터)를 누르고, 포터가 길을 따라 태워다 줘요. 가는 중에 F를 누르면 그 자리에서 바로 내려요.
-// 내려 준 포터는 혼자 승차장으로 돌아가요. 돌아올 땐 귀환(기본 B, 3초)으로 과수원에 와요.
-const TAXI_V = 820, RECALL_T = 3;
-// ----- 길 그물: 큰길·숲길·동네 아저씨 포터 길을 이어서, 두 곳 사이 가장 짧은 길을 찾아요 -----
+// ===== 2026-10-16 달 요청: 순간이동은 전부 없애고, 순간이동 장치가 있던 다섯 곳마다 화물차가 한 대씩 기다려요 =====
+// 타면 목적지(과수원·마을·확장 부지 + 찾은 숲속 쉼터)를 누르고, 화물차가 길을 따라 태워다 줘요. 가는 중에 F를 누르면 그 자리에서 바로 내려요.
+// 내려 준 화물차는 혼자 승차장으로 돌아가요. 돌아올 땐 귀환(기본 B, 3초)으로 과수원에 와요.
+const RECALL_T = 3;
+// 2026-10-16 달 요청: 화물차는 호랑이 탔을 때보다 10% 빨라요(달리기 속도·탈것 배율을 그대로 따라가요)
+const truckV = () => P.spd * (1 + (typeof farmer === 'function' ? farmer().spd : 0) / 100) * MOUNT_SPD * 1.1;
+// ----- 길 그물: 큰길·숲길·동네 아저씨 화물차 길을 이어서, 두 곳 사이 가장 짧은 길을 찾아요 -----
+// 2026-10-16 달 요청 "최단거리": 길끼리 엇갈리는 곳·바짝 붙은 곳도 갈림길로 이어 줘서 빙 돌아가지 않게 해요
 const TX_G = (() => {
   const N = [], A = [];
   const node = (x, y) => { for (let i = 0; i < N.length; i++) if (Math.hypot(N[i][0] - x, N[i][1] - y) < 60) return i; N.push([x, y]); A.push([]); return N.length - 1; };
   const link = (a, b) => { if (a === b || A[a].some(e => e[0] === b)) return; const d = Math.hypot(N[a][0] - N[b][0], N[a][1] - N[b][1]); A[a].push([b, d]); A[b].push([a, d]); };
-  const lines = [...MAP_ROADS, ...FOREST_PATHS, BUS_LINE], segs = [];
+  const lines = [...MAP_ROADS, ...FOREST_PATHS, BUS_LINE, [V1N, [V1.cx, V1.cy], V1S], [[V1.cx, V1.cy], V1E]], segs = []; // 강변 마을 안 십자길도 이어요
   lines.forEach((L, li) => { let pv = null; for (const p of L) { const n = node(p[0], p[1]); if (pv != null && pv !== n) { link(pv, n); segs.push([pv, n, li]); } pv = n; } });
-  // 길 끝이 다른 길 중간에 닿으면 그 자리에 갈림길을 만들어 이어요
-  lines.forEach((L, li) => [L[0], L[L.length - 1]].forEach(p => {
-    const e = node(p[0], p[1]); let best = null;
-    for (const [a, b, lj] of segs) { if (lj === li) continue; const [ax, ay] = N[a], [bx, by] = N[b], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1;
-      const k = clamp(((p[0] - ax) * dx + (p[1] - ay) * dy) / L2, 0, 1), qx = ax + dx * k, qy = ay + dy * k, d = Math.hypot(p[0] - qx, p[1] - qy);
-      if (d < 500 && (!best || d < best.d)) best = {d, a, b, qx, qy}; }
-    if (best && best.d > 1) { const q = node(best.qx, best.qy); link(q, best.a); link(q, best.b); link(e, q); }
+  const proj = (px, py, a, b) => { const [ax, ay] = N[a], [bx, by] = N[b], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, k = clamp(((px - ax) * dx + (py - ay) * dy) / L2, 0, 1); return [ax + dx * k, ay + dy * k]; };
+  const S0 = segs.slice();
+  // 1) 서로 엇갈리는 길: 만나는 점에 갈림길
+  for (let i = 0; i < S0.length; i++) for (let j = i + 1; j < S0.length; j++) {
+    const [a, b, li] = S0[i], [c2, d, lj] = S0[j]; if (li === lj || a === c2 || a === d || b === c2 || b === d) continue;
+    const [x1, y1] = N[a], [x2, y2] = N[b], [x3, y3] = N[c2], [x4, y4] = N[d], den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4); if (!den) continue;
+    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den, u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
+    if (t > 0 && t < 1 && u > 0 && u < 1) { const q = node(x1 + t * (x2 - x1), y1 + t * (y2 - y1)); for (const e of [a, b, c2, d]) link(q, e); }
+  }
+  // 2) 다른 길에 바짝 붙은 길 점(끝점은 500, 중간 점은 250 안): 가장 가까운 자리로 이어요
+  lines.forEach((L, li) => L.forEach((p, k) => {
+    const e = node(p[0], p[1]), lim = k === 0 || k === L.length - 1 ? 500 : 250; let best = null;
+    for (const [a, b, lj] of S0) { if (lj === li) continue; const [qx, qy] = proj(p[0], p[1], a, b), dd = Math.hypot(p[0] - qx, p[1] - qy); if (dd < lim && (!best || dd < best.d)) best = {d:dd, a, b, qx, qy}; }
+    if (best) { const q = node(best.qx, best.qy); link(q, best.a); link(q, best.b); link(e, q); }
   }));
-  // 그래도 떨어진 조각이 있으면 가장 가까운 점끼리 이어요
+  // 3) 그래도 떨어진 조각이 있으면 가장 가까운 점끼리 이어요
   for (let guard = 0; guard < 40; guard++) {
     const seen = new Set([0]), st = [0]; while (st.length) { const u = st.pop(); for (const [v] of A[u]) if (!seen.has(v)) { seen.add(v); st.push(v); } }
     if (seen.size === N.length) break;
     let best = null; for (let i = 0; i < N.length; i++) if (!seen.has(i)) for (const j of seen) { const d = Math.hypot(N[i][0] - N[j][0], N[i][1] - N[j][1]); if (!best || d < best[2]) best = [i, j, d]; }
     link(best[0], best[1]);
   }
-  return {N, A};
+  const E = []; A.forEach((es, a) => es.forEach(([b]) => { if (a < b) E.push([a, b]); }));
+  return {N, A, E, proj};
 })();
-function txNear(x, y){ let b = 0, bd = 1e18; TX_G.N.forEach(([nx, ny], i) => { const d = (nx - x) ** 2 + (ny - y) ** 2; if (d < bd) { bd = d; b = i; } }); return b; }
+// 한 점에서 가장 가까운 길 위 자리(어느 길 토막의 어디쯤인지)
+function txSnap(x, y){
+  let best = null;
+  for (const [a, b] of TX_G.E) { const [qx, qy] = TX_G.proj(x, y, a, b), d = Math.hypot(x - qx, y - qy); if (!best || d < best.d) best = {d, a, b, x:qx, y:qy}; }
+  return best;
+}
 function txRoute(ax, ay, bx, by){
-  const {N, A} = TX_G, s = txNear(ax, ay), g = txNear(bx, by), D = new Float64Array(N.length).fill(Infinity), pre = new Int32Array(N.length).fill(-1), done = new Uint8Array(N.length);
-  D[s] = 0;
-  for (;;) { let u = -1; for (let i = 0; i < N.length; i++) if (!done[i] && D[i] < Infinity && (u < 0 || D[i] < D[u])) u = i; if (u < 0 || u === g) break; done[u] = 1; for (const [v, w] of A[u]) if (D[u] + w < D[v]) { D[v] = D[u] + w; pre[v] = u; } }
-  const mid = []; for (let v = g; v >= 0; v = v === s ? -1 : pre[v]) { mid.push(N[v]); if (v !== s && pre[v] < 0) break; }
-  mid.reverse();
-  const pts = [[ax, ay], ...mid, [bx, by]].filter((p, i, a) => !i || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1);
+  const {N, A} = TX_G, sa = txSnap(ax, ay), sb = txSnap(bx, by), n = N.length, S = n, G = n + 1; // 출발·도착을 길 위 자리에 임시 갈림길로 넣어요
+  const adj = i => i === S ? [[sa.a, Math.hypot(sa.x - N[sa.a][0], sa.y - N[sa.a][1])], [sa.b, Math.hypot(sa.x - N[sa.b][0], sa.y - N[sa.b][1])]] : A[i];
+  const tail = {}; for (const e of [sb.a, sb.b]) tail[e] = Math.hypot(sb.x - N[e][0], sb.y - N[e][1]);
+  const sameEdge = (sa.a === sb.a && sa.b === sb.b) || (sa.a === sb.b && sa.b === sb.a);
+  const D = new Float64Array(n + 2).fill(Infinity), pre = new Int32Array(n + 2).fill(-1), done = new Uint8Array(n + 2);
+  D[S] = 0; if (sameEdge) { D[G] = Math.hypot(sa.x - sb.x, sa.y - sb.y); pre[G] = S; }
+  for (;;) {
+    let u = -1; for (let i = 0; i < n + 2; i++) if (!done[i] && D[i] < Infinity && (u < 0 || D[i] < D[u])) u = i;
+    if (u < 0 || u === G) break; done[u] = 1;
+    if (u < n && tail[u] != null && D[u] + tail[u] < D[G]) { D[G] = D[u] + tail[u]; pre[G] = u; }
+    for (const [v, w] of adj(u)) if (D[u] + w < D[v]) { D[v] = D[u] + w; pre[v] = u; }
+  }
+  const mid = []; for (let v = pre[G]; v >= 0 && v !== S; v = pre[v]) mid.push(N[v]); mid.reverse();
+  const pts = [[ax, ay], [sa.x, sa.y], ...mid, [sb.x, sb.y], [bx, by]].filter((p, i, a) => !i || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1);
   return chaikin(chaikin(pts));
+}
+// 2026-10-16 달 요청: 승차장·하차 지점은 만들어진 길 바로 옆(길 가장자리에서 조금 비켜서)
+function txRoadside(x, y, off = 150){
+  const q = txSnap(x, y), [ax, ay] = TX_G.N[q.a], [bx, by] = TX_G.N[q.b], L = Math.hypot(bx - ax, by - ay) || 1;
+  let nx = -(by - ay) / L, ny = (bx - ax) / L; if ((x - q.x) * nx + (y - q.y) * ny < 0) { nx = -nx; ny = -ny; } // 원래 자리가 있던 쪽으로
+  for (const s of [1, -1]) { const px = q.x + nx * off * s, py = q.y + ny * off * s; if (!blocked(px, py)) return [px, py]; }
+  return [q.x + nx * off, q.y + ny * off];
+}
+const REST_DROP = {};
+function txInit(){ // 게임 데이터(G)가 생긴 뒤 한 번만: 승차장·쉼터 하차 지점을 길 옆으로 옮겨요
+  if (txInit.done || !G) return; txInit.done = 1;
+  for (const p of PORTALS) { const [x, y] = txRoadside(p.x, p.y); p.x = x; p.y = y; }
+  for (const r of RESTS) REST_DROP[r.id] = txRoadside(r.x, r.y + 90, 130);
+  for (const tx of TAXIS) if (tx.st === 'idle') { tx.x = tx.home.x; tx.y = tx.home.y; }
 }
 function txPath(pts){ const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); return {pts, cum, len:cum[cum.length - 1]}; }
 function txAt(P0, s){
@@ -8370,7 +8410,7 @@ function txAt(P0, s){
   return {x:ax + (bx - ax) * t, y:ay + (by - ay) * t, dx:(bx - ax) / L, dy:(by - ay) / L};
 }
 // ----- 목적지: 승차장 다섯 곳 + 찾은 숲속 쉼터 -----
-const taxiDests = () => [...PORTALS.map(p => ({id:p.id, ic:'🛻', name:p.name, x:p.x, y:p.y})), ...restsFound().map(r => ({id:'r_' + r.id, ic:'⛺', name:r.name, x:r.x, y:r.y + 90}))];
+const taxiDests = () => (txInit(), [...PORTALS.map(p => ({id:p.id, ic:'🛻', name:p.name, x:p.x, y:p.y})), ...restsFound().map(r => ({id:'r_' + r.id, ic:'⛺', name:r.name, x:REST_DROP[r.id][0], y:REST_DROP[r.id][1]}))]);
 const TAXIS = PORTALS.map(p => ({taxi:1, id:'tx_' + p.id, home:p, x:p.x, y:p.y, d8:0, st:'idle', col:'#e8603a', wait:1}));
 function taxiBoard(tx){
   if (riding && riding()) { toast('🐯 호랑이에서 내린 다음 타요.'); return; }
@@ -8380,7 +8420,7 @@ function taxiBoard(tx){
 }
 function uiTaxiDest(tx){
   const list = taxiDests().filter(d => Math.hypot(d.x - tx.x, d.y - tx.y) > 400);
-  UI.open({ic:'🛻', title:`포터 승차장 · ${tx.home.name}`, w:900, render(o){
+  UI.open({ic:'🛻', title:`화물차 승차장 · ${tx.home.name}`, w:900, render(o){
     o.body.innerHTML = `<p style="margin-top:0">🧑‍🌾 기사 아저씨: "어디로 모셔다 드릴까?"</p>
       <p class="gnote">길을 따라 태워다 줘요. 가는 중에 <b>${esc(tipKey('interact'))}</b>를 누르면 그 자리에서 바로 내려요 · 숲속 쉼터는 한 번 찾아야 목적지에 나와요(${restsFound().length}/${RESTS.length}곳) · 돌아올 땐 <b>${esc(tipKey('recall'))}</b> 귀환으로 과수원에 와요.</p>`;
     o.footEl.innerHTML = list.map(d => `<button class="btn" data-tx="${d.id}">${d.ic} ${d.name}</button>`).join('') + `<button class="btn" id="txMap">🗺️ 지도에서 고르기</button><button class="btn" id="txOff">🚶 내리기</button>`;
@@ -8400,14 +8440,15 @@ function taxiGetOff(tx){
   BUS.ride = null;
   const px = tx.x + 40, py = tx.y + 150; P.x = px; P.y = py; if (blocked(P.x, P.y)) { P.x = tx.x; P.y = tx.y + 110; }
   P.tgt = null; cam.x = P.x; cam.y = P.y; sfx('pick');
-  if (tx.st === 'go') { toast(tx.dest && tx.s >= tx.path.len - 2 ? `🛻 ${tx.dest.name}에 왔어요. "조심히 가거라~"` : '🛻 여기서 내렸어요. 포터는 승차장으로 돌아가요.'); taxiReturn(tx); }
+  if (tx.st === 'go') { toast(tx.dest && tx.s >= tx.path.len - 2 ? `🛻 ${tx.dest.name}에 왔어요. "조심히 가거라~"` : '🛻 여기서 내렸어요. 화물차는 승차장으로 돌아가요.'); taxiReturn(tx); }
   return true;
 }
 function updateTaxi(dt){
+  txInit();
   for (const tx of TAXIS) {
     if (tx.st === 'idle') { tx.x = tx.home.x; tx.y = tx.home.y; tx.wait = 1; continue; }
     tx.wait = 0;
-    const left = tx.path.len - tx.s, v = clamp(Math.min(left, tx.s) * 1.4 + 120, 120, TAXI_V);
+    const left = tx.path.len - tx.s, V = truckV(), v = clamp(Math.min(left, tx.s) * 1.4 + 120, Math.min(120, V), V);
     tx.s = Math.min(tx.path.len, tx.s + v * dt);
     const p = txAt(tx.path, tx.s); tx.x = p.x; tx.y = p.y;
     const n8 = (Math.round(Math.atan2(p.dy, p.dx) / (Math.PI / 4)) + 8) % 8;
@@ -8419,11 +8460,11 @@ function updateTaxi(dt){
   }
   updateRecall(dt);
 }
-// ----- 귀환: 3초 동안 가만히 있으면 과수원(승차장 앞)으로 돌아와요. 싸우는 중·포터 탄 중엔 못 써요 -----
+// ----- 귀환: 3초 동안 가만히 있으면 과수원(승차장 앞)으로 돌아와요. 싸우는 중·화물차 탄 중엔 못 써요 -----
 function heroRecall(){
   ensureHero();
   if (P.rc) return;
-  if (BUS.ride) { toast('🛻 포터에서 내린 다음 귀환할 수 있어요.'); return; }
+  if (BUS.ride) { toast('🛻 화물차에서 내린 다음 귀환할 수 있어요.'); return; }
   if (inCombat()) { toast('⚔️ 싸우는 중엔 귀환할 수 없어요.', 'bad'); return; }
   if (HOME && inRect(HOME, P.x, P.y)) { toast('🏡 벌써 과수원이에요.'); return; }
   P.rc = {t:0, x:P.x, y:P.y, hp:P.hp}; sfx('pop');
@@ -8450,13 +8491,13 @@ function drawRecallBar(ctx){ // 화면 아래 귀환 진행 막대
   ctx.font = '22px Jua'; ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(`🏡 과수원으로 귀환 ${Math.max(0, RECALL_T - r.t).toFixed(1)}초 · 움직이면 끊겨요`, W / 2, y + 30);
   ctx.restore();
 }
-// 승차장 표지판 (포터가 손님을 태우러 나가 있어도 자리를 알 수 있게)
+// 승차장 표지판 (화물차가 손님을 태우러 나가 있어도 자리를 알 수 있게)
 function drawTaxiStand(c, p){
   c.save(); c.translate(p.x - 190, p.y + 10);
   c.beginPath(); ell(c, 190, 0, 230, 44); c.fillStyle = 'rgba(120,110,100,.18)'; c.fill();
   cel(c, cc => rr(cc, -4, -110, 8, 110, 3), '#8a6a4a', '#5a4430', 1, 0, 2.4);
   cel(c, cc => rr(cc, -54, -150, 108, 46, 10), '#ffd23a', '#d8a020', 2, 2, 2.8);
-  c.font = '20px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText('🛻 포터', 0, -132); c.font = '15px Jua'; c.fillText('승차장', 0, -113);
+  c.font = '20px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText('🛻 화물차', 0, -132); c.font = '15px Jua'; c.fillText('승차장', 0, -113);
   c.restore();
 }
 
