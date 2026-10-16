@@ -357,16 +357,22 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
 // ===== 기본 수치 (사용자 확정값) =====
 const W = 1920, H = 1080;
 const PX = 40;                      // 1m = 40px
-const TREE_DX = 2.5 * PX;           // 나무 간격 2.5m
-const STRIP = 1.5 * PX;             // 나무 띠 1.5m
-const ALLEY = 4 * PX;               // 농기계 길 4m
-const ROW_H = STRIP + ALLEY;        // 줄 간격 5.5m
-const PER_ROW = 12;
+// 2026-10-16 달 요청: 나무 간격 3m, 줄 간격 4m. 같은 크기 밭 두 개를 가로로 나란히, 사이에 폭 8m 농로
+const TREE_DX = 3 * PX;             // 나무 간격 3m
+const ROW_H = 4 * PX;               // 줄 간격 4m
+const STRIP = 1.2 * PX;             // 나무 띠 1.2m
+const ALLEY = ROW_H - STRIP;        // 줄 사이 길 2.8m
+const PER_ROW = 12;                 // 한 줄 = 왼쪽 밭 6그루 + 오른쪽 밭 6그루
+const HALF_ROW = PER_ROW / 2;
+const FARM_ROAD = 8 * PX;           // 두 밭 사이 농로 8m
 const OX = 1000, OY = 640;          // 과수원 왼쪽 위
-const ORCH_W = PER_ROW * TREE_DX;   // 30m
+const BLOCK_W = HALF_ROW * TREE_DX; // 밭 하나 폭 18m
+const ORCH_W = BLOCK_W * 2 + FARM_ROAD; // 18 + 8 + 18 = 44m
+const colX = c => OX + TREE_DX / 2 + c * TREE_DX + (c >= HALF_ROW ? FARM_ROAD : 0); // c번째 나무의 x
+const ROAD_X0 = OX + BLOCK_W, ROAD_X1 = ROAD_X0 + FARM_ROAD; // 가운데 농로
 const START_ROWS = 6, MAX_ROWS = 20;   // 2026-10-13 과수원 전체 최대 20줄
 const ROW_STEP = 2;                 // 2026-10-13 한 번에 2줄씩 넓혀요
-const PYEONG_PER_ROW = 51.6;        // 31m x 5.5m
+const PYEONG_PER_ROW = 43.6;        // 2026-10-16 (6+6그루 x 3m) x 4m = 144㎡
 const PYEONG_PRICE = 50000;         // 2026-10-13 평당 10만 → 5만원(절반)
 const ROW_PRICE = Math.round(PYEONG_PER_ROW * PYEONG_PRICE / 100000) * 100000;
 const START_MONEY = 10000000;
@@ -378,9 +384,12 @@ const DAY_SEC = 10;                 // 1배속 하루 10초
 // 2026-10-12 과수원이 맵 한가운데. 집·마을 둘레(HOME) 바깥은 사방이 사냥터
 // 2026-10-13 맵 4배(가로·세로 2배, 17200×19600). 가운데 = 과수원 한가운데(1600, 2180)
 // 2026-10-14 달 요청: 다시 4배(34400×39200). 가운데는 그대로, 바깥으로 갈수록 ★7까지 세져요
-const WX0 = -15600, WY0 = -17420, WX1 = 18800, WY1 = 21780;
+// 2026-10-16 달 요청: 보내 준 지도대로 다시 배치. 지도 1px = 32(0.8m), 지도의 왼쪽 위 검은 원(442,573) = 과수원 둘레 가운데(1200,2300)
+const MAPK = 32, MAP0 = {ix:442, iy:573, x:1200, y:2300};
+const mapXY = (ix, iy) => [MAP0.x + (ix - MAP0.ix) * MAPK, MAP0.y + (iy - MAP0.iy) * MAPK];
+const WX0 = MAP0.x - MAP0.ix * MAPK, WY0 = MAP0.y - MAP0.iy * MAPK, WX1 = MAP0.x + (1289 - MAP0.ix) * MAPK, WY1 = MAP0.y + (1072 - MAP0.iy) * MAPK;
 const WORLD_W = WX1 - WX0, WORLD_H = WY1 - WY0;
-const HOME = {x0:-2100, y0:440, x1:2880, y1:5600}; // 2026-10-13 과수원 20줄이 들어가게 남쪽으로 1000 넓힘
+const HOME = {x0:-1100, y0:440, x1:3600, y1:4300, name:'우리 과수원'}; // 2026-10-16 지도의 왼쪽 위 검은 원(집·창고·과수원)
 const worldH = rows => OY + rows * ROW_H + 520;
 
 const VARS = {
@@ -555,7 +564,6 @@ const ORDERS = [
 const ACH = {
   plant1:  ['🌱','첫 묘목','묘목을 처음 심었어요'],
   tiger:   ['🐯','호랑이를 이긴 농부','전설의 호랑이를 이겼어요'],
-  pbear:   ['🐻‍❄️','설산의 영웅','설산의 전설의 흰곰을 이겼어요'],
   orchard: ['🌳','과수원 완성','빈 자리 없이 다 심었어요'],
   harvest1:['🍎','첫 수확','사과를 처음 땄어요'],
   gradeS:  ['🏅','특 등급','특 등급 사과를 땄어요'],
@@ -608,6 +616,51 @@ function seasonOf(w){
 }
 const DAYN = ['월','화','수','목','금','토','일'];
 
+// ===== 2026-10-16 달이 보낸 지도대로 다시 배치 =====
+// 검은 원 3개 = 농장(왼쪽 위 = 지금 과수원, 나머지 둘 = 나중에 넓힐 확장 부지), 빨간 원 2개 = 마을. 원 밖은 전부 짐승이 다니는 숲
+// 지도 좌표(ix, iy)를 mapXY로 바꿔 써요(01_data.js). 길은 지도의 하얀 길을 따라 그렸어요
+const MP = (ix, iy) => mapXY(ix, iy);
+const mapRect = (ix, iy, w, h, extra) => { const [x, y] = mapXY(ix, iy); return {x0:x - w / 2, y0:y - h / 2, x1:x + w / 2, y1:y + h / 2, cx:x, cy:y, ...extra}; };
+const V1 = mapRect(512, 300, 3000, 2800, {name:'강변 마을', kind:'village', ic:'🏘️'});   // 위쪽 빨간 원 (다리 옆)
+const V2 = mapRect(703, 590, 3400, 4100, {name:'사과골 마을', kind:'village', ic:'🏘️'}); // 가운데 빨간 원
+const F2 = mapRect(612, 777, 4200, 4400, {name:'확장 부지 1', kind:'lot', ic:'🌱'});    // 가운데 아래 검은 원
+const F3 = mapRect(983, 952, 4200, 4400, {name:'확장 부지 2', kind:'lot', ic:'🌱'});    // 오른쪽 아래 검은 원
+HOME.kind = 'home'; HOME.ic = '🏡'; HOME.cx = (HOME.x0 + HOME.x1) / 2; HOME.cy = (HOME.y0 + HOME.y1) / 2;
+const SAFE = [HOME, V1, V2, F2, F3];
+const inRect = (R, x, y, pad = 0) => x > R.x0 - pad && x < R.x1 + pad && y > R.y0 - pad && y < R.y1 + pad;
+const safeAt = (x, y, pad = 0) => SAFE.find(R => inRect(R, x, y, pad));
+const rectDist = (R, x, y) => Math.hypot(Math.max(R.x0 - x, 0, x - R.x1), Math.max(R.y0 - y, 0, y - R.y1));
+// 마을 길 끝(04x_village.js의 반듯한 보도블록 길과 이어지는 자리). 옛 마을 배치를 VT만큼 옮겨 사과골 마을로 써요
+const VT = {x:V2.cx + 415, y:V2.cy - 2885};
+const V2W = [VT.x - 2100, VT.y + 2500], V2NE = [VT.x - 60, VT.y + 1250], V2E = [VT.x - 60, VT.y + 2500];
+const V1N = [V1.cx, V1.cy - 900], V1S = [V1.cx, V1.cy + 1000], V1E = [V1.cx + 1000, V1.cy];
+// 큰 길(지도의 하얀 길). 갈림길 점은 서로 같은 좌표를 써서 이어져요
+const J1 = MP(362, 530), JW = MP(590, 594), J5 = MP(445, 885), J6 = MP(441, 940), JE = MP(700, 860);
+const HOME_GATE = [HOME.x0 - 40, 1250];
+const MAP_ROADS = [
+  [MP(575, 0), MP(578, 40), MP(600, 100), MP(585, 150), MP(545, 200), MP(510, 250), V1N],                         // 다리 → 강변 마을
+  [MP(600, 100), MP(640, 95), MP(760, 55), MP(900, 18), MP(1000, 22), MP(1080, 62), MP(1200, 72), MP(1289, 68)],               // 강 따라 동쪽
+  [V1S, MP(490, 330), MP(455, 380), MP(415, 430), MP(385, 475), MP(368, 512), J1, HOME_GATE],                   // 강변 마을 → 과수원 서쪽 입구
+  [J1, [HOME.x0 - 260, 300], [HOME.x1 + 200, 300], MP(560, 580), JW, MP(640, 604), V2W],                       // 과수원 북쪽을 돌아 사과골 마을로
+  [V1E, MP(540, 335), MP(550, 372), MP(525, 386), MP(560, 410), MP(640, 445), MP(720, 488), MP(770, 515), MP(762, 560), V2NE], // 강변 마을 → 사과골 마을(고갯길)
+  [JW, MP(545, 625), MP(495, 662), MP(458, 712), MP(442, 790), J5, J6, MP(445, 1072)],                                        // 남쪽으로 내려가는 길
+  [J6, MP(380, 975), MP(300, 985), MP(250, 966), MP(150, 970), MP(100, 942), MP(0, 925)],                                     // 서쪽 길
+  [J5, MP(495, 852), MP(545, 826), MP(612, 835), JE],                                                                       // 확장 부지 1 아래
+  [JE, MP(780, 862), MP(860, 846), MP(890, 872), MP(912, 905), MP(950, 932), [F3.cx, F3.cy], MP(1040, 945), MP(1080, 1000)],     // 확장 부지 2로
+  [MP(1080, 1000), MP(1150, 1018), MP(1196, 1024)]                                                                          // 호랑이 굴로
+];
+// 숲 깊이 들어가는 오솔길(지도엔 없지만 깊은 숲을 다닐 수 있게)
+const FOREST_PATHS = [
+  [MP(720, 488), MP(860, 420), MP(1000, 380), MP(1150, 300), MP(1260, 200)],
+  [V2E, MP(830, 600), MP(960, 640), MP(1100, 700), MP(1250, 760)],
+  [MP(415, 430), MP(300, 420), MP(180, 480), MP(60, 560)],
+  [MP(458, 712), MP(330, 700), MP(200, 760), MP(70, 800)],
+  [MP(1000, 22), MP(1050, 160), MP(1120, 260)]
+];
+// 지도 왼쪽 위의 강(동계천)과 큰 도로(농암로): 그림만
+const RIVER = [MP(640, 0), MP(600, 70), MP(560, 150), MP(500, 200), MP(430, 225), MP(330, 238), MP(220, 228), MP(120, 205), MP(40, 178), MP(0, 165)];
+const HIGHWAY = [MP(590, 0), MP(560, 50), MP(520, 85), MP(440, 125), MP(370, 155), MP(300, 175), MP(200, 190), MP(120, 175), MP(60, 130), MP(0, 85)];
+
 // ===== 게임 상태와 규칙 (그림과 분리) =====
 let G = null;
 const hooks = {emit(){}, toast(){}};   // UI가 채워 넣음
@@ -641,7 +694,7 @@ const huntLeft = () => Math.max(0, huntCap() - incBook().hunt);
 // 2026-10-13 꿀벌통 업그레이드(석청): 단계마다 통당 품질 +1, 3단계는 여름·가을에 꿀도 팔려요
 const HIVE_UP = [{st:3, price:300000}, {st:5, price:600000}, {st:8, price:1000000}];
 const hiveLv = () => clamp(G.hiveLv || 0, 0, 3);
-const treePos = i => ({x: OX + TREE_DX / 2 + (i % PER_ROW) * TREE_DX, y: OY + Math.floor(i / PER_ROW) * ROW_H + STRIP / 2 + 6});
+const treePos = i => ({x: colX(i % PER_ROW), y: OY + Math.floor(i / PER_ROW) * ROW_H + STRIP / 2 + 6});
 const unlocked = v => G.rep >= VARS[v].rep;
 
 function rollYearEvents(){
@@ -2129,13 +2182,13 @@ function drawPortrait(cv, who){
 // ===== 과수원 세상 =====
 const SPOT = {
   hanok:{x:-450, y:900}, shed:{x:510, y:830} /* 2026-10-13 저장하는 한옥은 왼쪽 빈 터로, 사과 창고가 한옥 자리로 크게 */, grandma:{x:480, y:1440}, chief:{x:270, y:1440}, hunter:{x:110, y:1440},
-  sarang:{x:170, y:820}, cold:{x:200, y:1190}, factory:{x:430, y:1160}, wondumak:{x:2340, y:780},
-  hives:[[2300, 1040], [2350, 1075], [2300, 1110]], drone:{x:900, y:830},
+  sarang:{x:170, y:820}, cold:{x:200, y:1190}, factory:{x:430, y:1160}, wondumak:{x:3200, y:780},
+  hives:[[3180, 1040], [3230, 1075], [3180, 1110]], drone:{x:900, y:830},
   pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
-  rabbit:{x:2440, y:1360}, chicken:{x:560, y:1720}, cat:{x:250, y:880}, dog:{x:690, y:980},
+  rabbit:{x:3300, y:1360}, chicken:{x:560, y:1720}, cat:{x:250, y:880}, dog:{x:690, y:980},
   jangdok:{x:110, y:960}, sotdae:{x:-90, y:1560}, nongmak:{x:800, y:1400}, portal:{x:110, y:1680} /* 2026-10-13 이장님 아래 순간이동 포탈 */ // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
 };
-const ROAD = [[-1000, 1250], [930, 1250], [930, 1150]]; // 2026-10-14 달 요청: 마을 길은 반듯하게(가로·세로로만)
+const ROAD = [[HOME.x0 - 40, 1250], [930, 1250], [930, 1150]]; // 2026-10-16 서쪽 입구에서 마당까지 // 2026-10-14 달 요청: 마을 길은 반듯하게(가로·세로로만)
 const YARD = {x:520, y:925, rx:270, ry:85}, HYARD = {x:-450, y:1000, rx:230, ry:72};
 
 let P = {x:930, y:1000, dir:0, walk:0, act:0, tgt:null, spd:270};
@@ -2143,7 +2196,7 @@ let cam = {x:930, y:900, z:.9, ox:0, oy:0}; // 시점 고정 (2026-10-11 조금 
 const floats = [];
 const workerS = {x:780, y:1080, tx:780, ty:1080, dir:0, walk:0, act:0, on:false, idle:0, sit:false};
 // 2026-10-15 달 요청: 할 일이 없으면 인부는 과수원 오른쪽 위 구석 벤치에 앉아 쉬어요(테이블에 빵·음료)
-const BENCH = {x:2260, y:588};
+const BENCH = {x:3100, y:588}; // 2026-10-16 과수원이 넓어져서 오른쪽으로
 function drawBench(c, x, y){
   const W2 = 72;
   for (const s of [-1, 1]) cel(c, cc => rr(cc, x + s * (W2 / 2 - 8) - 4, y - 46, 8, 46, 2), '#8a5a34', '#6a4024', 2, 0, 2.2); // 다리·등받이 기둥
@@ -2203,7 +2256,7 @@ function buildFeats(){
   }
 }
 // 과수원·마당·마을 길은 모두 집 둘레(HOME) 안에 있어요
-const nearHome = (x, y) => x > HOME.x0 - 300 && x < HOME.x1 + 300 && y > HOME.y0 - 300 && y < HOME.y1 + 300;
+const nearHome = (x, y) => !!safeAt(x, y, 300); // 2026-10-16 과수원·마을 두 곳·확장 부지
 // 이 땅 조각과 이웃 조각에 담긴 것만 꺼내요 (가장자리에 걸친 것도 그려지게)
 function* featsNear(m, x0, y0, w, h){
   for (let ty = Math.floor(y0 / TILE) - 1; ty <= Math.floor((y0 + h) / TILE) + 1; ty++) for (let tx = Math.floor(x0 / TILE) - 1; tx <= Math.floor((x0 + w) / TILE) + 1; tx++) { const L = m.get(tx + ',' + ty); if (L) yield* L; }
@@ -2253,15 +2306,21 @@ function drawGround(c, x0, y0, w, h){
     const y = OY + r * ROW_H;
     // 바퀴 자국
     c.fillStyle = pal.track;
-    c.fillRect(OX - 100, y + STRIP + 40, ORCH_W + 200, 22);
-    c.fillRect(OX - 100, y + STRIP + ALLEY - 62, ORCH_W + 200, 22);
-    // 나무 띠
-    c.beginPath(); rr(c, OX - 24, y, ORCH_W + 48, STRIP, 26); c.fillStyle = win ? '#e3e8ec' : '#9b6b44'; c.fill();
-    c.beginPath(); rr(c, OX - 18, y + 5, ORCH_W + 36, STRIP - 10, 22); c.fillStyle = win ? '#f4f7f9' : '#b9875a'; c.fill();
-    if (!win) { const R2 = srand(r + 5); for (let k = 0; k < 70; k++) { c.beginPath(); ell(c, OX + R2() * ORCH_W, y + 12 + R2() * (STRIP - 24), 4, 2); c.fillStyle = '#a2734a'; c.fill(); } }
+    c.fillRect(OX - 100, y + STRIP + 22, ORCH_W + 200, 18);
+    c.fillRect(OX - 100, y + STRIP + ALLEY - 40, ORCH_W + 200, 18);
+    // 나무 띠 (왼쪽 밭 · 오른쪽 밭)
+    for (const bx of [OX, ROAD_X1]) {
+      c.beginPath(); rr(c, bx - 24, y, BLOCK_W + 48, STRIP, 20); c.fillStyle = win ? '#e3e8ec' : '#9b6b44'; c.fill();
+      c.beginPath(); rr(c, bx - 18, y + 5, BLOCK_W + 36, STRIP - 10, 16); c.fillStyle = win ? '#f4f7f9' : '#b9875a'; c.fill();
+      if (!win) { const R2 = srand(r * 2 + (bx > OX ? 1 : 0) + 5); for (let k = 0; k < 30; k++) { c.beginPath(); ell(c, bx + R2() * BLOCK_W, y + 10 + R2() * (STRIP - 20), 4, 2); c.fillStyle = '#a2734a'; c.fill(); } }
+    }
   }
   // 줄 끝 바퀴자국 (머리 길)
   c.fillStyle = pal.track; c.fillRect(OX - 100, top + 18, ORCH_W + 200, 20);
+  // 2026-10-16 두 밭 사이 농로 8m (흙길 + 바퀴 자국 두 줄)
+  c.fillStyle = win ? '#e9eef2' : '#d9bb86'; c.fillRect(ROAD_X0 + 26, top, FARM_ROAD - 52, bot - top + 60);
+  c.fillStyle = win ? '#dfe6ec' : '#c9a66c'; for (const k of [.3, .7]) c.fillRect(ROAD_X0 + FARM_ROAD * k - 11, top, 22, bot - top + 60);
+  c.strokeStyle = win ? '#cfd8e0' : '#b88f58'; c.lineWidth = 3; c.strokeRect(ROAD_X0 + 26, top, FARM_ROAD - 52, bot - top + 60);
   // 풀
   c.lineCap = 'round';
   for (const [x, y, s] of featsNear(feats.tufts, x0, y0, w, h)) {
@@ -2562,8 +2621,8 @@ function blocked(x, y){
     if (r >= 0 && r < G.rows) {
       const ty = OY + r * ROW_H + STRIP / 2 + 6;
       if (Math.abs(y - ty) < 14) {
-        const c2 = Math.round((x - OX - TREE_DX / 2) / TREE_DX);
-        if (c2 >= 0 && c2 < PER_ROW && G.trees[r * PER_ROW + c2]) { const tx = OX + TREE_DX / 2 + c2 * TREE_DX; if (Math.abs(x - tx) < 16) return true; }
+        const c2 = x >= ROAD_X1 ? HALF_ROW + Math.round((x - ROAD_X1 - TREE_DX / 2) / TREE_DX) : Math.round((x - OX - TREE_DX / 2) / TREE_DX);
+        if (c2 >= 0 && c2 < PER_ROW && G.trees[r * PER_ROW + c2]) { if (Math.abs(x - colX(c2)) < 16) return true; }
       }
     }
   }
@@ -2750,7 +2809,7 @@ function collectEntities(ctx, vis, T, w){
   // 줄 끝 큰 기둥
   for (let r = 0; r < G.rows; r++) {
     const y = OY + r * ROW_H + STRIP / 2 + 6;
-    for (const x of [OX - 16, OX + ORCH_W + 16]) if (vis(x, y)) add(y, x, () => cel(ctx, cc => rr(cc, x - 6, y - 160, 12, 162, 3), '#d4cec4', '#a8a092', 3, 0, 2.4));
+    for (const x of [OX - 16, ROAD_X0 + 16, ROAD_X1 - 16, OX + ORCH_W + 16]) if (vis(x, y)) add(y, x, () => cel(ctx, cc => rr(cc, x - 6, y - 160, 12, 162, 3), '#d4cec4', '#a8a092', 3, 0, 2.4));
   }
   // 울타리
   const fx1 = OX - 150, fx2 = OX + ORCH_W + 150, fy1 = OY - 120, fy2 = OY + G.rows * ROW_H + 18;
@@ -3101,13 +3160,17 @@ function render3D(ctx, dt, T){
   }
 }
 
-// ===== 사과골 마을 (과수원 서쪽) =====
-// 2026-10-13 마을 2배: 아래 좌표(옛 배치)를 광장 기준으로 두 배 넓혀 서쪽으로 옮겨요 → vxy()
-const VSC = 2, VOLD = {x:430, y:2190}, VNEW = {x:-1000, y:2500};
-const vxy = (x, y) => [VNEW.x + (x - VOLD.x) * VSC, VNEW.y + (y - VOLD.y) * VSC];
-const VROADS = [[[-1000, 1250], [-1000, 4440]], [[-2100, 2500], [-60, 2500]], [[-60, 2500], [-60, 1250]]]; // 2026-10-14 대각선 길을 반듯하게
+// ===== 마을 두 곳: 사과골 마을(지도 가운데 빨간 원) · 강변 마을(지도 위 빨간 원) =====
+// 2026-10-13 마을 2배: 아래 좌표(옛 배치)를 광장 기준으로 두 배 넓혀요 → vxy()
+// 2026-10-16 달 요청(지도대로): 옛 배치를 통째로 VT만큼 옮겨 사과골 마을로(tv), 집 4채는 강변 마을로 옮겼어요
+const VSC = 2, VOLD = {x:430, y:2190}, VNEW0 = {x:-1000, y:2500};
+const tv = (x, y) => [x + VT.x, y + VT.y];
+const VNEW = {x:VNEW0.x + VT.x, y:VNEW0.y + VT.y};
+const vxy = (x, y) => tv(VNEW0.x + (x - VOLD.x) * VSC, VNEW0.y + (y - VOLD.y) * VSC);
+const VROADS = [[[-1000, 1250], [-1000, 4440]], [[-2100, 2500], [-60, 2500]], [[-60, 2500], [-60, 1250]]].map(L => L.map(p => tv(...p))) // 2026-10-14 대각선 길을 반듯하게
+  .concat([[V1N, V1S], [[V1.cx - 1000, V1.cy], V1E]]); // 강변 마을 십자길
 const YARD_ROADS = [[[560, 1250], [560, 1000]], [[-450, 1250], [-450, 1010]]]; // 큰길 → 창고 마당·한옥 마당
-const PLAZA = {x:VNEW.x, y:VNEW.y, rx:280, ry:115};
+const PLAZA = {x:VNEW.x, y:VNEW.y, rx:280, ry:115}, PLAZA1 = {x:V1.cx, y:V1.cy, rx:220, ry:95};
 const VB = [
   {x:210, y:1900, roof:'#6f8fd8', wall:'#fff3dc', sign:'복순 떡방앗간', choga:1},
   {x:660, y:1900, roof:'#e8634a', wall:'#fffaf0', sign:'금비상회'},
@@ -3122,24 +3185,27 @@ const VB = [
 ].map(b => { const [x, y] = vxy(b.x, b.y); return {...b, x, y}; }).concat([
   // 2026-10-13 마을이 넓어지면서 새로 생긴 집
   {x:-1440, y:1480, roof:'#9a6ad8', wall:'#fff6ee', sign:'도윤이네 집', choga:1},
-  {x:-560, y:1480, roof:'#d85a6a', wall:'#fffaf2', sign:'빛나네 집', choga:1},
-  {x:-230, y:2290, roof:'#e84a3a', wall:'#fffaf0', sign:'사과골 우체국'},
-  {x:-230, y:2840, roof:'#8a6a3a', wall:'#fff3dc', sign:'할매 국밥집', choga:1},
-  {x:-1440, y:4380, roof:'#4aa0a0', wall:'#fffaf0', sign:'작은 도서관', big:1},
-  {x:-560, y:4380, roof:'#f07a3a', wall:'#fff6e6', sign:'사과즙 공방'}
+  {x:-560, y:1480, roof:'#d85a6a', wall:'#fffaf2', sign:'빛나네 집', choga:1}
+].map(b => { const [x, y] = tv(b.x, b.y); return {...b, x, y}; })).concat([
+  // 2026-10-16 강변 마을 (위쪽 빨간 원): 우체국·국밥집·도서관·사과즙 공방
+  {x:V1.cx - 470, y:V1.cy - 500, roof:'#e84a3a', wall:'#fffaf0', sign:'강변 우체국', v1:1},
+  {x:V1.cx + 470, y:V1.cy - 500, roof:'#8a6a3a', wall:'#fff3dc', sign:'할매 국밥집', choga:1, v1:1},
+  {x:V1.cx - 470, y:V1.cy + 620, roof:'#4aa0a0', wall:'#fffaf0', sign:'작은 도서관', big:1, v1:1},
+  {x:V1.cx + 470, y:V1.cy + 620, roof:'#f07a3a', wall:'#fff6e6', sign:'사과즙 공방', v1:1}
 ]);
 // 길가 나무 (넓어진 마을이 휑하지 않게)
-const VSTREET = -1000, PLAY = {x:430, y:3150};
-const HOUSE_PATHS = VB.map(b => [[b.x, b.y + 16], [b.x > -300 ? -60 : VSTREET, b.y + 16]]); // 집 앞에서 큰길까지
+const VSTREET = -1000 + VT.x, PLAY = (([x, y]) => ({x, y}))(tv(430, 3150));
+const HOUSE_PATHS = VB.map(b => [[b.x, b.y + 16], [b.v1 ? V1.cx : b.x > -300 + VT.x ? -60 + VT.x : VSTREET, b.y + 16]]); // 집 앞에서 큰길까지
 const VTREES = [];
-for (let y = 1720; y < 4400; y += 290) for (const side of [-1, 1]) {
+for (let y = 1720 + VT.y; y < 4400 + VT.y; y += 290) for (const side of [-1, 1]) {
   const x = VSTREET + side * 175;
   if (Math.abs(y - VNEW.y) < 300 || VB.some(b => Math.abs(b.y + 15 - y) < 90 && Math.sign(b.x - VSTREET) === side)) continue;
   VTREES.push({x, y});
 }
+for (const [dx, dy] of [[-260, -820], [260, -820], [-260, 220], [260, 220], [-880, -260], [880, -260], [-880, 260], [880, 260]]) VTREES.push({x:V1.cx + dx, y:V1.cy + dy}); // 강변 마을 길가 나무
 const JEONGJA = (([x, y]) => ({x, y}))(vxy(300, 2320)), BIGTREE = (([x, y]) => ({x, y}))(vxy(575, 2330));
 const worldBot = () => WY1;
-function inVillage(x, y){ return x > HOME.x0 && x < 40 && y > 1300 && y < HOME.y1; }
+function inVillage(x, y){ return inRect(V1, x, y) || inRect(V2, x, y); }
 function villageSolids(s){
   for (const b of VB) { const hw = b.big ? 120 : 90; s.push({x:b.x - hw, y:b.y - 80, w:hw * 2, h:80}); }
   s.push({x:BIGTREE.x - 18, y:BIGTREE.y - 14, w:36, h:16});
@@ -3205,6 +3271,8 @@ const NPC_DATA = [
    lines:['안녕하세요, 빛나TV! 오늘은 사과골 농부님을 만나러 왔어요!', '구독자들이 {N}네 과수원 사과 맛을 궁금해해요!', '사과 따는 날 영상 찍어도 돼요?']}
 ];
 for (const d of NPC_DATA) { d.home = vxy(...d.home); if (d.r) d.r = [d.r[0] * VSC, d.r[1] * VSC]; }
+// 2026-10-16 택배 기사님은 강변 우체국, 빛나는 강변 마을 광장 둘레에서 지내요
+for (const d of NPC_DATA) { if (d.name === '문태풍 기사님') { d.home = [V1.cx, V1.cy]; d.r = [30, 800]; } if (d.name === '남궁빛나') { d.home = [V1.cx, V1.cy + 120]; d.r = [700, 60]; } }
 // 아이들은 새 놀이터에서 놀아요
 for (const d of NPC_DATA) if (d.look.kid) { d.home = [PLAY.x + rnd(-120, 120), PLAY.y + 40]; d.r = [230, 70]; }
 const NPCS = NPC_DATA.map((d, i) => ({...d, i, hx:d.home[0], hy:d.home[1], x:d.home[0], y:d.home[1], tx:d.home[0], ty:d.home[1], dir:0, walk:0, wait:rnd(0, 3), li:0}));
@@ -3270,11 +3338,13 @@ function drawVillageGround(c, win, x0, y0, w, h){
   const road = (pts, wd, col) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.lineWidth = wd; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(); };
   paveRoads(c, [...[ROAD, ...VROADS, ...YARD_ROADS].map(p => [p, 96]), ...HOUSE_PATHS.map(p => [p, 40])], win, x0, y0, w, h,
     VB.map(b => { const hw = b.big ? 130 : 100; return {x:b.x - hw, y:b.y - 10, w:hw * 2, h:40}; }));
-  c.beginPath(); ell(c, PLAZA.x, PLAZA.y, PLAZA.rx + 8, PLAZA.ry + 8); c.fillStyle = win ? '#d8dfe6' : '#b8b0a2'; c.fill();
-  c.beginPath(); ell(c, PLAZA.x, PLAZA.y, PLAZA.rx, PLAZA.ry); c.fillStyle = win ? '#f2f5f8' : '#eee6d6'; c.fill();
-  // 보도블록 무늬
-  c.strokeStyle = win ? '#e2e8ee' : '#d6cdbc'; c.lineWidth = 2;
-  for (let k = 1; k < 4; k++) { c.beginPath(); ell(c, PLAZA.x, PLAZA.y, PLAZA.rx * k / 4, PLAZA.ry * k / 4); c.stroke(); }
+  for (const PZ of [PLAZA, PLAZA1]) {
+    c.beginPath(); ell(c, PZ.x, PZ.y, PZ.rx + 8, PZ.ry + 8); c.fillStyle = win ? '#d8dfe6' : '#b8b0a2'; c.fill();
+    c.beginPath(); ell(c, PZ.x, PZ.y, PZ.rx, PZ.ry); c.fillStyle = win ? '#f2f5f8' : '#eee6d6'; c.fill();
+    // 보도블록 무늬
+    c.strokeStyle = win ? '#e2e8ee' : '#d6cdbc'; c.lineWidth = 2;
+    for (let k = 1; k < 4; k++) { c.beginPath(); ell(c, PZ.x, PZ.y, PZ.rx * k / 4, PZ.ry * k / 4); c.stroke(); }
+  }
   // 놀이터 모래밭
   c.beginPath(); ell(c, PLAY.x, PLAY.y, 300, 120); c.fillStyle = win ? '#e9eef2' : '#e8d4a0'; c.fill(); c.lineWidth = 3; c.strokeStyle = win ? '#c8d2da' : '#c8a868'; c.stroke();
 }
@@ -3379,11 +3449,23 @@ function villageEntities(ctx, add, vis){
   if (vis(BIGTREE.x, BIGTREE.y, 340)) add(BIGTREE.y, BIGTREE.x, () => drawBigTree(ctx, BIGTREE.x, BIGTREE.y));
   for (const t of VTREES) if (vis(t.x, t.y, 200)) add(t.y, t.x, () => drawOak(ctx, t.x, t.y, .62));
   if (vis(PLAY.x, PLAY.y, 400)) { add(PLAY.y - 4, PLAY.x, () => drawPlayground(ctx, PLAY.x, PLAY.y)); add(PLAY.y + 140, PLAY.x, () => drawSign(ctx, PLAY.x, PLAY.y + 140, '🛝 사과골 놀이터')); }
-  if (vis(-760, 1330)) add(1330, -760, () => drawSign(ctx, -760, 1330, '🏡 사과골 마을'));
+  { const [sx, sy] = tv(-760, 1330); if (vis(sx, sy)) add(sy, sx, () => drawSign(ctx, sx, sy, '🏘️ 사과골 마을')); }
+  { const sx = V1.cx + 200, sy = V1.cy - 760; if (vis(sx, sy)) add(sy, sx, () => drawSign(ctx, sx, sy, '🏘️ 강변 마을')); }
   // 화가의 이젤
   const EZ = vxy(675, 2352);
   if (vis(EZ[0], EZ[1])) add(EZ[1], EZ[0], () => { ctx.save(); ctx.translate(EZ[0], EZ[1]); line(ctx, [-12, 0, 0, -58, 12, 0], 3, '#8a5432'); cel(ctx, cc => rr(cc, -16, -64, 32, 26, 2), '#ffffff', '#e0e0e0', 1, 1, 2.2); ctx.beginPath(); ctx.arc(-4, -52, 6, 0, 7); ctx.fillStyle = '#e8423a'; ctx.fill(); ctx.beginPath(); ctx.arc(6, -46, 4, 0, 7); ctx.fillStyle = '#5cb85c'; ctx.fill(); ctx.restore(); });
   for (const n of NPCS) if (vis(n.x, n.y)) add(n.y, n.x, () => drawPerson(ctx, n.x, n.y, n.look, n.dir, n.walk, 0));
+  // 2026-10-16 확장 부지 두 곳: 가운데 표지판 + 과수원 크기만큼 측량 말뚝(빨간 리본)
+  for (const A of [F2, F3]) {
+    if (vis(A.cx, A.cy, 500)) add(A.cy, A.cx, () => drawSign(ctx, A.cx, A.cy, `🌱 ${A.name} · 과수원을 넓힐 자리`));
+    const x0 = A.cx - ORCH_W / 2 - 120, x1 = A.cx + ORCH_W / 2 + 120, y0 = A.cy - 1500, y1 = A.cy + 1500;
+    for (const [x, y] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1], [A.cx, y0], [A.cx, y1], [x0, A.cy], [x1, A.cy]]) if (vis(x, y)) add(y, x, () => drawStake(ctx, x, y));
+  }
+}
+function drawStake(c, x, y){
+  shadow(c, x, y, 8, 3);
+  cel(c, cc => rr(cc, x - 4, y - 54, 8, 56, 2), '#c9935a', '#8a5a34', 1, 0, 2);
+  cel(c, cc => { cc.moveTo(x + 4, y - 50); cc.lineTo(x + 26, y - 44); cc.lineTo(x + 4, y - 38); cc.closePath(); }, '#ff5a4a', '#c43a2a', 0, 1, 2);
 }
 function drawVillageTags(ctx){
   ctx.font = '17px Jua'; ctx.textAlign = 'center';
@@ -3401,11 +3483,18 @@ function drawVillageTags(ctx){
 
 // ===== 뒷산 사냥터: 넓은 숲, 같은 화면에서 실시간 전투, 전리품 =====
 // 2026-10-12: 과수원이 맵 가운데. 집·마을 둘레(HOME) 바깥 사방이 사냥터. 집에서 멀수록 센 산짐승과 귀한 전리품.
-const GATES = [{x:HOME.x1, y:1200}, {x:1600, y:HOME.y1}, {x:2400, y:HOME.y0}, {x:HOME.x0, y:2500}]; // 동·남·북·서 입구
-function inHunt(x, y){ return x < HOME.x0 || x > HOME.x1 || y < HOME.y0 || y > HOME.y1; }
+// 2026-10-16 지도대로: 과수원·마을·확장 부지(SAFE, 01m_map.js) 밖은 전부 숲(사냥터). 마을·농장에서 멀수록 센 산짐승
+function inHunt(x, y){ return !safeAt(x, y); }
+function homeDist(x, y){ let d = 1e9; for (const R of SAFE) d = Math.min(d, rectDist(R, x, y)); return d; }
+// 입구 = 큰길이 마을·농장 네모를 넘나드는 자리 (자동으로 찾아요)
+const GATES = [];
+for (const T of [...MAP_ROADS, ROAD]) for (let i = 0; i < T.length - 1; i++) {
+  const [ax, ay] = T[i], [bx, by] = T[i + 1], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 20));
+  for (let k = 0; k < n; k++) { const x0 = ax + (bx - ax) * k / n, y0 = ay + (by - ay) * k / n, x1 = ax + (bx - ax) * (k + 1) / n, y1 = ay + (by - ay) * (k + 1) / n;
+    if (!!safeAt(x0, y0) !== !!safeAt(x1, y1) && !GATES.some(g => Math.hypot(g.x - x1, g.y - y1) < 300)) GATES.push({x:(x0 + x1) / 2, y:(y0 + y1) / 2, R:safeAt(x0, y0) || safeAt(x1, y1)}); }
+}
 function gateDist(x, y){ return Math.min(...GATES.map(g => Math.hypot(x - g.x, y - g.y))); }
-function homeDist(x, y){ return Math.hypot(Math.max(HOME.x0 - x, 0, x - HOME.x1), Math.max(HOME.y0 - y, 0, y - HOME.y1)); }
-// 2026-10-14 맵 4배: 집에서 멀어질수록 ★1~★7. 남쪽 끝(눈 덮인 설산)에 흰곰 굴
+// 2026-10-14 맵 4배: 집에서 멀어질수록 ★1~★7 (2026-10-16 설산·흰곰 굴은 없앴어요)
 const ZONE_D = [1600, 3400, 5200, 7400, 9800, 12400];
 function zoneAt(x, y){ if (!inHunt(x, y)) return -1; const d = homeDist(x, y); let z = 0; while (z < ZONE_D.length && d >= ZONE_D[z]) z++; return z; }
 const ZONES = [
@@ -3413,33 +3502,10 @@ const ZONES = [
   {name:'험한 봉우리', stars:'★★★★★'}, {name:'구름 산맥', stars:'★★★★★★'}, {name:'끝없는 산맥', stars:'★★★★★★★'}
 ];
 // 눈 덮인 설산: 남쪽으로 갈수록 눈이 쌓여요(0~1)
-const SNOW_Y = 13000;
+const SNOW_Y = Infinity; // 2026-10-16 달 요청: 설원 지역 삭제
 function snowK(y){ return clamp((y - SNOW_Y) / 1600, 0, 1); }
 const zoneName = (z, x, y) => (snowK(y) > .5 && z >= 4 ? '눈 덮인 설산' : ZONES[z].name);
-const TRAILS_RAW = [ // 2026-10-13 맵 4배에 맞춰 새로 낸 숲길
-  [[2880, 1200], [4400, 1300], [5800, 800], [7400, 1500], [9200, 1000]],
-  [[4400, 1300], [5000, 3200], [6400, 4800], [7800, 6600], [8800, 9200]],
-  [[1600, 5600], [1800, 6700], [3200, 7000], [5000, 6600], [6800, 7800], [8800, 9200]], [[5000, 6600], [6400, 4800]],
-  [[1800, 6700], [700, 7800], [-600, 9800], [1400, 11000], [3600, 10400]],
-  [[2400, 440], [2300, -900], [1300, -2400], [-200, -3600], [-2000, -5000], [-4200, -6400]],
-  [[2300, -900], [4400, -2000], [6200, -3400], [7800, -5800]], [[1300, -2400], [1700, -4800], [2400, -6600]], [[4400, -2000], [5800, 800]],
-  [[-2100, 2500], [-3300, 2300], [-4600, 3600], [-5400, 5600], [-4600, 7800], [-2600, 9000], [-600, 9800]],
-  [[-3300, 2300], [-4400, 600], [-5600, -1200], [-4200, -3200], [-2000, -5000]],
-  // 2026-10-14 새로 넓힌 바깥 숲길 (★5~★7)
-  [[9200, 1000], [11400, 1800], [13600, 800], [16000, 1600], [17600, 600]],
-  [[11400, 1800], [12400, -2000], [12000, -5400], [12000, -9400]],
-  [[7800, -5800], [9600, -8200], [12000, -9400], [14400, -12000], [16200, -14800]],
-  [[2400, -6600], [2000, -9000], [3000, -11400], [1800, -13800], [2600, -16000]], [[3000, -11400], [6200, -12600], [9600, -8200]],
-  [[-5600, -1200], [-8200, -2600], [-9800, -5600], [-11800, -8800], [-13400, -12600]],
-  [[-9800, -5600], [-7200, -9400], [-4400, -11200], [-1200, -12800], [1800, -13800]],
-  [[-5400, 5600], [-8000, 4800], [-10400, 6200], [-12600, 4400], [-14200, 5600]], [[-8000, 4800], [-8200, 1400], [-8200, -2600]],
-  [[-2600, 9000], [-5800, 11000], [-8600, 12800], [-11200, 15600], [-13400, 18800]], [[-10400, 6200], [-9800, 9600], [-8600, 12800]],
-  [[16000, 1600], [15400, 5200], [16200, 8800], [13400, 13200]], [[11400, 1800], [11600, 5600], [8800, 9200]],
-  [[8800, 9200], [11000, 11600], [13400, 13200], [15600, 16400], [17000, 19600]],
-  [[3600, 10400], [6200, 12600], [8600, 15400], [11000, 11600]],
-  // 흰곰 굴로 가는 남쪽 설산 길
-  [[1400, 11000], [2200, 12800], [1200, 14600], [2400, 16200], [3000, 17500]], [[6200, 12600], [4400, 14200], [1200, 14600]], [[-5800, 11000], [-2600, 13400], [1200, 14600]]
-];
+const TRAILS_RAW = [...MAP_ROADS, ...FOREST_PATHS], MAIN_N = MAP_ROADS.length; // 2026-10-16 지도의 큰길 + 숲 오솔길
 // 2026-10-14 달 요청: 숲길을 구불구불한 오솔길로. 꺾이는 점(갈림길·빈터)은 그대로 두고 그 사이만 부드럽게 휘어요
 function wiggleTrail(T, seed){
   const R = srand(seed), out = [T[0]];
@@ -3453,8 +3519,8 @@ function wiggleTrail(T, seed){
 }
 // 꺾인 곳을 한 번 둥글게 깎아요(Chaikin). 처음·끝 점은 그대로라 갈림길이 이어져요
 const chaikin = T => { const o = [T[0]]; for (let i = 0; i < T.length - 1; i++) { const [ax, ay] = T[i], [bx, by] = T[i + 1]; o.push([ax * .75 + bx * .25, ay * .75 + by * .25], [ax * .25 + bx * .75, ay * .25 + by * .75]); } o.push(T[T.length - 1]); return o; };
-const TRAILS = TRAILS_RAW.map((T, i) => chaikin(wiggleTrail(T, 3100 + i * 17)));
-const CLEARINGS = TRAILS_RAW.flat().filter(([x, y]) => inHunt(x, y) && gateDist(x, y) > 500).map(([x, y]) => ({x, y, r:230}));
+const TRAILS = TRAILS_RAW.map((T, i) => i < MAIN_N ? chaikin(chaikin(T)) : chaikin(wiggleTrail(T, 3100 + i * 17))); // 큰길은 지도 모양 그대로 부드럽게만
+const CLEARINGS = [J1, JW, J5, J6, JE, ...FOREST_PATHS.map(T => T[T.length - 1])].filter(([x, y]) => inHunt(x, y) && gateDist(x, y) > 500).map(([x, y]) => ({x, y, r:230}));
 // 길 조각을 600칸 격자에 담아 가까운 것만 봐요(오솔길은 점이 많아서)
 const TRAIL_G = new Map();
 for (const T of TRAILS) for (let i = 0; i < T.length - 1; i++) {
@@ -3471,6 +3537,9 @@ function nearTrail(x, y, d){
   }
   return false;
 }
+const segNear = (L, x, y, d) => { for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2 || 1), 0, 1); if ((x - ax - t * (bx - ax)) ** 2 + (y - ay - t * (by - ay)) ** 2 < d * d) return true; } return false; };
+function nearMapRoad(x, y, d){ return MAP_ROADS.some(T => segNear(T, x, y, d + 60)); }
+function nearRiver(x, y){ return segNear(RIVER, x, y, 220) || segNear(HIGHWAY, x, y, 180); }
 // 오솔길 가장자리 장식(작은 돌·풀포기·들꽃). 땅 조각마다 나눠 담아요
 const TRAIL_DECO = new Map();
 { const R = srand(4747);
@@ -3549,22 +3618,16 @@ function buildForest(){
     if (R3() > keep) continue;
     FOREST.push({x, y, k:kind, s});
   }
-  // 2026-10-14 설산 봉우리: 눈 덮인 바위산. 길·굴·빈터는 비워 둬요. 맨 남쪽 끝은 봉우리가 줄지어 있어요
-  PEAKS = [];
-  const R4 = srand(7171);
-  for (let gy = SNOW_Y + 900; gy < WY1 - 500; gy += 950) for (let gx = WX0 + 500; gx < WX1 - 400; gx += 950) {
-    const x = gx + (R4() - .5) * 600, y = gy + (R4() - .5) * 500, s = 1 + R4() * .8;
-    if (R4() < .5 || nearTrail(x, y, 330 * s) || inDen(x, y, 500 * s) || inClearing(x, y, 300 * s)) continue;
-    PEAKS.push({x, y, s, v:R4()});
-  }
-  for (let x = WX0 + 300; x < WX1; x += 520) { const s = 1.3 + R4() * .7; PEAKS.push({x:x + R4() * 120, y:WY1 - 60 - R4() * 60, s, v:R4()}); }
-  FOREST = FOREST.filter(o => !PEAKS.some(p => ((o.x - p.x) / (230 * p.s)) ** 2 + ((o.y - p.y) / (110 * p.s)) ** 2 < 1));
+  PEAKS = []; // 2026-10-16 설산 봉우리 없앰
+  FOREST = FOREST.filter(o => !nearMapRoad(o.x, o.y, 150) && !nearRiver(o.x, o.y));
   // 사냥터 경계 소나무 줄 (입구는 비워 둬요)
   BORDER = [];
-  const R2 = srand(4040), gap = (x, y) => GATES.some(g => Math.hypot(x - g.x, y - g.y) < 150);
+  const R2 = srand(4040), gap = (x, y) => GATES.some(g => Math.hypot(x - g.x, y - g.y) < 170) || nearMapRoad(x, y, 70);
   const pine = (x, y) => BORDER.push({x, y, s:.95 + R2() * .3});
-  for (let y = HOME.y0 + 120; y < HOME.y1; y += 120) { const j = R2() * 20; if (!gap(HOME.x1, y)) pine(HOME.x1 - 20 + j, y); if (!gap(HOME.x0, y)) pine(HOME.x0 + 10 + j, y); }
-  for (let x = HOME.x0 + 40; x < HOME.x1; x += 115) { const j = R2() * 20; if (!gap(x, HOME.y1)) pine(x, HOME.y1 - 10 + j); if (!gap(x, HOME.y0)) pine(x, HOME.y0 + 20 + j); }
+  for (const A of SAFE) { // 2026-10-16 과수원·마을·확장 부지 둘레마다 소나무 줄
+    for (let y = A.y0 + 120; y < A.y1; y += 120) { const j = R2() * 20; if (!gap(A.x1, y)) pine(A.x1 - 20 + j, y); if (!gap(A.x0, y)) pine(A.x0 + 10 + j, y); }
+    for (let x = A.x0 + 40; x < A.x1; x += 115) { const j = R2() * 20; if (!gap(x, A.y1)) pine(x, A.y1 - 10 + j); if (!gap(x, A.y0)) pine(x, A.y0 + 20 + j); }
+  }
   // 2026-10-13 충돌: 나무 줄기·바위는 사과나무처럼 못 지나가요 (덤불은 지나가요). 400칸 격자에 넣어 빨리 찾아요
   SOLID_G = new Map();
   const put = o => { const k = Math.floor(o.x / 400) + ',' + Math.floor(o.y / 400); if (!SOLID_G.has(k)) SOLID_G.set(k, []); SOLID_G.get(k).push(o); };
@@ -3617,7 +3680,6 @@ function drawRock(c, x, y, s){
   c.restore();
 }
 function drawHuntGround(c, x0, y0, w, h, win){
-  if (x0 >= HOME.x0 && x0 + w <= HOME.x1 && y0 >= HOME.y0 && y0 + h <= HOME.y1) return;
   const S = seasonOf(G.week), pal = PAL[S], base = win ? '#dfe8ee' : pal.g2, dark = win ? '#c6d4de' : '#3f7a34';
   // 숲 바닥: 깊이 들어갈수록 조금씩 짙어져요
   for (let cy = y0; cy < y0 + h; cy += 64) for (let cx = x0; cx < x0 + w; cx += 64) {
@@ -3645,8 +3707,17 @@ function drawHuntGround(c, x0, y0, w, h, win){
   drawDenGround(c, x0, y0, w, h);
   // 오솔길: 풀이 살짝 눌린 가장자리 → 흙길 → 가운데 밟혀 반들반들한 줄
   const road = (pts, wd, col) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.lineWidth = wd; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(); };
-  const near = TRAILS.filter((T, i) => { const b = TRAIL_BB[i]; return b[0] < x0 + w + 120 && b[2] > x0 - 120 && b[1] < y0 + h + 120 && b[3] > y0 - 120; });
+  const hit = b => b[0] < x0 + w + 160 && b[2] > x0 - 160 && b[1] < y0 + h + 160 && b[3] > y0 - 160;
+  const near = TRAILS.filter((T, i) => i >= MAIN_N && hit(TRAIL_BB[i])), mainR = TRAILS.filter((T, i) => i < MAIN_N && hit(TRAIL_BB[i]));
+  // 2026-10-16 지도의 강(동계천)과 큰 도로(농암로)
+  if (hit(RIVER_BB)) { road(RIVER, 300, win ? '#d8e4ec' : '#c9b48a'); road(RIVER, 250, win ? '#e8f2f8' : '#6fb8d8'); road(RIVER, 150, win ? '#f2f8fb' : '#8ccbe4'); road(RIVER, 40, win ? '#ffffff' : '#b4e0f0'); }
+  if (hit(HIGHWAY_BB)) { road(HIGHWAY, 230, win ? '#c8d2da' : '#8a8a86'); road(HIGHWAY, 210, win ? '#e6ebef' : '#6a6e72'); c.setLineDash([60, 50]); road(HIGHWAY, 8, '#ffd23a'); c.setLineDash([]); }
   const snowMix = col => mix(col, '#f4f7fa', win && !sn ? .85 : sk * .88);
+  // 큰길: 넓은 흙길(자갈 섞인 밝은 색)
+  for (const T of mainR) road(T, 150, win ? 'rgba(200,214,224,.55)' : 'rgba(70,110,50,.2)');
+  for (const T of mainR) road(T, 128, snowMix('#b49064'));
+  for (const T of mainR) road(T, 116, snowMix('#d8bc8c'));
+  for (const T of mainR) { c.setLineDash([2, 26]); road(T, 60, snowMix('#c4a676')); c.setLineDash([]); }
   for (const T of near) road(T, 98, win ? 'rgba(200,214,224,.55)' : 'rgba(70,110,50,.18)');
   for (const T of near) road(T, 76, snowMix('#b88d5c'));
   for (const T of near) road(T, 66, snowMix('#cfa874'));
@@ -3668,6 +3739,8 @@ function drawHuntGround(c, x0, y0, w, h, win){
   const R = srand((x0 / 512 | 0) * 977 + (y0 / 512 | 0) * 131 + 5);
   for (let k = 0; k < 40; k++) { const x = x0 + R() * w, y = y0 + R() * h; if (!inHunt(x, y) || nearTrail(x, y, 45)) continue; c.beginPath(); ell(c, x, y, 4, 2.4); c.fillStyle = win ? '#ffffff' : ['#c98a3a', '#8a6a3a', '#5a8a3a'][k % 3]; c.fill(); }
 }
+const bbOf = T => [Math.min(...T.map(p => p[0])), Math.min(...T.map(p => p[1])), Math.max(...T.map(p => p[0])), Math.max(...T.map(p => p[1]))];
+const RIVER_BB = bbOf(RIVER), HIGHWAY_BB = bbOf(HIGHWAY);
 const TRAIL_BB = TRAILS.map(T => [Math.min(...T.map(p => p[0])), Math.min(...T.map(p => p[1])), Math.max(...T.map(p => p[0])), Math.max(...T.map(p => p[1]))]);
 
 // ----- 우주 (싸움) -----
@@ -3973,9 +4046,10 @@ function huntTargets(cands){ for (const f of FORAGE) cands.push({kind:'forage', 
 // ----- 숲속 쉼터 (2026-10-13): 체력 회복, 한 번 찾으면 마을 포탈·다른 쉼터로 바로 이동 -----
 const RESTS = [
   // 2026-10-14 달 요청: 마을(광장 -1000,2500)에서 지금보다 1.4~1.6배 멀리, 같은 방향의 숲길 갈림길(빈터)로 옮겼어요. id는 그대로라 찾은 기록이 남아요
-  {id:'e', name:'동쪽 숲 쉼터', x:11400, y:1800}, {id:'s', name:'남쪽 숲 쉼터', x:-2600, y:13400},
-  {id:'n', name:'북서쪽 숲 쉼터', x:-8200, y:-2600}, {id:'w', name:'서쪽 숲 쉼터', x:-8000, y:4800},
-  {id:'v', name:'남동쪽 골짜기 쉼터', x:11000, y:11600}, {id:'m', name:'전설의 산 쉼터', x:3000, y:-11400}
+  // 2026-10-16 지도대로 바뀐 길 위로 옮겼어요(길에서 살짝 비켜서)
+  {id:'e', name:'강변 동쪽 쉼터', x:mapXY(760, 55)[0], y:mapXY(760, 55)[1] + 260}, {id:'s', name:'남쪽 숲 쉼터', x:mapXY(442, 790)[0] + 280, y:mapXY(442, 790)[1]},
+  {id:'n', name:'다리 옆 쉼터', x:mapXY(588, 125)[0] + 300, y:mapXY(588, 125)[1]}, {id:'w', name:'서쪽 숲 쉼터', x:mapXY(150, 970)[0], y:mapXY(150, 970)[1] - 280},
+  {id:'v', name:'남동쪽 골짜기 쉼터', x:mapXY(860, 846)[0], y:mapXY(860, 846)[1] - 300}, {id:'m', name:'고갯길 쉼터', x:mapXY(640, 445)[0] + 120, y:mapXY(640, 445)[1] - 280}
 ];
 function restAt(x, y, pad = 0){ return RESTS.find(r => Math.hypot(x - r.x, (y - r.y) * 1.2) < 160 + pad); }
 function restsFound(){ if (!G.rests) G.rests = {}; return RESTS.filter(r => G.rests[r.id]); }
@@ -4047,7 +4121,7 @@ function updateHunt(dt){
   }
   updateBossFx(dt);
   for (let i = FORAGE.length - 1; i >= 0; i--) { FORAGE[i].t += dt; if (Math.hypot(FORAGE[i].x - P.x, FORAGE[i].y - P.y) > 4800) FORAGE.splice(i, 1); }
-  const dn = denAt(P.x, P.y), z = dn ? 'den' : zoneAt(P.x, P.y), zn = typeof z === 'number' && z >= 0 ? zoneName(z, P.x, P.y) : '';
+  const dn = denAt(P.x, P.y), z = dn ? 'den' : zoneAt(P.x, P.y), sa = safeAt(P.x, P.y), zn = typeof z === 'number' && z >= 0 ? zoneName(z, P.x, P.y) : sa ? `${sa.ic} ${sa.name}` : '';
   if (z !== zoneShow.z || zn !== zoneShow.n) { zoneShow = {z, n:zn, d:dn, t:3}; }
   if (zoneShow.t > 0) zoneShow.t -= dt;
 }
@@ -4163,11 +4237,13 @@ function huntEntities(ctx, add, vis, T){
   if (vis(SPOT.nongmak.x, SPOT.nongmak.y, 300)) add(SPOT.nongmak.y, SPOT.nongmak.x, () => drawNongmak(ctx, SPOT.nongmak.x, SPOT.nongmak.y));
   // 사냥터 경계: 숲 울타리와 입구 표지판
   for (const o of BORDER) if (vis(o.x, o.y)) add(o.y, o.x, () => drawPine(ctx, o.x, o.y, o.s));
-  const [gE, gS, gN, gW] = GATES;
-  if (vis(gE.x - 90, gE.y + 130)) add(gE.y + 130, gE.x - 90, () => drawSign(ctx, gE.x - 90, gE.y + 130, '🌲 동쪽 사냥터 →'));
-  if (vis(gS.x + 190, gS.y - 90)) add(gS.y - 90, gS.x + 190, () => drawSign(ctx, gS.x + 190, gS.y - 90, '🌲 남쪽 사냥터 ↓'));
-  if (vis(gN.x + 200, gN.y + 160)) add(gN.y + 160, gN.x + 200, () => drawSign(ctx, gN.x + 200, gN.y + 160, '🌲 북쪽 사냥터 ↑'));
-  if (vis(gW.x + 130, gW.y - 120)) add(gW.y - 120, gW.x + 130, () => drawSign(ctx, gW.x + 130, gW.y - 120, '← 서쪽 사냥터 🌲'));
+  // 2026-10-16 입구마다 이름 표지판(안쪽)과 숲 조심 표지판(바깥쪽)
+  for (const g of GATES) {
+    const R = g.R, dx = R.cx - g.x, dy = R.cy - g.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, sx = -uy * 150, sy = ux * 150;
+    const ix = g.x + ux * 260 + sx, iy = g.y + uy * 260 + sy, ox = g.x - ux * 260 + sx, oy = g.y - uy * 260 + sy;
+    if (vis(ix, iy)) add(iy, ix, () => drawSign(ctx, ix, iy, `${R.ic} ${R.name}`));
+    if (vis(ox, oy)) add(oy, ox, () => drawSign(ctx, ox, oy, '🌲 숲 · 산짐승 조심'));
+  }
   for (const r of RESTS) if (vis(r.x, r.y, 400)) { add(r.y, r.x, () => drawRest(ctx, r, T)); }
   denEntities(ctx, add, vis, T);
   for (const p of PEAKS) if (vis(p.x, p.y - 150 * p.s, 420 * p.s)) add(p.y, p.x, () => drawPeak(ctx, p.x, p.y, p.s, p.v));
@@ -4197,14 +4273,18 @@ function buildMiniBase(){
     c.fillStyle = inHunt(wx, wy) ? mix(mix('#7fbf5a', '#2f5a2a', clamp(homeDist(wx, wy) / 14000, 0, 1) * .85), '#eef4f8', snowK(wy)) : '#a6dc78'; c.fillRect(x, y, 4, 4);
   }
   c.translate(-WX0 * s, -WY0 * s);
-  c.strokeStyle = '#c99d62'; c.lineWidth = 2; c.lineCap = 'round';
-  for (const T of [...TRAILS, ROAD, ...VROADS]) { c.beginPath(); T.forEach(([x, y], i) => i ? c.lineTo(x * s, y * s) : c.moveTo(x * s, y * s)); c.stroke(); }
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const pl = (T, w, col) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); T.forEach(([x, y], i) => i ? c.lineTo(x * s, y * s) : c.moveTo(x * s, y * s)); c.stroke(); };
+  pl(RIVER, 250 * s, '#6fb8d8'); pl(HIGHWAY, 3, '#8a8a86');
+  for (const A of SAFE) if (A.kind === 'lot') { c.fillStyle = '#c9e8a0'; c.fillRect(A.x0 * s, A.y0 * s, (A.x1 - A.x0) * s, (A.y1 - A.y0) * s); c.setLineDash([3, 3]); c.strokeStyle = '#8a6a3a'; c.lineWidth = 1.2; c.strokeRect(A.x0 * s, A.y0 * s, (A.x1 - A.x0) * s, (A.y1 - A.y0) * s); c.setLineDash([]); }
+  TRAILS.forEach((T, i) => pl(T, i < MAIN_N ? 3 : 2, i < MAIN_N ? '#f2dca8' : '#c99d62'));
+  for (const T of [ROAD, ...VROADS]) pl(T, 3, '#f2dca8');
   c.fillStyle = '#b9875a'; c.fillRect(OX * s, OY * s, ORCH_W * s, MAX_ROWS * ROW_H * s);
   c.fillStyle = '#9a7a5a'; for (const b of VB) c.fillRect(b.x * s - 3, b.y * s - 3, 6, 5); // 집은 갈색 네모(빨간 짐승 점과 헷갈리지 않게)
   c.fillStyle = 'rgba(255,255,255,.35)'; for (const p of PEAKS) { c.beginPath(); c.moveTo((p.x - 160 * p.s) * s, p.y * s); c.lineTo(p.x * s, (p.y - 300 * p.s) * s); c.lineTo((p.x + 160 * p.s) * s, p.y * s); c.fill(); }
 }
 // 글자는 지도 크기와 상관없이 같은 크기로 보이게 덮어 그려요
-const MM_LABELS = () => [['과수원', OX + ORCH_W / 2, OY - 150], ['마을', VNEW.x, VNEW.y - 1100], ['전설의 산 ' + zoneLv(3), 1600, -6200], [zoneLv(4), 11000, -1200], [zoneLv(5), -10600, -6600], [zoneLv(6), 13600, -13400], ['눈 덮인 설산', 1600, 15600]];
+const MM_LABELS = () => [['과수원', OX + ORCH_W / 2, OY - 150], ...SAFE.filter(A => A !== HOME).map(A => [A.name, A.cx, A.y0 - 300]), ['호랑이 굴', DEN.x, DEN.y - DEN.ry - 300], ['동계천', ...mapXY(300, 262)]];
 function drawHuntOverlay(ctx, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (!miniBase) buildMiniBase();
@@ -4241,7 +4321,7 @@ function drawHuntOverlay(ctx, T){
   // 구역 안내
   if (zoneShow.t > 0) {
     ctx.globalAlpha = clamp(zoneShow.t, 0, 1);
-    const txt = zoneShow.z === 'den' ? zoneShow.d.label : zoneShow.z < 0 ? '🏡 집 근처 · 시간이 원래대로 흘러요' : `${zoneShow.n === '눈 덮인 설산' ? '🏔️' : '🌲'} ${zoneShow.n} ${zoneLv(zoneShow.z)} · 사냥터에선 시간이 천천히 흘러요`;
+    const txt = zoneShow.z === 'den' ? zoneShow.d.label : zoneShow.z < 0 ? `${zoneShow.n || '🏡 집 근처'} · 시간이 원래대로 흘러요` : `${zoneShow.n === '눈 덮인 설산' ? '🏔️' : '🌲'} ${zoneShow.n} ${zoneLv(zoneShow.z)} · 사냥터에선 시간이 천천히 흘러요`;
     ctx.font = '34px Jua'; ctx.textAlign = 'center'; const tw = ctx.measureText(txt).width + 60;
     ctx.beginPath(); rr(ctx, W / 2 - tw / 2, 210, tw, 60, 20); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3.5; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.fillText(txt, W / 2, 252);
@@ -4424,11 +4504,11 @@ NEW_BEAST.tiger = Array(7).fill(TIGER);
 const PBEAR = {name:'전설의 흰곰', hp:2600, def:20, dmg:4.3, spd:1.15, sc:1.95, xp:800, boss:1};
 NEW_BEAST.pbear = Array(7).fill(PBEAR);
 const PBEAR_NEED = 34;
-const DEN = {x:-4200, y:-6250, rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
-DEN.gate = Math.atan2((-5000 - DEN.y) / DEN.ry, (-2000 - DEN.x) / DEN.rx); // 숲길이 들어오는 쪽(남동)
+const DEN = {x:mapXY(1196, 1024)[0] + 1000, y:mapXY(1196, 1024)[1] + 40, rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
+DEN.gate = Math.atan2((mapXY(1196, 1024)[1] - DEN.y) / DEN.ry, (mapXY(1196, 1024)[0] - DEN.x) / DEN.rx); // 2026-10-16 달 요청: 지도 맨 오른쪽 아래로. 길이 들어오는 쪽(서쪽)
 const BDEN = {x:1700, y:18700, rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 설산의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
 BDEN.gate = Math.atan2((17500 - BDEN.y) / BDEN.ry, (3000 - BDEN.x) / BDEN.rx); // 북동쪽 설산 길
-const DENS = [DEN, BDEN], DEN_LEASH = 260;
+const DENS = [DEN], DEN_LEASH = 260; // 2026-10-16 달 요청: 흰곰 굴(BDEN) 삭제
 const DEN_GATE = DEN.gate;
 const inDenOf = (D, x, y, pad = 0) => ((x - D.x) / (D.rx + pad)) ** 2 + ((y - D.y) / (D.ry + pad)) ** 2 < 1;
 const inDen = (x, y, pad = 0) => DENS.some(D => inDenOf(D, x, y, pad));
@@ -5965,7 +6045,7 @@ const HQ_PW = [0, 30, 95, 125, 165, 195, 260];
 const HQ_MONEY = [150000, 300000, 600000, 1000000, 1600000, 2400000, 3500000];
 const HQ_XP = [80, 150, 250, 400, 600, 850, 1200];
 const HQ_LV = {easy:{name:'쉬움', d:-1, n:5, mul:.7, col:'#5cc46c'}, fit:{name:'알맞음', d:0, n:4, mul:1, col:'#ffb13b'}, hard:{name:'도전', d:1, n:3, mul:1.4, col:'#ff6b57'}};
-const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'전설의 산 호랑이 굴'}, pbear:{min:5, money:8000000, xp:900, stones:4, rep:6, where:'남쪽 눈 덮인 설산 흰곰 굴'}};
+const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'맨 오른쪽 아래 호랑이 굴'}}; // 2026-10-16 흰곰 삭제
 const HUNTER_NAME = '윤산들 사냥꾼';
 // 2026-10-14 달 요청: 난이도마다 한 번 끝내면 한 달(28일, 4주) 뒤에 다시 받을 수 있어요 (처음엔 1년이었어요)
 const HQ_REST = 28;
@@ -5992,6 +6072,8 @@ function hqMake(lv){
 // 사냥꾼이 이번에 내놓는 의뢰(받기 전까지는 같은 날 같은 의뢰)
 function hqOffers(){
   const day = absDay();
+  if (G.hq && G.hq.kind === 'pbear') G.hq = null; // 2026-10-16 흰곰이 없어져서 옛 저장의 흰곰 의뢰는 지워요
+  if (G.hqOff && G.hqOff.list.some(q => q.kind === 'pbear')) G.hqOff = null;
   if (!G.hqOff || G.hqOff.day !== day || G.hqOff.T !== hqTier() || G.hqOff.p !== HQ_PAY) {
     const list = ['easy', 'fit', 'hard'].map(hqMake), T = hqTier();
     for (const k in HQ_BOSS) if (T >= HQ_BOSS[k].min) list.push(hqMake(k));
@@ -7238,7 +7320,7 @@ function uiGear(){
     const card = slot => {
       const S = GEAR[slot];
       return `<div class="gslot"><div class="gh">${S.ic} ${S.name} <small>${S.unit} ${slotStat(slot)}</small></div>
-        ${S.items.map(it => {
+        ${S.items.filter(it => it.id !== 'pcoat' || it.id in g.own).map(it => { // 2026-10-16 흰곰 삭제: 흰곰 털 외투는 이미 가진 사람만 보여요
           const own = it.id in g.own, lv = g.own[it.id] || 0, on = g[slot] === it.id, lock = G.rep < it.rep;
           let btn;
           const moneyBtn = () => `<button class="btn pri" data-up="${slot}|${it.id}" ${G.rep < upRep(it, lv) || G.money < upCost(it, lv) ? 'disabled' : ''}>💰 강화 ${won(upCost(it, lv))}${G.rep < upRep(it, lv) ? ` · ⭐${upRep(it, lv)}` : ''}</button>`;
