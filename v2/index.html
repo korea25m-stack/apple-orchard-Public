@@ -6895,8 +6895,8 @@ function drawRideTigerFB(c, dir, layer){
 // (그냥 겹치면 반투명 호랑이 몸이 우주 다리를 덮어 우주가 흐려 보여요)
 let ghostCv = null;
 function drawHeroGhost(c){
-  if (!riding()) { c.globalAlpha = .38; drawHero(c); c.globalAlpha = 1; return; }
-  const z = PV.on ? PV.f / PV.back : cam.z, GW = 340, GH = 320, OX = 170, OY = 240, w = Math.ceil(GW * z), h = Math.ceil(GH * z);
+  // 2026-10-16 달 요청: 타지 않을 때도 한 장으로 겹쳐요. 부위마다 따로 반투명으로 그리면 팔·옷 겹친 곳이 비쳐서 주인공이 반투명해 보였어요
+  const TM = c.getTransform(), z = Math.max(.5, Math.hypot(TM.a, TM.b)), GW = 340, GH = 320, OX = 170, OY = 240, w = Math.ceil(GW * z), h = Math.ceil(GH * z);
   if (!ghostCv) ghostCv = document.createElement('canvas');
   if (ghostCv.width !== w || ghostCv.height !== h) { ghostCv.width = w; ghostCv.height = h; }
   const g = ghostCv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
