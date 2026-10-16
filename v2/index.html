@@ -576,6 +576,7 @@ const ACH = {
   plant1:  ['🌱','첫 묘목','묘목을 처음 심었어요'],
   tiger:   ['🐯','호랑이를 이긴 농부','전설의 호랑이를 이겼어요'],
   pbear:   ['🐻‍❄️','북쪽 숲의 영웅','전설의 흰곰을 이겼어요'],
+  bwolf:   ['🐺','첫 보스 사냥','늑대 굴의 검은 늑대를 이겼어요'],
   orchard: ['🌳','과수원 완성','빈 자리 없이 다 심었어요'],
   harvest1:['🍎','첫 수확','사과를 처음 땄어요'],
   gradeS:  ['🏅','특 등급','특 등급 사과를 땄어요'],
@@ -661,6 +662,8 @@ const MAP_ROADS = [
   [JE, MP(780, 862), MP(860, 846), MP(890, 872), MP(912, 905), MP(950, 932), [F3.cx, F3.cy], MP(1040, 945), MP(1080, 1000)],     // 확장 부지 2로
   [MP(1080, 1000), MP(1062, 1040), MP(1035, 1072), MP(1018, 1100)]                                                         // 2026-10-16 달 요청: 호랑이 굴(지도 좌표 133,133)로
 ];
+// 2026-10-16 서쪽 숲 오솔길(지도 56, 88)에서 늑대 굴 입구로 갈라지는 길
+const WDEN_PATH = [[-11024, 1884], [-11700, 2120], [-12500, 2420], [-12900, 2560]];
 // 숲 깊이 들어가는 오솔길(지도엔 없지만 깊은 숲을 다닐 수 있게)
 const FOREST_PATHS = [
   [MP(720, 488), MP(860, 420), MP(1000, 380), MP(1150, 300), MP(1260, 200)],
@@ -670,6 +673,7 @@ const FOREST_PATHS = [
   [MP(1000, 22), MP(1050, 160), MP(1120, 260)],
   // 2026-10-16 넓힌 바깥 숲: 지도 끝에서 바깥으로 뻗는 길 + 바깥을 크게 한 바퀴 도는 길
   [MP(575, 0), MP(560, -130), MP(590, -210), MP(606, -255)],   // 2026-10-16 흰곰 굴(지도 좌표 100, 20) 입구로
+  WDEN_PATH,                                                     // 2026-10-16 늑대 굴(지도 좌표 50, 90) 입구로
   [MP(1289, 68), MP(1450, 40), MP(1650, -60), MP(1880, -200)],
   [MP(0, 925), MP(-180, 900), MP(-380, 960), MP(-600, 1000)],
   [MP(445, 1072), MP(430, 1250), MP(470, 1420), MP(440, 1580)],
@@ -1464,6 +1468,7 @@ function drawHat(c, L, side, back, hy){
 // ----- 동물 -----
 function drawAnimal(c, kind, x, y, t, flip, V){
   c.save(); c.translate(x, y); if (flip) c.scale(-1, 1);
+  if (V && kind === 'bwolf') { drawBlackWolf(c, t, V); c.restore(); return; } // 2026-10-16 사납고 무서운 검은 늑대(초심자 보스)
   if (V && CUTE[kind]) { drawCuteBeast(c, kind, t, V); c.restore(); return; } // 2026-10-16 귀여운 새 그림
   if (V && NEW_BEAST[kind]) { drawNewBeast(c, kind, t, V); c.restore(); return; }
   if (kind === 'boar' || kind === 'deer') {
@@ -3601,9 +3606,10 @@ const LOOT = {
   sanghwang:{name:'상황버섯', ic:'🍄', lo:50000, hi:120000, desc:'뽕나무 같은 나무에서 몇 해에 걸쳐 아주 천천히 자라요.'},
   sansam:{name:'산삼', ic:'🌿', lo:80000, hi:150000, desc:'깊은 산에서 오래오래 자란 귀한 삼이에요. 잎이 다섯 갈래로 갈라져요.'},
   tskin:{name:'호랑이 가죽', ic:'🐯', lo:600000, hi:900000, desc:'전설의 호랑이를 이기면 얻어요. 팔거나 든든철물에서 호랑이 가죽 장비를 만들 수 있어요.'},
-  pfur:{name:'흰곰 털가죽', ic:'🐻‍❄️', lo:900000, hi:1300000, desc:'설산의 전설의 흰곰을 이기면 얻어요. 아주 귀해서 비싸게 팔 수 있어요.'}
+  pfur:{name:'흰곰 털가죽', ic:'🐻‍❄️', lo:900000, hi:1300000, desc:'설산의 전설의 흰곰을 이기면 얻어요. 아주 귀해서 비싸게 팔 수 있어요.'},
+  bwfur:{name:'검은 늑대 가죽', ic:'🐺', lo:200000, hi:320000, desc:'서쪽 숲 늑대 굴의 검은 늑대를 이기면 얻어요. 까맣고 윤기 나는 털가죽이에요.'}
 };
-const BOSS_LOOT = {tskin:1, pfur:1}; // 보스 전리품은 많이 팔아도 값이 안 내려가요
+const BOSS_LOOT = {tskin:1, pfur:1, bwfur:1}; // 보스 전리품은 많이 팔아도 값이 안 내려가요
 const LOOT_KEYS = Object.keys(LOOT);
 // 구역별로 나오는 전리품 (숫자 = 잘 나오는 정도)
 const LOOT_TABLE = [
@@ -3884,7 +3890,7 @@ const KIND_DEF = {boar:2, badger:3, hare:-2, snake:-1, raccoon:0, deer:0, lynx:0
 // 2026-10-14 달 요청: ★ 대신 귀여운 레벨 숫자. ★1 = Lv1, 호랑이 Lv20, 흰곰 Lv25를 기준으로 나눴어요(플레이어 레벨은 그대로)
 const TIER_LV = [1, 3, 6, 9, 12, 15, 18];
 const KIND_LV = {hare:-1, snake:0, raccoon:0, deer:0, boar:1, badger:1, lynx:1, wdog:0, wolf:1, bear:1};
-const BOSS_LV = {tiger:20, pbear:25};
+const BOSS_LV = {tiger:20, pbear:25, bwolf:10}; // 2026-10-16 검은 늑대: 초심자용 보스(근처 골짜기 Lv8~10과 비슷)
 function monLv(kind, tier){ return BOSS_LV[kind] || (tier ? Math.max(2, TIER_LV[tier] + (KIND_LV[kind] || 0)) : 1); }
 const zoneLv = z => z > 0 ? `Lv${Math.max(2, TIER_LV[z] - 1)}~${TIER_LV[z] + 1}` : 'Lv1';
 function lvCol(lv){ return lv >= 20 ? ['#a06ae8', '#6e3fb8'] : lv >= 15 ? ['#ff6b6b', '#c83a3a'] : lv >= 11 ? ['#ff9a3a', '#c86a14'] : lv >= 7 ? ['#ffc53a', '#c8901a'] : lv >= 3 ? ['#5cc0e8', '#2f88b8'] : ['#7fd36a', '#4a9a3a']; }
@@ -3906,7 +3912,7 @@ function hitMon(m, dmg, f, main){
   dmg = Math.max(Math.ceil(dmg * .1), dmg - monDef(m)); // 방어도만큼 깎여요(최소 10%)
   if (m.boss && !bossReady(m)) { dmg = 1; if (main && !(m.warnT > 0)) { m.warnT = 2.5; floats.push({x:m.x, y:m.y - 200, s:`끄떡없다! 도구 데미지 ${m.den.need} 이상이 필요해요`, t:1.8, c:'#b2332b'}); } }
   m.hp -= dmg; m.hitT = 4; m.eng = true; m.flash = .12;
-  if (main) { sfx(crit ? 'crit' : 'hit'); setTimeout(() => sfx({boar:'oink', badger:'oink', tiger:'roar', pbear:'roar', snake:'hiss', hare:'squeak', lynx:'growl', wdog:'growl', wolf:'growl', bear:'roar'}[m.kind] || 'bleat'), 60); FX.stop = Math.max(FX.stop, crit ? .1 : .055); FX.shake = Math.max(FX.shake, crit ? .55 : .28); }
+  if (main) { sfx(crit ? 'crit' : 'hit'); setTimeout(() => sfx({boar:'oink', badger:'oink', tiger:'roar', pbear:'roar', bwolf:'growl', snake:'hiss', hare:'squeak', lynx:'growl', wdog:'growl', wolf:'growl', bear:'roar'}[m.kind] || 'bleat'), 60); FX.stop = Math.max(FX.stop, crit ? .1 : .055); FX.shake = Math.max(FX.shake, crit ? .55 : .28); }
   burst(m.x, m.y - 50 * m.V.sc, crit ? 14 : 8, crit ? ['#ffd23a', '#ff6b57', '#fffaf1'] : ['#fffaf1', '#ffe36a'], crit ? 520 : 380, .45);
   if (!['wind', 'charge', 'kick'].includes(m.st) && !m.boss) {
     m.stun = f.reach >= 1.25 ? .35 : .2;
@@ -4342,7 +4348,7 @@ function buildMiniBase(){
   c.fillStyle = 'rgba(255,255,255,.35)'; for (const p of PEAKS) { c.beginPath(); c.moveTo((p.x - 160 * p.s) * s, p.y * s); c.lineTo(p.x * s, (p.y - 300 * p.s) * s); c.lineTo((p.x + 160 * p.s) * s, p.y * s); c.fill(); }
 }
 // 글자는 지도 크기와 상관없이 같은 크기로 보이게 덮어 그려요
-const MM_LABELS = () => [['과수원', OX + ORCH_W / 2, OY - 150], ...SAFE.filter(A => A !== HOME).map(A => [A.name, A.cx, A.y0 - 300]), ['호랑이 굴', DEN.x, DEN.y - DEN.ry - 300], ['흰곰 굴', BDEN.x, BDEN.y - BDEN.ry - 300], ['동계천', ...mapXY(300, 262)]];
+const MM_LABELS = () => [['과수원', OX + ORCH_W / 2, OY - 150], ...SAFE.filter(A => A !== HOME).map(A => [A.name, A.cx, A.y0 - 300]), ['호랑이 굴', DEN.x, DEN.y - DEN.ry - 300], ['흰곰 굴', BDEN.x, BDEN.y - BDEN.ry - 300], ['늑대 굴', WDEN.x, WDEN.y - WDEN.ry - 300], ['동계천', ...mapXY(300, 262)]];
 function drawHuntOverlay(ctx, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (!miniBase) buildMiniBase();
@@ -4528,9 +4534,9 @@ function drawRoom(cv){
 }
 
 // ===== 2026-10-13 새 산짐승(산토끼·뱀·너구리·오소리) + 전설 보스 호랑이 =====
-const MON_IC = {boar:'🐗', deer:'🦌', hare:'🐇', snake:'🐍', raccoon:'🦝', badger:'🦡', tiger:'🐯', lynx:'🐆', wdog:'🐕', wolf:'🐺', bear:'🐻', pbear:'🐻‍❄️'};
+const MON_IC = {boar:'🐗', deer:'🦌', hare:'🐇', snake:'🐍', raccoon:'🦝', badger:'🦡', tiger:'🐯', bwolf:'🐺', lynx:'🐆', wdog:'🐕', wolf:'🐺', bear:'🐻', pbear:'🐻‍❄️'};
 const CHARGER = {boar:1, badger:1, tiger:1, bear:1, pbear:1};      // 돌진하는 녀석들 (나머지는 가까이 와서 할퀴기·물기)
-const CHASE_SP = {boar:150, badger:140, tiger:185, pbear:175, deer:190, hare:220, raccoon:170, snake:115, lynx:215, wdog:200, wolf:205, bear:130};
+const CHASE_SP = {boar:150, badger:140, tiger:185, pbear:175, bwolf:215, deer:190, hare:220, raccoon:170, snake:115, lynx:215, wdog:200, wolf:205, bear:130};
 // 2026-10-13 구역마다 새 짐승: 얕은 숲 들개 · 깊은 숲 삵·들개 · 골짜기 늑대·삵 · 전설의 산 반달가슴곰·늑대
 const SPAWN_MIX = [{hare:3, snake:2, raccoon:3, deer:2, boar:1, badger:1, wdog:1}, {hare:2, snake:2, raccoon:2, deer:2, boar:2, badger:2, wdog:2, lynx:1},
   {hare:1, snake:2, raccoon:2, deer:2, boar:3, badger:3, wolf:2, lynx:2, wdog:1}, {hare:1, snake:2, raccoon:1, deer:2, boar:3, badger:3, wolf:2, bear:2, lynx:1},
@@ -4564,11 +4570,19 @@ NEW_BEAST.tiger = Array(7).fill(TIGER);
 const PBEAR = {name:'전설의 흰곰', hp:2600, def:20, dmg:4.3, spd:1.15, sc:1.95, xp:800, boss:1};
 NEW_BEAST.pbear = Array(7).fill(PBEAR);
 const PBEAR_NEED = 34;
+// 2026-10-16 달 요청: 초심자용 보스 '검은 늑대'(지도 50, 90). 근처 짐승과 비슷한 Lv10, 호랑이보다 훨씬 약하고
+// 특수공격 2가지(뛰어들기·돌진)는 바닥 표시가 천천히 차서 피하는 연습을 하기 좋아요. 생김새는 달 님 요청대로 사납고 무섭게
+const BWOLF = {name:'검은 늑대', hp:720, def:8, dmg:2.3, spd:1.3, sc:1.5, xp:260, boss:1};
+NEW_BEAST.bwolf = Array(7).fill(BWOLF);
+const BWOLF_NEED = 15; // 튼튼 쇠스랑부터
 const DEN = {x:fromGrid(133, 133)[0], y:fromGrid(133, 133)[1], rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
 DEN.gate = Math.atan2((mapXY(1018, 1100)[1] - DEN.y) / DEN.ry, (mapXY(1018, 1100)[0] - DEN.x) / DEN.rx); // 2026-10-16 달 요청: M 지도 좌표 (133, 133). 길이 들어오는 쪽(북쪽)
 const BDEN = {x:fromGrid(100, 20)[0], y:fromGrid(100, 20)[1], rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 북쪽 숲의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
 BDEN.gate = Math.PI / 2; // 2026-10-16 달 요청: 흰곰을 M 지도 좌표 (100, 20)에 되살림. 길은 남쪽(다리 쪽)에서 들어와요
-const DENS = [DEN, BDEN], DEN_LEASH = 260; // 2026-10-16 흰곰 굴은 지웠다가 같은 날 (100, 20)에 되살렸어요
+const WDEN = {x:fromGrid(50, 90)[0], y:fromGrid(50, 90)[1], rx:820, ry:620, kind:'bwolf', need:BWOLF_NEED, day:'bwolfDay', title:'🐺 검은 늑대', label:'⚠️ 늑대 굴 · 초보 사냥꾼의 첫 보스가 살아요', sign:'⚠️ 늑대 굴 · 튼튼 쇠스랑부터', ic:'🐺', name:'늑대 굴'};
+WDEN.gate = Math.atan2((WDEN_PATH[0][1] - WDEN.y) / WDEN.ry, (WDEN_PATH[0][0] - WDEN.x) / WDEN.rx); // 숲 오솔길이 들어오는 쪽(동북동)
+DEN.name = '호랑이 굴'; BDEN.name = '흰곰 굴';
+const DENS = [DEN, BDEN, WDEN], DEN_LEASH = 260; // 2026-10-16 흰곰 굴은 지웠다가 같은 날 (100, 20)에 되살렸어요
 const DEN_GATE = DEN.gate;
 const inDenOf = (D, x, y, pad = 0) => ((x - D.x) / (D.rx + pad)) ** 2 + ((y - D.y) / (D.ry + pad)) ** 2 < 1;
 const inDen = (x, y, pad = 0) => DENS.some(D => inDenOf(D, x, y, pad));
@@ -4585,6 +4599,7 @@ function updateTiger(){
 }
 function killTiger(m){
   if (m.kind === 'pbear') return killPbear(m);
+  if (m.kind === 'bwolf') return killBwolf(m);
   ensureGear(); G.tigerDay = absDay() + 7; G.stats.tiger = (G.stats.tiger || 0) + 1;
   gainXp(TIGER.xp); unlock('tiger'); sfx('fanfare');
   let msg;
@@ -4605,6 +4620,14 @@ function killPbear(m){
   setTimeout(() => popup('🐻‍❄️', '전설의 흰곰을 이겼어요!', `설산 꼭대기까지 ${HN()}의 이름이 울려 퍼졌어요. ${msg} 흰곰은 7일 뒤 다시 굴로 돌아와요.`), 900);
 }
 
+function killBwolf(m){
+  ensureGear(); G.bwolfDay = absDay() + 3; G.stats.bwolf = (G.stats.bwolf || 0) + 1;
+  gainXp(BWOLF.xp); unlock('bwolf'); sfx('fanfare');
+  G.gear.stones = (G.gear.stones || 0) + 1;
+  addLoot('bwfur', 1);
+  floats.push({x:m.x, y:m.y - 200, s:'🏆 검은 늑대를 이겼다!', t:3, c:'#8a5af0', sz:42, pop:.3});
+  setTimeout(() => popup('🐺', '검은 늑대를 이겼어요!', `첫 보스를 이겼어요! ${HN()}도 이제 어엿한 사냥꾼이에요. 💎 강화석 1개와 🐺 검은 늑대 가죽 1장을 얻었어요. 검은 늑대는 3일 뒤 다시 굴로 돌아와요. 다음은 호랑이에 도전해 봐요!`), 900);
+}
 // ----- 보스 굴 그림: 어두운 돌바닥(흰곰 굴은 얼음 바닥) + 바위 벽 + 횃불 + 동굴 입구 -----
 const DEN_PAL = {rock:['#2f3a2a', '#4a423a', '#5a5046', '#3c352e', '#665b50', '#2a2420', 'rgba(30,24,20,.55)'],
   snow:['#c8d6e2', '#a9bccc', '#d6e4ee', '#93a8ba', '#e8f0f6', '#7a90a4', 'rgba(70,90,110,.45)']};
@@ -4875,10 +4898,10 @@ function drawPortal(c, x, y, T){
 // 보스마다 특수공격 2가지. 바닥에 빨간(얼음은 파란) 표시가 먼저 차오르고, 다 차면 그 자리에 공격이 떨어져요.
 // 표시 밖으로 피하면 안 맞아요. 막기(F)를 하고 있으면 반만 맞아요. 큰 기술 뒤엔 보스가 잠깐 지쳐서(💫) 때릴 기회가 생겨요.
 // 새 보스를 만들면 BOSS_SKILLS에 기술 이름 두 개만 적으면 돼요.
-const BOSS_SKILLS = {tiger:['claws', 'pounce'], pbear:['icefield', 'lane']};
+const BOSS_SKILLS = {tiger:['claws', 'pounce'], pbear:['icefield', 'lane'], bwolf:['leap', 'rush']}; // 검은 늑대: 호랑이·흰곰 기술을 느리고 약하게(연습용)
 const BOSS_CD = [5.5, 3.8];
 const BFX = [];
-const SKILL_TXT = {claws:'🐾 발톱 자국이 따라와요! 계속 움직여요', pounce:'🐯 덮치기! 빨간 원 밖으로 피해요', icefield:'❄️ 얼음 기둥! 빈틈으로 피해요', lane:'🐻‍❄️ 돌진! 옆으로 비켜요'};
+const SKILL_TXT = {claws:'🐾 발톱 자국이 따라와요! 계속 움직여요', pounce:'🐯 덮치기! 빨간 원 밖으로 피해요', icefield:'❄️ 얼음 기둥! 빈틈으로 피해요', lane:'🐻‍❄️ 돌진! 옆으로 비켜요', leap:'🐺 뛰어들기! 빨간 원 밖으로 피해요', rush:'🐺 돌진! 빨간 길 옆으로 비켜요'};
 
 function bossHit(m, base, txt){
   if (P.inv > 0 || P.hp <= 0) return;
@@ -4906,6 +4929,7 @@ function startSkill(m){
   const id = list[m.skI]; m.st = 'skill'; m.sk = {id, t:0, n:0}; m.flip = P.x < m.x;
   floats.push({x:P.x, y:P.y - 200, s:SKILL_TXT[id], t:2.2, c:'#b2332b', sz:32});
   sfx('roar');
+  if (id === 'leap') { m.sk.z = addZone(m, {shape:'circle', x:P.x, y:P.y, r:200, warn:1.5, dmg:12, txt:'뛰어들기'}); }
   if (id === 'pounce') { m.sk.z = addZone(m, {shape:'circle', x:P.x, y:P.y, r:230, warn:1.15, dmg:15, txt:'덮치기'}); }
   if (id === 'icefield') {
     // 가운데 + 십자 4곳 → 0.75초 뒤 가운데 + 대각선 4곳. 빈 칸으로 옮겨 다니며 피해요
@@ -4913,10 +4937,10 @@ function startSkill(m){
       for (let i = 0; i < 4; i++) { const a = rot + i * Math.PI / 2; addZone(m, {shape:'circle', ice:1, x:cx + Math.cos(a) * 290, y:cy + Math.sin(a) * 290 * .8, r:140, warn:1.3, dmg:9, txt:'얼음 기둥'}); } };
     const r0 = rnd(0, .4); make(r0); m.sk.second = () => make(r0 + Math.PI / 4);
   }
-  if (id === 'lane') {
+  if (id === 'lane' || id === 'rush') {
     const D = m.den, d = Math.hypot(P.x - m.x, P.y - m.y) || 1, ux = (P.x - m.x) / d, uy = (P.y - m.y) / d;
     let len = 1050; while (len > 200 && !inDenOf(D, m.x + ux * len, m.y + uy * len, -40)) len -= 50;
-    m.sk.z = addZone(m, {shape:'lane', ice:1, x:m.x, y:m.y, ux, uy, len, w:230, warn:1.0, dmg:14, txt:'돌진'});
+    m.sk.z = addZone(m, id === 'rush' ? {shape:'lane', x:m.x, y:m.y, ux, uy, len:Math.min(len, 850), w:200, warn:1.4, dmg:10, txt:'돌진'} : {shape:'lane', ice:1, x:m.x, y:m.y, ux, uy, len, w:230, warn:1.0, dmg:14, txt:'돌진'});
   }
   return true;
 }
@@ -4928,7 +4952,7 @@ function bossSkillUpdate(m, dt){
     // 0.45초마다 우주 발밑에 발톱 자국 4번
     if (s.n < 4 && s.t >= s.n * .45) { addZone(m, {shape:'circle', x:P.x, y:P.y, r:140, warn:.8, dmg:8, txt:'할퀴기'}); s.n++; }
     if (s.t > 4 * .45 + .9) end(.9);
-  } else if (s.id === 'pounce') {
+  } else if (s.id === 'pounce' || s.id === 'leap') {
     const z = s.z, k = clamp((s.t - .85) / .3, 0, 1);
     if (k > 0 && !s.jump) { s.jump = {x:m.x, y:m.y}; }
     if (s.jump) { m.x = s.jump.x + (z.x - s.jump.x) * k; m.y = s.jump.y + (z.y - s.jump.y) * k; m.jz = Math.sin(k * Math.PI) * 120; }
@@ -4936,12 +4960,12 @@ function bossSkillUpdate(m, dt){
   } else if (s.id === 'icefield') {
     if (!s.n && s.t > .75) { s.second(); s.n = 1; }
     if (s.t > 2.4) end(1.1);
-  } else if (s.id === 'lane') {
+  } else if (s.id === 'lane' || s.id === 'rush') {
     const z = s.z;
     if (z.done && !s.run) s.run = {d:0};
     if (s.run) {
       const st = Math.min(z.len - s.run.d, 1500 * dt); s.run.d += st; m.x += z.ux * st; m.y += z.uy * st; m.flip = z.ux < 0;
-      if (Math.random() < .5) burst(m.x, m.y - 10, 2, ['#e8f6ff', '#fffaf1'], 200, .4);
+      if (Math.random() < .5) burst(m.x, m.y - 10, 2, z.ice ? ['#e8f6ff', '#fffaf1'] : ['#5a4a42', '#a89888'], 200, .4);
       if (Math.hypot(P.x - m.x, (P.y - m.y) * 1.2) < 150) bossHit(m, z.dmg, z.txt);
       if (s.run.d >= z.len - 1) { FX.shake = Math.max(FX.shake, .5); sfx('crash'); end(2); }
     }
@@ -5191,6 +5215,62 @@ function drawCuteBeast(c, kind, t, V){
     blush(32, -64, 1.1); blush(66, -64, 1.1);
     if (V.crown) crown(49, -112);
   }
+  c.restore();
+}
+
+// ===== 2026-10-16 달 요청: 초심자용 보스 '검은 늑대' =====
+// 다른 짐승은 귀엽게 바꿨지만 이 녀석은 달 님 요청대로 사납고 무섭게: 새까만 털 + 삐죽삐죽 갈기 + 빨갛게 빛나는 눈 + 드러낸 송곳니 + 이마의 흉터
+function drawBlackWolf(c, t, V){
+  const leg = Math.sin(t * 10) * 4, bob = Math.abs(Math.sin(t * 10)) * 1.4, B = '#26222a', S = '#0e0c12', HL = '#4a4452';
+  const E = (x, y, rx, ry) => cc => ell(cc, x, y, rx, ry);
+  // 발밑의 검붉은 기운
+  const pul = .5 + Math.sin(t * 3) * .5;
+  c.save(); c.globalAlpha = .32 + pul * .16; const g = c.createRadialGradient(0, -4, 4, 0, -4, 70); g.addColorStop(0, '#b0203a'); g.addColorStop(1, 'rgba(60,0,20,0)');
+  c.beginPath(); ell(c, 0, -4, 70, 22); c.fillStyle = g; c.fill(); c.restore();
+  shadow(c, 0, 0, 40, 10, .3);
+  c.save(); c.translate(0, -bob);
+  // 꼬리: 길고 삐죽한 털
+  c.save(); c.translate(-30, -38); c.rotate(.35 + Math.sin(t * 5) * .12);
+  cel(c, cc => { cc.moveTo(0, -6); cc.lineTo(-18, -12); cc.lineTo(-14, -6); cc.lineTo(-34, -10); cc.lineTo(-26, -2); cc.lineTo(-42, 2); cc.lineTo(-22, 6); cc.lineTo(-10, 8); cc.lineTo(0, 6); cc.closePath(); }, B, S, 2, 2, 2.6);
+  c.restore();
+  // 뒷다리·앞다리 (몸을 낮춘 사냥 자세)
+  [[-20, 1], [-9, -1], [12, 1], [22, -1]].forEach(([lx, k]) => { const o = k * leg * .4;
+    cel(c, cc => { cc.moveTo(lx - 5, -26); cc.lineTo(lx + 5, -26); cc.lineTo(lx + 4, -4 + o); cc.lineTo(lx + 7, 0 + o * .3); cc.lineTo(lx - 6, 0 + o * .3); cc.lineTo(lx - 5, -6); cc.closePath(); }, B, S, 1, 0, 2.4);
+    for (const cx of [-3, 1, 5]) line(c, [lx + cx, 0 + o * .3, lx + cx + 1.5, 3 + o * .3], 1.8, '#d8d0c4'); }); // 발톱
+  // 몸통: 길고 낮게 + 등의 삐죽 갈기
+  cel(c, E(0, -34, 32, 14), B, S, 5, 4, 2.8);
+  for (let k = 0; k < 9; k++) { const x = -26 + k * 6.5, h = 9 + (k % 2) * 6 + (k > 5 ? 4 : 0);
+    cel(c, cc => { cc.moveTo(x - 4, -44); cc.lineTo(x + 1, -44 - h); cc.lineTo(x + 5, -44); cc.closePath(); }, B, S, 0, 0, 2); }
+  c.beginPath(); ell(c, -4, -40, 20, 3); c.fillStyle = HL; c.fill(); // 털 윤기
+  c.beginPath(); c.ellipse(0, -34, 29, 11.5, 0, Math.PI * 1.08, Math.PI * 1.9); c.lineWidth = 2; c.strokeStyle = '#8a7aa0'; c.stroke(); // 어두운 굴에서도 보이게 등 테두리 빛
+  // 가슴·목의 거친 갈기
+  for (let k = 0; k < 6; k++) { const y = -48 + k * 5;
+    cel(c, cc => { cc.moveTo(14, y); cc.lineTo(24 + (k % 2) * 4, y + 2); cc.lineTo(14, y + 6); cc.closePath(); }, B, S, 0, 0, 2); }
+  // 귀: 뒤로 젖힌 날카로운 귀
+  for (const [ex, ey, r] of [[24, -62, -.35], [34, -63, -.15]]) { c.save(); c.translate(ex, ey); c.rotate(r);
+    cel(c, cc => { cc.moveTo(-5, 4); cc.lineTo(-2, -16); cc.lineTo(6, 4); cc.closePath(); }, B, S, 1, 1, 2.2);
+    c.beginPath(); c.moveTo(-2, 2); c.lineTo(-1, -9); c.lineTo(3, 2); c.closePath(); c.fillStyle = '#5a1a26'; c.fill(); c.restore(); }
+  // 머리 + 긴 주둥이
+  cel(c, E(30, -50, 15, 13), B, S, 2, 3, 2.8);
+  c.beginPath(); c.ellipse(30, -50, 12.5, 10.5, 0, Math.PI * 1.05, Math.PI * 1.75); c.lineWidth = 2; c.strokeStyle = '#8a7aa0'; c.stroke();
+  cel(c, cc => { cc.moveTo(36, -58); cc.lineTo(60, -50); cc.lineTo(61, -45); cc.lineTo(38, -41); cc.closePath(); }, B, S, 1, 1, 2.6);
+  // 벌린 입: 빨간 입속 + 위아래 송곳니
+  const jaw = 3 + Math.max(0, Math.sin(t * 2.2)) * 3;
+  cel(c, cc => { cc.moveTo(40, -42); cc.lineTo(59, -44); cc.lineTo(55, -38 + jaw); cc.lineTo(41, -36 + jaw * .6); cc.closePath(); }, '#7a1424', '#4a0a14', 0, 0, 2.2);
+  cel(c, cc => { cc.moveTo(40, -37 + jaw * .6); cc.lineTo(56, -38 + jaw); cc.lineTo(52, -33 + jaw); cc.lineTo(40, -33 + jaw * .6); cc.closePath(); }, B, S, 0, 0, 2.4);
+  for (const [fx, fy, d] of [[44, -43, 1], [53, -44, 1], [46, -37 + jaw * .7, -1], [52, -38 + jaw * .9, -1]])
+    cel(c, cc => { cc.moveTo(fx - 1.8, fy); cc.lineTo(fx, fy + d * 6); cc.lineTo(fx + 1.8, fy); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.3);
+  c.beginPath(); ell(c, 60, -49, 3, 2.6); c.fillStyle = '#000'; c.fill(); // 코
+  // 주둥이 주름(으르렁)
+  for (const wx of [42, 46]) line(c, [wx, -55, wx + 3, -52], 1.6, '#000');
+  // 빨갛게 빛나는 가늘고 사나운 눈
+  const glow = .6 + Math.sin(t * 4) * .25;
+  c.save(); c.globalAlpha = glow * .55; const eg = c.createRadialGradient(34, -54, 1, 34, -54, 14); eg.addColorStop(0, '#ff3a3a'); eg.addColorStop(1, 'rgba(255,0,0,0)'); c.fillStyle = eg; c.beginPath(); ell(c, 34, -54, 14, 10); c.fill(); c.restore();
+  cel(c, cc => { cc.moveTo(28, -55); cc.lineTo(40, -57); cc.lineTo(38, -52); cc.closePath(); }, '#ff3a2a', '#b81a14', 0, 0, 1.6);
+  c.beginPath(); ell(c, 35, -54.6, 1.3, 2); c.fillStyle = '#000'; c.fill();
+  line(c, [26, -60, 41, -57], 2.6, '#000'); // 찌푸린 눈썹
+  // 이마의 흉터 세 줄
+  for (const k of [0, 1, 2]) line(c, [22 + k * 3.5, -64 + k, 27 + k * 3.5, -56 + k], 1.6, '#8a7a84');
   c.restore();
 }
 
@@ -6105,7 +6185,7 @@ function drawBigMap(ctx){
   ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
   for (const st of BUS_STOPS) ctx.fillText('🚏', mx(st.px), my(st.py) + 8);
   for (const r of RESTS) if (!restsFound().includes(r)) { ctx.globalAlpha = .6; lab('?', mx(r.x), my(r.y) + 8, 22); ctx.globalAlpha = 1; }
-  for (const D of DENS) { ctx.font = '26px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(D.ic, mx(D.x), my(D.y) + 9); lab(D === DEN ? '호랑이 굴' : '흰곰 굴', mx(D.x), my(D.y) - 22, 18); }
+  for (const D of DENS) { ctx.font = '26px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(D.ic, mx(D.x), my(D.y) + 9); lab(D.name, mx(D.x), my(D.y) - 22, 18); }
   ctx.font = '26px sans-serif'; for (const b of BUSES) if (b.x != null) ctx.fillText('🚌', mx(b.x), my(b.y) + 9);
   lab('동계천', ...[mx(mapXY(300, 262)[0]), my(mapXY(300, 262)[1])], 18);
   for (const m of MONS) if (!m.dead && (m.raid || m.boss)) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), 5, 0, 7); ctx.fillStyle = '#ff3b30'; ctx.fill(); }
@@ -6556,7 +6636,7 @@ const HQ_PW = [0, 30, 95, 125, 165, 195, 260];
 const HQ_MONEY = [150000, 300000, 600000, 1000000, 1600000, 2400000, 3500000];
 const HQ_XP = [80, 150, 250, 400, 600, 850, 1200];
 const HQ_LV = {easy:{name:'쉬움', d:-1, n:5, mul:.7, col:'#5cc46c'}, fit:{name:'알맞음', d:0, n:4, mul:1, col:'#ffb13b'}, hard:{name:'도전', d:1, n:3, mul:1.4, col:'#ff6b57'}};
-const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'확장 부지 2 남쪽 호랑이 굴 (지도 x 133 · y 133)'}, pbear:{min:5, money:8000000, xp:900, stones:4, rep:6, where:'북쪽 숲 흰곰 굴 (지도 x 100 · y 20)'}}; // 2026-10-16 흰곰 삭제
+const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'확장 부지 2 남쪽 호랑이 굴 (지도 x 133 · y 133)'}, pbear:{min:5, money:8000000, xp:900, stones:4, rep:6, where:'북쪽 숲 흰곰 굴 (지도 x 100 · y 20)'}, bwolf:{min:1, money:1500000, xp:250, stones:1, rep:2, where:'서쪽 숲 늑대 굴 (지도 x 50 · y 90)'}}; // 2026-10-16 흰곰 삭제
 const HUNTER_NAME = '윤산들 사냥꾼';
 // 2026-10-14 달 요청: 난이도마다 한 번 끝내면 한 달(28일, 4주) 뒤에 다시 받을 수 있어요 (처음엔 1년이었어요)
 const HQ_REST = 28;
@@ -6591,7 +6671,7 @@ function hqOffers(){
   }
   return G.hqOff.list;
 }
-const hqName = q => HQ_BOSS[q.kind] ? (q.kind === 'tiger' ? '전설의 호랑이' : '전설의 흰곰') : `Lv${monLv(q.kind, q.tier)} ${BEAST_NOUN[q.kind]}`;
+const hqName = q => HQ_BOSS[q.kind] ? ({tiger:'전설의 호랑이', pbear:'전설의 흰곰', bwolf:'검은 늑대'}[q.kind]) : `Lv${monLv(q.kind, q.tier)} ${BEAST_NOUN[q.kind]}`;
 const hqWhere = q => HQ_BOSS[q.kind] ? HQ_BOSS[q.kind].where : `${ZONES[q.tier].name}(${zoneLv(q.tier)}) 근처`;
 function hqReward(q){ return `💰 ${won(q.money)} · ⭐ 경험치 ${q.xp}${q.stones ? ` · 💎 강화석 ${q.stones}` : ''} · 평판 +${q.rep}`; }
 // 2026-10-16 달 제보 'undefined' 오류: 흰곰을 없애기 전에 받아 둔 흰곰 의뢰가 남아 'Lv25 undefined'로 보였어요. 없는 짐승 의뢰는 지워요
