@@ -657,8 +657,7 @@ const MAP_ROADS = [
   [J6, MP(380, 975), MP(300, 985), MP(250, 966), MP(150, 970), MP(100, 942), MP(0, 925)],                                     // 서쪽 길
   [J5, MP(495, 852), MP(545, 826), MP(612, 835), JE],                                                                       // 확장 부지 1 아래
   [JE, MP(780, 862), MP(860, 846), MP(890, 872), MP(912, 905), MP(950, 932), [F3.cx, F3.cy], MP(1040, 945), MP(1080, 1000)],     // 확장 부지 2로
-  [MP(1080, 1000), MP(1150, 1018), MP(1196, 1024)],                                                                         // 옛 호랑이 굴 자리로
-  [MP(1196, 1024), MP(1330, 1100), MP(1470, 1220), MP(1600, 1330), MP(1720, 1420)]                                          // 2026-10-16 넓힌 맵: 오른쪽 아래 끝 호랑이 굴로
+  [MP(1080, 1000), MP(1062, 1040), MP(1035, 1072), MP(1018, 1100)]                                                         // 2026-10-16 달 요청: 호랑이 굴(지도 좌표 133,133)로
 ];
 // 숲 깊이 들어가는 오솔길(지도엔 없지만 깊은 숲을 다닐 수 있게)
 const FOREST_PATHS = [
@@ -4563,8 +4562,8 @@ NEW_BEAST.tiger = Array(7).fill(TIGER);
 const PBEAR = {name:'전설의 흰곰', hp:2600, def:20, dmg:4.3, spd:1.15, sc:1.95, xp:800, boss:1};
 NEW_BEAST.pbear = Array(7).fill(PBEAR);
 const PBEAR_NEED = 34;
-const DEN = {x:mapXY(1720, 1420)[0] + 900, y:mapXY(1720, 1420)[1] + 300, rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
-DEN.gate = Math.atan2((mapXY(1720, 1420)[1] - DEN.y) / DEN.ry, (mapXY(1720, 1420)[0] - DEN.x) / DEN.rx); // 2026-10-16 달 요청: 넓힌 맵의 맨 오른쪽 아래 끝(가장 센 숲). 길이 들어오는 쪽(북서쪽)
+const DEN = {x:fromGrid(133, 133)[0], y:fromGrid(133, 133)[1], rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
+DEN.gate = Math.atan2((mapXY(1018, 1100)[1] - DEN.y) / DEN.ry, (mapXY(1018, 1100)[0] - DEN.x) / DEN.rx); // 2026-10-16 달 요청: M 지도 좌표 (133, 133). 길이 들어오는 쪽(북쪽)
 const BDEN = {x:1700, y:18700, rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 설산의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
 BDEN.gate = Math.atan2((17500 - BDEN.y) / BDEN.ry, (3000 - BDEN.x) / BDEN.rx); // 북동쪽 설산 길
 const DENS = [DEN], DEN_LEASH = 260; // 2026-10-16 달 요청: 흰곰 굴(BDEN) 삭제
@@ -6072,7 +6071,7 @@ function drawBigMap(ctx){
   ZONE_C.forEach((k, i) => { ctx.beginPath(); ctx.ellipse(mx(MCX), my(MCY), k * MHX * s, k * MHY * s, 0, 0, 7); ctx.stroke(); });
   ctx.setLineDash([]); ctx.restore();
   [0, ...ZONE_C].forEach((k, i) => { const k2 = i < ZONE_C.length ? ZONE_C[i] : 2.05, r = (k + k2) / 2; const yy = my(MCY - r * MHY * .72), xx = mx(MCX - r * MHX * .7); if (i) lab(`${'★'.repeat(i + 1)}`, xx, yy, 15); });
-  for (const A of SAFE) lab(`${A.ic} ${A === HOME ? '우리 과수원' : A.name}`, A === HOME ? mx(A.x0) - 48 : mx(A.cx), A === HOME ? my(A.cy) + 6 : my(A.y0) - 8, 19);
+  for (const A of SAFE) if (A.kind !== 'lot') lab(`${A.ic} ${A === HOME ? '우리 과수원' : A.name}`, A === HOME ? mx(A.x0) - 48 : mx(A.cx), A === HOME ? my(A.cy) + 6 : my(A.y0) - 8, 19);
   ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
   for (const st of BUS_STOPS) ctx.fillText('🚏', mx(st.px), my(st.py) + 8);
   for (const r of RESTS) if (!restsFound().includes(r)) { ctx.globalAlpha = .6; lab('?', mx(r.x), my(r.y) + 8, 22); ctx.globalAlpha = 1; }
@@ -6526,7 +6525,7 @@ const HQ_PW = [0, 30, 95, 125, 165, 195, 260];
 const HQ_MONEY = [150000, 300000, 600000, 1000000, 1600000, 2400000, 3500000];
 const HQ_XP = [80, 150, 250, 400, 600, 850, 1200];
 const HQ_LV = {easy:{name:'쉬움', d:-1, n:5, mul:.7, col:'#5cc46c'}, fit:{name:'알맞음', d:0, n:4, mul:1, col:'#ffb13b'}, hard:{name:'도전', d:1, n:3, mul:1.4, col:'#ff6b57'}};
-const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'맨 오른쪽 아래 호랑이 굴'}}; // 2026-10-16 흰곰 삭제
+const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'확장 부지 2 남쪽 호랑이 굴 (지도 x 133 · y 133)'}}; // 2026-10-16 흰곰 삭제
 const HUNTER_NAME = '윤산들 사냥꾼';
 // 2026-10-14 달 요청: 난이도마다 한 번 끝내면 한 달(28일, 4주) 뒤에 다시 받을 수 있어요 (처음엔 1년이었어요)
 const HQ_REST = 28;
