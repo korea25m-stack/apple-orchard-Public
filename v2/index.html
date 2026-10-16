@@ -3102,16 +3102,62 @@ function pvGround(ctx){
   ctx.drawImage(g.cv, 0, 0);
 }
 // 하늘과 먼 산
+// 2026-10-16 달 요청: 하늘이 시간에 맞춰 바뀌어요. 아침 노을 → 파란 낮(해가 동쪽에서 서쪽으로) → 저녁 노을 → 해 진 뒤 달·별.
+// 하늘만 바뀌고 땅·캐릭터는 어두워지지 않아요(예전 깜빡임 싫다는 요청). 구름은 날씨에 따라 많아지고 천천히 흘러가요
+const PV_STARS = (() => { const R = srand(4242), o = []; for (let i = 0; i < 90; i++) o.push({a:R() * 6.283, e:.12 + R() * .9, r:.8 + R() * 1.8, tw:R() * 6}); return o; })();
+const PV_CLOUDS = (() => { const R = srand(777), o = []; for (let i = 0; i < 16; i++) o.push({a:R() * 6.283, e:.18 + R() * .55, w:90 + R() * 130, v:.004 + R() * .006, n:3 + Math.floor(R() * 3), k:R()}); return o; })();
+function pvSkyCols(S){
+  const h = G.hour, day = [PV_SKY[S], mix(PV_FOG[S], '#ffffff', .2)], dawn = ['#6f9ad8', '#ffc69a'], dusk = ['#4a5aa8', '#ff9468'], night = ['#0e1634', '#34386a'];
+  const lerp2 = (A, B, k) => [mix(A[0], B[0], k), mix(A[1], B[1], k)];
+  if (h < 8) return lerp2(dawn, day, clamp((h - 6) / 2, 0, 1));
+  if (h < 17) return day;
+  if (h < 18.6) return lerp2(day, dusk, (h - 17) / 1.6);
+  return lerp2(dusk, night, clamp((h - 18.6) / 1.1, 0, 1));
+}
 function pvSky(ctx){
-  const S = seasonOf(G.week), hor = pvHor(), fog = PV_FOG[S];
-  const g = ctx.createLinearGradient(0, 0, 0, hor + 40); g.addColorStop(0, PV_SKY[S]); g.addColorStop(1, fog);
+  const S = seasonOf(G.week), hor = pvHor(), fog = PV_FOG[S], h = G.hour, wx = G.wx || {}, wet = wx.sky === 'rain' || wx.sky === 'snow', grey = wet ? .55 : wx.sky === 'cloud' ? .25 : 0;
+  let [top, bot] = pvSkyCols(S);
+  if (grey) { top = mix(top, '#8a96a8', grey); bot = mix(bot, '#c4ccd6', grey); }
+  const g = ctx.createLinearGradient(0, 0, 0, hor + 40); g.addColorStop(0, top); g.addColorStop(.75, bot); g.addColorStop(1, mix(bot, fog, .6));
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, hor + 60);
-  const R = srand(91);
-  for (const [k, col, amp, base] of [[.012, mix(fog, '#7a9ab8', .45), 120, 30], [.03, mix(fog, '#6a9a7a', .5), 70, 8]]) {
+  // 하늘 위치(방위 a: 0 = 북쪽, + = 동쪽에서 오른쪽으로 돌아요 / 높이 e: 0 = 지평선, 1 = 머리 위) → 화면
+  const FOV = 2 * Math.atan(W / 2 / PV.f), skyAt = (a, e) => { let d = a - PV.yaw; d = ((d + Math.PI) % 6.283 + 6.283) % 6.283 - Math.PI; return [W / 2 + d / FOV * W, hor - e * hor * .95]; };
+  const T = performance.now() / 1000, nightK = clamp((h - 18.4) / 1.2, 0, 1) * (1 - grey * .8);
+  // 별
+  if (nightK > 0) for (const st of PV_STARS) { const [x, y] = skyAt(st.a, st.e); if (x < -10 || x > W + 10) continue;
+    ctx.globalAlpha = nightK * (.55 + .45 * Math.sin(T * 2 + st.tw)); ctx.beginPath(); ctx.arc(x, y, st.r, 0, 7); ctx.fillStyle = '#fffbe8'; ctx.fill();
+    if (st.r > 2.2) { ctx.lineWidth = 1; ctx.strokeStyle = '#fffbe8'; ctx.beginPath(); ctx.moveTo(x - 5, y); ctx.lineTo(x + 5, y); ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5); ctx.stroke(); } }
+  ctx.globalAlpha = 1;
+  // 해: 6시 왼쪽(동) 지평선 → 13시 높이 → 20시 오른쪽(서)으로 져요
+  const sk = (h - 6) / 13.2;
+  if (sk > -.02 && sk < 1.02 && grey < .5) {
+    const [x, y] = skyAt(-1.35 + sk * 2.7, Math.sin(clamp(sk, 0, 1) * Math.PI) * .78 + .03), low = 1 - Math.sin(clamp(sk, 0, 1) * Math.PI);
+    const col = mix('#fff4b0', '#ff8a4a', low * .9), gl = ctx.createRadialGradient(x, y, 10, x, y, 150);
+    gl.addColorStop(0, mix(col, '#ffffff', .3)); gl.addColorStop(1, 'rgba(255,220,150,0)');
+    ctx.globalAlpha = 1 - grey; ctx.fillStyle = gl; ctx.fillRect(x - 150, y - 150, 300, 300);
+    ctx.beginPath(); ctx.arc(x, y, 30 + low * 8, 0, 7); ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1;
+  }
+  // 달: 저녁 6시쯤 동쪽에서 떠올라요 (초승달 모양)
+  const mk = clamp((h - 17.6) / 2.4, 0, 1);
+  if (mk > 0 && grey < .6) {
+    const [x, y] = skyAt(-.62 + mk * .3, .1 + mk * .4), r = 26;
+    ctx.globalAlpha = clamp((h - 17.6) / .8, 0, 1) * (1 - grey);
+    const gl = ctx.createRadialGradient(x, y, 8, x, y, 90); gl.addColorStop(0, 'rgba(255,250,220,.5)'); gl.addColorStop(1, 'rgba(255,250,220,0)'); ctx.fillStyle = gl; ctx.fillRect(x - 90, y - 90, 180, 180);
+    ctx.save();
+    ctx.restore(); ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.clip(); ctx.beginPath(); ctx.rect(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4); ctx.arc(x + r * .78, y - r * .22, r * .82, 0, 7); ctx.fillStyle = '#fff6cf'; ctx.fill('evenodd'); ctx.restore(); ctx.globalAlpha = 1;
+  }
+  // 구름: 맑으면 몇 개, 흐리거나 비·눈이면 많고 회색
+  const cn = wet ? 16 : wx.sky === 'cloud' ? 12 : 6, ccol = mix(mix('#ffffff', '#ffd2b8', clamp(1 - Math.abs(h - 18.2) / 1.3, 0, 1) * .7 + clamp((7.5 - h) / 1.5, 0, 1) * .5), '#5a6488', nightK * .75), cs = wet ? mix(ccol, '#8a94a4', .5) : ccol;
+  for (let i = 0; i < cn; i++) { const c = PV_CLOUDS[i], [x, y] = skyAt(c.a + T * c.v * .2, c.e); if (x < -300 || x > W + 300) continue;
+    ctx.globalAlpha = .88; ctx.fillStyle = cs;
+    for (let k = 0; k < c.n; k++) { ctx.beginPath(); ctx.ellipse(x + (k - (c.n - 1) / 2) * c.w * .42, y - Math.sin(k * 1.7 + c.k * 5) * c.w * .12, c.w * .36, c.w * .2, 0, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1; }
+  const R = srand(91), dim = clamp((h - 18) / 2, 0, 1) * .35;
+  for (const [k, col, amp, base] of [[.012, mix(mix(fog, '#7a9ab8', .45), '#3a4466', dim), 120, 30], [.03, mix(mix(fog, '#6a9a7a', .5), '#3a4a52', dim), 70, 8]]) {
     const off = PV.yaw * 1080 * -1 - PV.x * k * .3;
     ctx.beginPath(); ctx.moveTo(0, hor + 10);
-    for (let x = -200; x <= W + 200; x += 40) { const X = x - ((off % 1600) + 1600) % 1600, wx = (x - off) / 260;
-      ctx.lineTo(x, hor + base - amp * (.55 + .45 * Math.sin(wx) * Math.sin(wx * .37 + 1.3)) * (.7 + .3 * Math.sin(wx * 2.1))); }
+    for (let x = -200; x <= W + 200; x += 40) { const X = x - ((off % 1600) + 1600) % 1600, wx2 = (x - off) / 260;
+      ctx.lineTo(x, hor + base - amp * (.55 + .45 * Math.sin(wx2) * Math.sin(wx2 * .37 + 1.3)) * (.7 + .3 * Math.sin(wx2 * 2.1))); }
     ctx.lineTo(W, hor + 10); ctx.closePath(); ctx.fillStyle = col; ctx.fill();
   }
   ctx.fillStyle = fog; ctx.fillRect(0, hor + 6, W, 14);
