@@ -1945,7 +1945,10 @@ function wjPortraitLook(){
 }
 
 // ===== 2026-10-13 새 캐릭터 그림체: 3등신, 굵고 선명한 한 겹 외곽선, 둥근 얼굴·큰 눈·발그레한 볼 =====
-// 발끝이 (0,0). 어른 키 약 128px(머리카락 끝). dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
+// 발끝이 (0,0). 어른 키 약 128px(머리카락 끝). dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽, 2026-10-16 대각선 4 오른아래, 5 왼아래, 6 오른위, 7 왼위
+// 8방향 번호(d8: 0 → … 7 ↗)를 dir로 바꿔요
+const hDir = d8 => [3, 4, 0, 5, 2, 7, 1, 6][((d8 | 0) % 8 + 8) % 8];
+const hDir8 = (dx, dy) => hDir((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8);
 // 예전 그림이 뿌옇던 이유: 아주 작은 조각을 여러 겹 겹쳐 그리고(머리결·귀·눈썹마다 외곽선), 반투명 머리 광택, 몸을 가로세로 다르게 늘려서 선 굵기가 들쭉날쭉했어요.
 // 새 그림은 큰 조각 몇 개만, 같은 굵기 외곽선 한 겹, 색은 전부 불투명하게 그려요.
 const OL = '#3a2215', OLW = 3, CHAR_K = .944; // 게임 화면에서 얼굴이 잘 보이게 조금 크게
@@ -1962,7 +1965,8 @@ let HERO_SIT = 0;
 let BENCH_SIT = 0; // 2026-10-15 인부가 벤치에 앉아 쉬는 자세(다리를 접고 몸을 낮춰요)
 function drawHuman(c, x, y, S, dir, walk, act, hero){
   const sit = hero && HERO_SIT, bsit = !hero && BENCH_SIT; if (sit || bsit) walk = 0;
-  const side = dir >= 2, back = dir === 1, fem = !!S.fem;
+  const diag = dir >= 4, mir = dir === 5 || dir === 7; // 대각선은 오른쪽을 보는 3/4 모습으로 그리고 왼쪽은 뒤집어요
+  const side = dir === 2 || dir === 3, back = dir === 1 || dir === 6 || dir === 7, fq = diag && !back, fem = !!S.fem;
   const ph = walk ? Math.sin(walk) : 0, bob = walk ? Math.abs(Math.cos(walk)) * 2 : 0;
   const sc = (S.kid ? .78 : 1) * CHAR_K;
   const skin = S.skin || '#ffe0c4', skS = shd(skin, .22), shoe = S.shoe || '#6a4028', trim = hero ? wjTrim() : null;
@@ -1978,7 +1982,7 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
   c.save(); c.translate(x, y);
   if (!sit) shadow(c, 0, 0, 20 * sc, 6 * sc);
   c.scale(sc, sc);
-  if (dir === 2) c.scale(-1, 1);
+  if (dir === 2 || mir) c.scale(-1, 1);
   // ── 다리 + 장화
   const hip = -34;
   const leg = (lx, ang, lift, dark) => {
@@ -1986,19 +1990,21 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
     if (S.baji) { pc(c, cc => { cc.moveTo(-7, -2); cc.lineTo(7, -2); qq(cc, 9, 10, 6, 17); cc.lineTo(-6, 17); qq(cc, -9, 10, -7, -2); cc.closePath(); }, dark ? shd(legC, .22) : legC, shd(legC, .38), 2, 0); pc(c, cc => rr(cc, -6.2, 13, 12.4, 4.5, 2), acc, shd(acc, .3), 0, 1, 1.8); }
     else pc(c, cc => rr(cc, -6, -2, 12, 24, 5), dark ? shd(legC, .22) : legC, shd(legC, .38), 2, 0);
     const B = dark ? shd(shoe, .2) : shoe;
-    pc(c, cc => { cc.moveTo(-6.6, 17); cc.lineTo(6.6, 17); cc.lineTo(6.8, 27); if (side) qq(cc, 13.5, 27, 12.5, 34); else qq(cc, 8.5, 29, 8, 34); cc.lineTo(-7.4, 34); qq(cc, -8.2, 25, -6.6, 17); cc.closePath(); }, B, shd(shoe, .4), 2, 1.5);
+    pc(c, cc => { cc.moveTo(-6.6, 17); cc.lineTo(6.6, 17); cc.lineTo(6.8, 27); if (side) qq(cc, 13.5, 27, 12.5, 34); else if (fq) qq(cc, 11, 28, 10.5, 34); else qq(cc, 8.5, 29, 8, 34); cc.lineTo(-7.4, 34); qq(cc, -8.2, 25, -6.6, 17); cc.closePath(); }, B, shd(shoe, .4), 2, 1.5);
     pl(c, [-6.4, 21, 6.6, 21], 2);
     c.restore();
   };
   if (bsit) { leg(-6.5, 0, 12, false); leg(6.5, 0, 12, false); c.translate(0, 10); }
   else if (sit) { // 걸터앉기: 옆모습은 가까운 다리만 앞으로 내리고, 앞·뒷모습은 두 다리를 양옆으로 벌려요
     if (side) leg(3, -.62, 4, false);
+    else if (diag) { leg(-6, .7, 4, true); leg(8, -.85, 4, false); }
     else { leg(-8, .85, 4, false); leg(8, -.85, 4, false); }
   } else if (side) { leg(-2, -ph * .45, 0, true); leg(2, ph * .45, 0, false); }
+  else if (diag) { leg(-4.5, -ph * .25, Math.max(0, ph) * 2, true); leg(6, ph * .25, Math.max(0, -ph) * 2, false); }
   else { leg(-6.5, 0, Math.max(0, ph) * 3, false); leg(6.5, 0, Math.max(0, -ph) * 3, false); }
   c.translate(0, -bob);
   if (S.old) c.translate(0, 2);
-  const tw = side ? 10 : 15;
+  const tw = side ? 10 : diag ? 13 : 15;
   const torso = (hem, fl = 0) => cc => { cc.moveTo(-tw + 5, -68); cc.lineTo(tw - 5, -68); qq(cc, tw + 1, -68, tw + 1, -60); cc.lineTo(tw + 1 + fl, hem); qq(cc, 0, hem + 2, -tw - 1 - fl, hem); cc.lineTo(-tw - 1, -60); qq(cc, -tw - 1, -68, -tw + 5, -68); cc.closePath(); };
   // ── 머리 뒤로 늘어진 머리카락 (몸 뒤)
   if (!back) backLocks(c, S, side);
@@ -2017,6 +2023,7 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
     c.restore();
   };
   if (side) arm(-2, -swing, true);
+  else if (diag) { arm(-tw - 1, .2 - swing, true); if (back) arm(tw + 2, -.2 + swing, false); }
   else if (back) { arm(-tw - 3, .26 - swing, false); arm(tw + 3, -.26 + swing, false); }
   // ── 치마
   const skirtC = dress ? oc : S.bc || '#5a5a6a';
@@ -2029,6 +2036,7 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
   const bodyC = coat || jk || dress || duru || (back && (outer === 'vest' || S.jokki)) ? (S.jokki && back ? S.jokki : oc) : top;
   pc(c, torso(coat ? -17 : duru ? -10 : dress ? -36 : chima ? -55 : outer === 'hanbok' ? -32 : -30, coat || duru ? 3 + (side ? Math.sin((walk || 0) * 2) : 0) : jk || outer === 'gaeryang' ? 1 : 0), bodyC, shd(bodyC, .3), 3, 3);
   const needBelt = !skirt && !coat && !hb && outer !== 'overall';
+  c.save(); if (fq) { c.translate(3, 0); c.scale(.86, 1); } // 앞 대각선은 옷 앞판 무늬를 보는 쪽으로 밀어요
   if (hb && !back) { // 동정(흰 깃) + 섶을 여민 깃, 고름
     const g = outer === 'gaeryang' ? acc : shd(bodyC, .22);
     if (side) pc(c, cc => { cc.moveTo(4, -68); cc.lineTo(9, -68); cc.lineTo(tw, -56); cc.lineTo(tw - 4, -54); cc.closePath(); }, g, shd(g, .2), 0, 1, 2);
@@ -2074,14 +2082,16 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
     pc(c, cc => rr(cc, -bw, -36, bw * 2, 5.5, 2), '#6a4428', '#4a2e1a', 0, 1, 2);
     if (!back) pc(c, cc => rr(cc, side ? 4 : -3.5, -37.2, 7, 8, 1.6), '#f2cc5a', '#c49a30', 1, 1, 1.8);
   }
+  c.restore();
   if (S.tstripe) { const xs = side ? [-4, 3] : back ? [-9, -3, 3, 9] : [-12, -9, 9, 12]; for (const y0 of [-62, -52, -42, -26]) for (const x0 of xs) pl(c, [x0 - 1.5, y0, x0 + 1.5, y0 + 3, x0 - .5, y0 + 6], 2.2); }
   if (side) arm(2, swing, false);
+  else if (fq) arm(tw + 2, -.2 - swing, false);
   else if (!back) { arm(-tw - 3, .26 + swing, false); arm(tw + 3, -.26 - swing, false); }
   if (S.scarf) { pc(c, cc => rr(cc, side ? -9 : -13, -73, side ? 18 : 26, 8, 4), S.scarf, shd(S.scarf, .3), 1.5, 1.5, 2.4); if (!side) pc(c, cc => { cc.moveTo(back ? 3 : -8, -68); cc.lineTo(back ? 6 : -12, -54); cc.lineTo(back ? 11 : -4, -55); cc.closePath(); }, S.scarf, shd(S.scarf, .3), 1, 1, 2.2); }
   // ── 목 (뒷모습·옆모습에서 머리와 몸 사이가 비지 않게)
   if (!S.scarf) pc(c, cc => rr(cc, side ? -4.5 : -5.5, -78, side ? 9 : 11, 12, 4), shd(skin, .1), shd(skin, .3), 1, 1, 2.4);
   // ── 머리
-  chibiHead(c, S, side, back, act, hero);
+  chibiHead(c, S, side, back, act, hero, diag);
   c.restore();
 }
 
@@ -2099,13 +2109,18 @@ function backLocks(c, S, side){
     else pc(c, cc => { cc.moveTo(14, HC - 18); qq(cc, 32, HC - 10, 26, HC + 16); qq(cc, 22, HC, 16, HC - 8); cc.closePath(); }, H, HS, 2, 2);
   }
 }
-function chibiHead(c, S, side, back, act, hero){
+function chibiHead(c, S, side, back, act, hero, dq){
   const H = S.hair, HS = shd(H, .35), hs = S.hs, fem = !!S.fem, skin = S.skin || '#ffe0c4', skS = shd(skin, .2);
   const longH = hs === 'long' || hs === 'wave';
   if (hs === 'bun') pc(c, cc => ell(cc, side ? -8 : 0, HC - 25, 8, 7), H, HS, 1.5, 2);
   // 귀
   const earOut = !(longH || hs === 'bob');
-  if (back) [-21, 21].forEach(ex => pc(c, cc => ell(cc, ex, HC + 2, 4, 5.5), skin, skS, 1, 1, 2.4));
+  if (back && dq) { // 뒤 대각선: 보는 쪽 볼과 귀가 살짝 보여요
+    c.save(); c.beginPath(); c.rect(13, HC - 40, 30, 80); c.clip(); c.translate(4, 0); pc(c, chibiFace, skin, skS, 2.5, 3); c.restore();
+    c.beginPath(); ell(c, 22, HC + 9, 2, 2.2); c.fillStyle = mix(skin, '#ff6a6a', .42); c.fill();
+  }
+  else if (back) [-21, 21].forEach(ex => pc(c, cc => ell(cc, ex, HC + 2, 4, 5.5), skin, skS, 1, 1, 2.4));
+  else if (dq) { if (earOut) pc(c, cc => ell(cc, -19, HC + 3, 4.2, 5.6), skin, skS, 1, 1, 2.4); }
   else if (!side && earOut) [-21, 21].forEach(ex => pc(c, cc => ell(cc, ex, HC + 3, 4.2, 5.6), skin, skS, 1, 1, 2.4));
   // 얼굴
   if (!back) pc(c, chibiFace, skin, skS, 2.5, 3);
@@ -2119,13 +2134,14 @@ function chibiHead(c, S, side, back, act, hero){
     if (hs === 'bald') pc(c, cc => rr(cc, -20, HC - 2, 40, 9, 4), H, HS, 1, 1, 2.4);
     if (hs === 'pony') pc(c, cc => { cc.moveTo(-5, HC + 2); qq(cc, -8, HC + 22, 0, HC + 32); qq(cc, 8, HC + 22, 5, HC + 2); cc.closePath(); }, H, HS, 1, 2, 2.4);
     if (hs !== 'bald') pl(c, [-11, HC - 17, 0, HC - 21, 9, HC - 18], 2.4, mix(H, '#ffffff', .18));
+    if (dq && earOut) pc(c, cc => ell(cc, 22, HC + 3, 3.4, 5), skin, skS, 1, 1, 2.4);
     chibiHat(c, S, side, back, hero); return;
   }
   // 얼굴 그리기
-  const eyes = side ? [10] : [-8.5, 8.5], ey = HC + 2;
+  const eyes = side ? [10] : dq ? [-2.5, 11.5] : [-8.5, 8.5], ey = HC + 2;
   eyes.forEach(ex => {
     if (S.old) { c.beginPath(); c.arc(ex, ey + 1, 3.8, Math.PI * 1.1, Math.PI * 1.9); c.lineWidth = 2.4; c.strokeStyle = OL; c.lineCap = 'round'; c.stroke(); return; }
-    const rx = side ? 3.4 : fem ? 4.4 : 4, ry = fem ? 5.8 : 5.3, ox = side ? .6 : 0;
+    const rx = side || dq && ex < 0 ? 3.4 : fem ? 4.4 : 4, ry = fem ? 5.8 : 5.3, ox = side || dq ? .6 : 0;
     c.beginPath(); ell(c, ex, ey, rx, ry); c.fillStyle = '#ffffff'; c.fill();
     c.beginPath(); ell(c, ex + ox, ey + .7, rx * (side ? .95 : .84), ry * .86); c.fillStyle = S.eye || '#5a3a22'; c.fill();
     c.beginPath(); ell(c, ex + ox, ey + 1.4, rx * .44, ry * .48); c.fillStyle = OL; c.fill();
@@ -2137,17 +2153,19 @@ function chibiHead(c, S, side, back, act, hero){
   // 눈썹
   eyes.forEach(ex => { c.beginPath(); c.moveTo(ex - 3.8, HC - 7); qq(c, ex, HC - 10, ex + 3.8, HC - 7.4); c.lineWidth = fem ? 2 : 2.6; c.strokeStyle = S.old ? '#bdbdbd' : shd(H, .3); c.lineCap = 'round'; c.stroke(); });
   // 볼, 코, 입
-  (side ? [12] : [-13.5, 13.5]).forEach(bx => { c.beginPath(); ell(c, bx, HC + 11, side ? 3.4 : 4.2, 2.6); c.fillStyle = mix(skin, '#ff6a6a', .42); c.fill(); });
+  (side ? [12] : dq ? [-8, 16] : [-13.5, 13.5]).forEach(bx => { c.beginPath(); ell(c, bx, HC + 11, side || dq && bx < 0 ? 3.4 : 4.2, 2.6); c.fillStyle = mix(skin, '#ff6a6a', .42); c.fill(); });
   if (side) { pc(c, cc => ell(cc, 21, HC + 8, 2.6, 2.4), skin, skS, .5, .5, 2); if (earOut) { pc(c, cc => ell(cc, -8, HC + 3, 3.6, 4.8), skin, skS, 1, 1, 2.4); pl(c, [-8.6, HC + 1, -7.4, HC + 3.5, -8.6, HC + 5.5], 1.4, skS); } }
-  else { c.beginPath(); c.arc(0, HC + 9.5, 1.7, .3, Math.PI - .3); c.lineWidth = 1.8; c.strokeStyle = shd(skin, .5); c.stroke(); }
-  const mx = side ? 14 : 0;
+  else { c.beginPath(); c.arc(dq ? 6.5 : 0, HC + 9.5, 1.7, .3, Math.PI - .3); c.lineWidth = 1.8; c.strokeStyle = shd(skin, .5); c.stroke(); }
+  const mx = side ? 14 : dq ? 6 : 0;
   if (act) pc(c, cc => { cc.moveTo(mx - 3.4, HC + 14.5); qq(cc, mx, HC + 21, mx + 3.4, HC + 14.5); cc.closePath(); }, '#c2483c', '#9a3028', 0, 1, 1.8);
   else { c.beginPath(); c.moveTo(mx - 4, HC + 14.5); qq(c, mx, HC + 18.5, mx + 4, HC + 14.5); c.lineWidth = 2.2; c.strokeStyle = OL; c.lineCap = 'round'; c.stroke(); }
   if (S.beard) pc(c, cc => { cc.moveTo(mx - 8, HC + 12); qq(cc, mx, HC + 9, mx + 8, HC + 12); qq(cc, mx + 7, HC + 20, mx, HC + 21); qq(cc, mx - 7, HC + 20, mx - 8, HC + 12); cc.closePath(); }, S.beard, shd(S.beard, .2), 1, 1, 2);
-  if (S.glasses) { eyes.forEach(ex => { c.beginPath(); c.arc(ex, ey, 6.6, 0, 7); c.lineWidth = 2; c.strokeStyle = '#6a4a2a'; c.stroke(); }); if (!side) pl(c, [-2, ey - 1, 2, ey - 1], 2, '#6a4a2a'); }
+  if (S.glasses) { eyes.forEach(ex => { c.beginPath(); c.arc(ex, ey, 6.6, 0, 7); c.lineWidth = 2; c.strokeStyle = '#6a4a2a'; c.stroke(); }); if (!side) pl(c, [eyes[0] + 6.6, ey - 1, eyes[1] - 6.6, ey - 1], 2, '#6a4a2a'); }
   // 앞머리
   if (hs === 'bald') { (side ? [-14] : [-20, 20]).forEach(ex => pc(c, cc => ell(cc, ex, HC - 4, 5, 7), H, HS, 1, 1, 2.4)); chibiHat(c, S, side, back, hero); return; }
+  if (dq) { pc(c, cc => { cc.moveTo(-6, HC - 20); qq(cc, -24, HC - 20, -23, HC + 2); qq(cc, -22, HC + 10, -16, HC + 12); qq(cc, -14, HC, -8, HC - 6); cc.closePath(); }, H, HS, 1, 2); c.save(); c.translate(3, 0); } // 앞 대각선: 뒤쪽 옆머리가 보이고 앞머리는 보는 쪽으로
   pc(c, cc => (side ? sideHair : frontHairC)(cc, hs), H, HS, 2, 3);
+  if (dq) c.restore();
   pl(c, side ? [-14, HC - 18, -4, HC - 23, 6, HC - 21] : [-12, HC - 18, -2, HC - 22, 8, HC - 20], 2.4, mix(H, '#ffffff', .18));
   chibiHat(c, S, side, back, hero);
 }
@@ -2719,16 +2737,20 @@ function syncCritters(){
     critters.push({k, ax:a.x, ay:a.y, x:a.x + rnd(-40, 40), y:a.y + rnd(-20, 20), tx:a.x, ty:a.y, t:rnd(0, 9), ph:i, flip:false});
   });
 }
+function critterDir(c, dx, dy, dt){ // 8방향: 0.2초 이어져야 바꿔서 덜덜 떨지 않게
+  const n8 = (Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8;
+  if (c.d8 == null || n8 === c.d8) { c.d8 = n8; c.d8T = 0; } else if ((c.d8T = (c.d8T || 0) + dt) > .2) { c.d8 = n8; c.d8T = 0; }
+}
 function updateCritters(dt){
   for (const c of critters) {
     c.t += dt;
-    if (c.k === 'duck') { const a = c.t * .25 + c.ph * 2.1; const nx = c.ax + Math.cos(a) * 100, ny = c.ay + Math.sin(a) * 40; c.flip = nx < c.x; c.x = nx; c.y = ny; continue; }
+    if (c.k === 'duck') { const a = c.t * .25 + c.ph * 2.1; const nx = c.ax + Math.cos(a) * 100, ny = c.ay + Math.sin(a) * 40; c.flip = nx < c.x; critterDir(c, nx - c.x, ny - c.y, dt); c.x = nx; c.y = ny; continue; }
     if (c.k === 'cat') continue;
     const range = c.k === 'rabbit' ? 160 : c.k === 'dog' ? 120 : 70;
     if (Math.hypot(c.tx - c.x, c.ty - c.y) < 4 || Math.random() < dt * .1) { c.tx = c.ax + rnd(-range, range); c.ty = c.ay + rnd(-range * .4, range * .4); }
     const sp = c.k === 'rabbit' ? 60 : c.k === 'dog' ? 55 : 18;
     const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy) || 1;
-    if (d > 3) { c.x += dx / d * sp * dt; c.y += dy / d * sp * dt; c.flip = dx < 0; }
+    if (d > 3) { c.x += dx / d * sp * dt; c.y += dy / d * sp * dt; c.flip = dx < 0; critterDir(c, dx, dy, dt); }
   }
 }
 const flies = Array.from({length:14}, (_, i) => ({x:rnd(0, WORLD_W), y:rnd(500, 2000), t:rnd(0, 9), c:['#ffd23a', '#ffffff', '#ff9ec4', '#9ad7ff'][i % 4]}));
@@ -2903,7 +2925,7 @@ function collectEntities(ctx, vis, T, w){
   if (vis(SPOT.portal.x, SPOT.portal.y, 300)) add(SPOT.portal.y - 60, SPOT.portal.x, () => drawPortal(ctx, SPOT.portal.x, SPOT.portal.y, T));
   add(BENCH.y - 2, BENCH.x, () => drawBench(ctx, BENCH.x, BENCH.y)); add(BENCH.y + 14, BENCH.x + 60, () => drawSnackTable(ctx, BENCH.x + 60, BENCH.y + 14));
   if (workerS.on) add(workerS.y, workerS.x, () => { BENCH_SIT = workerS.sit ? 1 : 0; try { drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act); } finally { BENCH_SIT = 0; } });
-  for (const c of critters) if (vis(c.x, c.y)) add(c.y, c.x, () => drawAnimal(ctx, c.k, c.x, c.y, c.t, c.flip));
+  for (const c of critters) if (vis(c.x, c.y)) add(c.y, c.x, () => { if (c.d8 != null && c.d8 % 4 && P8[c.k]) { ctx.save(); ctx.translate(c.x, c.y); drawPet8(ctx, c.k, c.d8, c.t); ctx.restore(); } else drawAnimal(ctx, c.k, c.x, c.y, c.t, c.d8 != null && P8[c.k] ? c.d8 === 4 : c.flip); }); // 2026-10-16 8방향
   if (raidAnim) add(raidAnim.y, raidAnim.x, () => drawAnimal(ctx, raidAnim.kind, raidAnim.x, raidAnim.y, T, raidAnim.flip));
   if (ssAnim) add(1e9, P.x, () => drawSprayDrone(ctx, ssAnim, T));
   else add(P.y, P.x, () => drawHero(ctx));
@@ -3370,7 +3392,7 @@ function updateVillagers(dt){
     const pd = Math.hypot(P.x - n.x, P.y - n.y);
     if (n.still || pd < 90) {
       n.walk = 0;
-      if (pd < 260) n.dir = Math.abs(P.x - n.x) > Math.abs(P.y - n.y) * 1.2 ? (P.x < n.x ? 2 : 3) : (P.y < n.y ? 1 : 0);
+      if (pd < 260) n.dir = hDir8(P.x - n.x, P.y - n.y); // 2026-10-16 8방향
       continue;
     }
     if (n.wait > 0) { n.wait -= dt; n.walk = 0; continue; }
@@ -3379,7 +3401,7 @@ function updateVillagers(dt){
     const s = Math.min(d, n.sp * dt);
     if (!moveBy(n, dx / d * s, dy / d * s)) { n.tx = n.hx; n.ty = n.hy; n.wait = .8; continue; }
     n.walk += dt * n.sp / 22;
-    n.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
+    n.dir = hDir8(dx, dy);
   }
 }
 function talkNpc(n){
@@ -4277,8 +4299,7 @@ function drawHeroBody(c){
   if (P.inv > 0 && Math.floor(P.inv * 12) % 2) c.globalAlpha *= .55;
   const spinning = P.spin > 0, sk = spinning ? 1 - P.spin / SPIN_T : 0;
   if (spinning) drawSpinGlow(c, sk, true);
-  const aimDir = Math.abs(Math.cos(P.aim || 0)) > .5 ? (Math.cos(P.aim) < 0 ? 2 : 3) : (Math.sin(P.aim || 0) < 0 ? 1 : 0);
-  drawPerson(c, P.x, P.y, 'haru', spinning ? aimDir : P.dir, P.walk, spinning ? 4 : P.asw > 0 ? P.asw * 20 : P.sw > 0 ? P.sw * 9 : 0);
+  drawPerson(c, P.x, P.y, 'haru', spinning ? hDir(Math.round((P.aim || 0) / (Math.PI / 4))) : P.d8 != null ? hDir(P.d8) : P.dir, P.walk, spinning ? 4 : P.asw > 0 ? P.asw * 20 : P.sw > 0 ? P.sw * 9 : 0);
   const armed = P.asw > 0 || spinning || inCombat() || inHunt(P.x, P.y);
   if (spinning) {
     const an = (P.aim || 0) - Math.PI / 2 + Math.PI * (1 - (1 - sk) ** 3), rr0 = 34;
@@ -4531,7 +4552,7 @@ function sleepUntilWork(){
   fadeScreen('😴 쿨쿨…', () => {
     toMorning();
     let n = 0; while (n++ < 400 && !hasWork()) { advance(14); G.hour = 6; }
-    P.hp = P.max; P.x = SPOT.nongmak.x; P.y = SPOT.nongmak.y + 50; P.dir = 0; P.tgt = null; cam.x = P.x; cam.y = P.y;
+    P.hp = P.max; P.x = SPOT.nongmak.x; P.y = SPOT.nongmak.y + 50; P.dir = 0; P.d8 = 2; P.tgt = null; cam.x = P.x; cam.y = P.y;
     saveLocal(); todoSig = ''; updateHUD(true);
   }, () => toast(`🌅 ${absDay() - start}일 푹 자고 일어났어요! ${G.year}년차 ${weekLabel(G.week).m}월 ${weekLabel(G.week).wk}째 주 아침이에요. 체력도 가득!`, 'good'), sleepTip(), 1600);
 }
@@ -5640,6 +5661,62 @@ function drawSnake8(c, K, B, S, front, diag, t, angry, V){
   if (V.crown) crownAt(c, hx, hy - 9);
 }
 
+// ===== 2026-10-16 달 규칙 "움직이는 건 전부 8방향": 마당 동물(토끼·닭·병아리·오리·강아지)의 앞·뒤·대각선 그림 =====
+// 옆모습(d8 0·4)은 원래 그림(drawAnimal)을 그대로 쓰고, 나머지 6방향을 여기서 그려요. 왼쪽 방향은 오른쪽 그림을 뒤집어요.
+const P8 = {
+  rabbit: {b:'#ffffff', s:'#dcd6e6', bw:12, bh:10, by:-12, hr:8, hy:-22, ears:'long', tail:'puff', hop:1, nose:'#ff8fae'},
+  chicken:{b:'#ffffff', s:'#d9d2c6', bw:11, bh:10, by:-14, hr:7, hy:-27, comb:1, beak:'#ff9f2a', feet:1},
+  chick:  {b:'#ffe15a', s:'#e0b42a', bw:6.6, bh:5.6, by:-8, hr:4.4, hy:-15, beak:'#ff9f2a', feet:1},
+  duck:   {b:'#ffffff', s:'#d3dbe2', bw:12, bh:7, by:-6, hr:6, hy:-16, hc:'#5aa86a', hs:'#2f7040', bill:'#ffb12a', swim:1, tail:'duck'},
+  dog:    {b:'#ffffff', s:'#d9d2c6', bw:12, bh:10, by:-18, hr:9.5, hy:-29, ears:'flop', ec:'#3a2a20', legs:1, tail:'wag', nose:INK}
+};
+function drawPet8(c, kind, d8, t){
+  const Q = P8[kind]; if (!Q) return;
+  if ([3, 4, 5].includes(d8)) c.scale(-1, 1);
+  const front = d8 === 1 || d8 === 2 || d8 === 3, diag = d8 % 2 === 1;
+  if (!Q.swim) shadow(c, 0, 0, Q.bw + 2, 4);
+  if (Q.hop) c.translate(0, -Math.max(0, Math.sin(t * 6)) * 8);
+  if (Q.swim) c.translate(0, Math.sin(t * 3) * 1.5);
+  const peck = Q.beak ? Math.max(0, Math.sin(t * 4)) * Q.hr * .3 : 0;
+  const hx = diag ? (front ? Q.bw * .55 : Q.bw * .4) : 0, hy = Q.hy + (front ? 2 + peck : -1);
+  const hc = Q.hc || Q.b, hs = Q.hs || Q.s;
+  const legs = () => {
+    if (Q.feet) for (const lx of diag ? [-2, 4] : [-3, 3]) line(c, [lx * Q.bw / 11, Q.by + Q.bh * .7, lx * Q.bw / 11, 0], 2, '#ff9f2a');
+    if (Q.legs) for (const lx of diag ? [-8, -2, 5, 10] : [-7, 7]) cel(c, cc => rr(cc, lx - 3, -14, 6, 14, 3), Q.b, Q.s, 1, 0, 2);
+  };
+  const tail = () => {
+    const tx = diag ? -Q.bw * .7 : 0, ty = Q.by + (front ? -Q.bh * .5 : Q.bh * .1);
+    if (Q.tail === 'puff') { c.beginPath(); c.arc(tx, ty, 4, 0, 7); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); }
+    if (Q.tail === 'duck') cel(c, cc => { cc.moveTo(tx - 5, ty); cc.lineTo(tx, ty - 8); cc.lineTo(tx + 5, ty); cc.closePath(); }, Q.b, Q.s, 1, 1, 2);
+    if (Q.tail === 'wag') { const w = Math.sin(t * 14) * 4; c.beginPath(); c.moveTo(tx, ty); c.quadraticCurveTo(tx + w, ty - 10, tx + w * 1.5, ty - 16); c.lineWidth = 6; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 3.5; c.strokeStyle = Q.b; c.stroke(); }
+  };
+  const ears = () => {
+    if (Q.ears === 'long') for (const ex of [-3.5, 3.5]) cel(c, cc => ell(cc, hx + ex, hy - Q.hr - 7, 3, 9), '#ffffff', front ? '#ffc4d4' : '#dcd6e6', 1, 1, 2);
+    if (Q.comb) cel(c, cc => { cc.arc(hx - 2, hy - Q.hr, 2.6, 0, 7); cc.arc(hx + 1.5, hy - Q.hr - 1.5, 3, 0, 7); }, '#e8423a', '#a32a22', 1, 1, 1.6);
+  };
+  const flop = () => { if (Q.ears === 'flop') for (const s of [-1, 1]) cel(c, cc => ell(cc, hx + s * (Q.hr - 1), hy - 2, 3.8, 7), Q.ec, '#000', 1, 1, 2); };
+  const head = face => {
+    ears();
+    cel(c, cc => ell(cc, hx, hy, Q.hr, Q.hr * .95), hc, hs, 2, 2, 2.2);
+    flop();
+    if (!face) return;
+    const fo = diag ? Q.hr * .28 : 0, k = Q.hr / 8;
+    const eyes = diag ? [[hx + fo - Q.hr * .42, .75], [hx + fo + Q.hr * .38, 1]] : [[hx - Q.hr * .4, 1], [hx + Q.hr * .4, 1]];
+    for (const [ex, sz] of eyes) { c.beginPath(); ell(c, ex, hy - Q.hr * .1, 1.7 * k * sz + .4, 2 * k + .4); c.fillStyle = INK; c.fill(); }
+    if (Q.beak) { c.beginPath(); c.moveTo(hx + fo - 2.4 * k, hy + Q.hr * .2); c.lineTo(hx + fo + 2.4 * k, hy + Q.hr * .2); c.lineTo(hx + fo, hy + Q.hr * .2 + 4 * k); c.closePath(); c.fillStyle = Q.beak; c.fill(); c.lineWidth = 1.2; c.strokeStyle = INK; c.stroke(); }
+    if (Q.bill) cel(c, cc => ell(cc, hx + fo, hy + Q.hr * .45, 4.6, 2.4), Q.bill, '#d88a1a', 0, 1, 1.6);
+    if (Q.nose && kind === 'dog') { cel(c, cc => ell(cc, hx + fo, hy + Q.hr * .38, 4.6, 3.4), '#ffffff', '#e8e0d4', 0, 1, 1.6); c.beginPath(); ell(c, hx + fo, hy + Q.hr * .25, 2.2, 1.6); c.fillStyle = INK; c.fill(); }
+    else if (Q.nose) { c.beginPath(); c.arc(hx + fo, hy + Q.hr * .3, 1.6, 0, 7); c.fillStyle = Q.nose; c.fill(); }
+    for (const [ex] of eyes) { c.beginPath(); ell(c, ex + (ex < hx + fo ? -1.5 : 1.5), hy + Q.hr * .45, 2, 1.2); c.fillStyle = 'rgba(255,120,140,.45)'; c.fill(); }
+  };
+  const body = () => {
+    cel(c, cc => ell(cc, 0, Q.by, Q.bw * (diag ? 1 : .85), Q.bh), Q.b, Q.s, 3, 3, 2.4);
+    if (kind === 'dog') { c.beginPath(); ell(c, front ? -4 : 3, Q.by - 3, 5, 3.5); c.fillStyle = INK; c.fill(); }
+  };
+  if (front) { if (diag) tail(); legs(); body(); head(true); }
+  else { head(false); legs(); body(); tail(); }
+}
+
 // ===== 2026-10-13 기상 이벤트 화면 연출 (태풍·우박·늦서리) =====
 let WXFX = null;
 const WX_DUR = {typhoon:7, hail:5.5, frost:5.5};
@@ -6416,8 +6493,12 @@ function updateBus(dt){
       else b.s += step;
     }
     const p = busAt(b.s); b.x = p.x; b.y = p.y; if (Math.abs(p.dx) > .15) b.flip = p.dx < 0;
+    if (b.wait <= 0) { // 8방향: 길이 살짝 꺾일 때마다 바뀌지 않게 0.25초 이어져야 바꿔요
+      const n8 = (Math.round(Math.atan2(p.dy, p.dx) / (Math.PI / 4)) + 8) % 8;
+      if (b.d8 == null || n8 === b.d8) { b.d8 = n8; b.d8T = 0; } else if ((b.d8T = (b.d8T || 0) + dt) > .25) { b.d8 = n8; b.d8T = 0; }
+    }
   }
-  if (BUS.ride) { const b = BUS.ride; P.x = b.x; P.y = b.y + 6; P.tgt = null; P.pend = null; P.kb = null; P.inv = Math.max(P.inv || 0, .3); P.walk = 0; }
+  if (BUS.ride) { const b = BUS.ride; P.x = b.x; P.y = b.y + 6; if (b.d8 != null) P.d8 = b.d8; P.tgt = null; P.pend = null; P.kb = null; P.inv = Math.max(P.inv || 0, .3); P.walk = 0; }
 }
 function busTargets(cands){
   if (BUS.ride) return;
@@ -6439,27 +6520,102 @@ function busGetOff(){
   return true;
 }
 // 포터 그림 (옆모습, 오른쪽이 앞, 발밑 가운데가 0,0): 파란 운전석 + 뒤 짐칸(사과 상자)
-function drawBus(c, b, T){
-  c.save(); c.translate(b.x, b.y); if (b.flip) c.scale(-1, 1);
-  const bob = b.wait > 0 ? 0 : Math.sin(T * 16) * 1.2;
-  shadow(c, 0, 4, 140, 20, .25);
-  c.translate(0, bob);
+// 2026-10-16 달 규칙: 움직이는 건 전부 8방향 → 포터도 옆·앞·뒤·대각선 그림. 포터는 앞이 평평한 캡오버 트럭이에요.
+const TK_A = .74, TK_K = .3, TK_W = 150; // 대각선: 옆판은 (TK_A, ±TK_K)로 비스듬히, 앞·뒤판 폭은 반으로
+function truckHero(c, x, y, a = 1, k = 0, mir = false){ // 짐칸의 주인공은 비스듬한 판 위에서도 똑바로 서 있게
+  c.save(); c.translate(x, y); if (a !== 1 || k) c.transform(1 / a, -k / a, 0, 1, 0, 0); if (mir) c.scale(-1, 1); c.scale(.62, .62); c.translate(-P.x, -P.y);
+  const iv = P.inv; P.inv = 0; try { drawHeroBody(c); } finally { P.inv = iv; } c.restore();
+}
+function truckSide(c, b, hero){ // 옆모습 (오른쪽이 앞, 발밑 가운데가 0,0)
   const B = b.col, S = mix(B, '#0a2050', .35);
   cel(c, cc => rr(cc, -132, -62, 168, 40, 6), '#c8ccd4', '#8a9098', 4, 4, 3);              // 짐칸
-  if (BUS.ride === b) { c.save(); c.beginPath(); c.rect(-140, -230, 190, 172); c.clip(); c.translate(-50, -58); c.scale(.62, .62); if (b.flip) c.scale(-1, 1); c.translate(-P.x, -P.y); const iv = P.inv; P.inv = 0; try { drawHeroBody(c); } finally { P.inv = iv; } c.restore(); } // 짐칸에 탄 주인공
+  if (hero) hero(-50, -58);
   for (const [bx, by] of [[-126, -84], [-96, -84], [-112, -106]]) { cel(c, cc => rr(cc, bx, by, 28, 22, 3), '#d9a05a', '#a8703a', 2, 2, 2.4); drawApple(c, bx + 9, by + 2, 5, '#ec3b30', '#a51d16'); drawApple(c, bx + 19, by + 2, 5, '#ec3b30', '#a51d16'); } // 사과 상자
   cel(c, cc => rr(cc, -136, -66, 174, 10, 4), '#e4e8ee', '#a8b0bc', 1, 1, 2.6);             // 짐칸 난간
-  cel(c, cc => { cc.moveTo(36, -22); cc.lineTo(36, -118); cc.quadraticCurveTo(36, -128, 48, -128); cc.lineTo(92, -128); cc.quadraticCurveTo(108, -128, 116, -100); cc.lineTo(132, -62); cc.quadraticCurveTo(140, -56, 140, -44); cc.lineTo(140, -22); cc.closePath(); }, B, S, 5, 5, 3.2); // 운전석
-  c.save(); c.beginPath(); c.moveTo(54, -116); c.lineTo(92, -116); c.quadraticCurveTo(100, -116, 106, -98); c.lineTo(116, -70); c.lineTo(54, -70); c.closePath(); c.fillStyle = '#cfeeff'; c.fill(); c.clip();
-  c.translate(80, -44); c.scale(.55, .55); drawPerson(c, 0, 0, 'worker', 3, 0, 0); c.restore(); // 운전하는 동네 아저씨
-  c.beginPath(); c.moveTo(54, -116); c.lineTo(92, -116); c.quadraticCurveTo(100, -116, 106, -98); c.lineTo(116, -70); c.lineTo(54, -70); c.closePath(); c.lineWidth = 2.6; c.strokeStyle = INK; c.stroke();
-  cel(c, cc => rr(cc, 130, -56, 12, 10, 3), '#fff6a0', '#e8c840', 1, 1, 2.2);               // 앞등
-  cel(c, cc => rr(cc, -138, -30, 280, 10, 4), '#5a5f68', '#3a3f48', 1, 1, 2.4);             // 범퍼·바닥
-  for (const wx of [-86, 96]) { cel(c, cc => ell(cc, wx, -16, 19, 19), '#3a3a40', '#1a1a20', 2, 2, 3); c.beginPath(); c.arc(wx, -16, 7, 0, 7); c.fillStyle = '#c8ccd4'; c.fill(); }
+  cel(c, cc => { cc.moveTo(36, -22); cc.lineTo(36, -118); cc.quadraticCurveTo(36, -128, 48, -128); cc.lineTo(128, -128); cc.quadraticCurveTo(140, -128, 140, -114); cc.lineTo(140, -22); cc.closePath(); }, B, S, 5, 5, 3.2); // 운전석(캡오버)
+  const win = cc => { cc.moveTo(54, -116); cc.lineTo(126, -116); cc.lineTo(128, -74); cc.lineTo(54, -74); cc.closePath(); };
+  c.save(); c.beginPath(); win(c); c.fillStyle = '#cfeeff'; c.fill(); c.clip();
+  c.translate(96, -44); c.scale(.55, .55); drawPerson(c, 0, 0, 'worker', 3, 0, 0); c.restore(); // 운전하는 동네 아저씨
+  c.beginPath(); win(c); c.lineWidth = 2.6; c.strokeStyle = INK; c.stroke();
+  cel(c, cc => rr(cc, 132, -56, 10, 10, 3), '#fff6a0', '#e8c840', 1, 1, 2.2);               // 앞등
+  cel(c, cc => rr(cc, -138, -30, 282, 10, 4), '#5a5f68', '#3a3f48', 1, 1, 2.4);             // 범퍼·바닥
+  for (const wx of [-86, 100]) { cel(c, cc => ell(cc, wx, -16, 19, 19), '#3a3a40', '#1a1a20', 2, 2, 3); c.beginPath(); c.arc(wx, -16, 7, 0, 7); c.fillStyle = '#c8ccd4'; c.fill(); }
+}
+function truckWheelsFB(c){ for (const wx of [-56, 56]) cel(c, cc => rr(cc, wx - 12, -36, 24, 38, 7), '#3a3a40', '#1a1a20', 2, 2, 3); }
+function truckFront(c, b){ // 앞모습: 큰 앞유리 + 운전하는 아저씨, 그릴, 동그란 앞등
+  const B = b.col, S = mix(B, '#0a2050', .35);
+  cel(c, cc => { cc.moveTo(-72, -22); cc.lineTo(-72, -114); cc.quadraticCurveTo(-72, -128, -58, -128); cc.lineTo(58, -128); cc.quadraticCurveTo(72, -128, 72, -114); cc.lineTo(72, -22); cc.closePath(); }, B, S, 5, 5, 3.2);
+  const win = cc => rr(cc, -60, -118, 120, 46, 8);
+  c.save(); c.beginPath(); win(c); c.fillStyle = '#cfeeff'; c.fill(); c.clip();
+  c.translate(-24, -44); c.scale(.55, .55); drawPerson(c, 0, 0, 'worker', 0, 0, 0); c.restore();
+  c.beginPath(); win(c); c.lineWidth = 2.6; c.strokeStyle = INK; c.stroke();
+  line(c, [-50, -112, -30, -80], 3, 'rgba(255,255,255,.7)');
+  cel(c, cc => rr(cc, -30, -64, 60, 20, 4), '#5a5f68', '#3a3f48', 1, 1, 2.4);
+  for (const gy of [-58, -51]) line(c, [-24, gy, 24, gy], 2, '#2a2f38');
+  for (const sx of [-1, 1]) cel(c, cc => ell(cc, sx * 52, -54, 10, 8), '#fff6a0', '#e8c840', 1, 1, 2.2);
+  cel(c, cc => rr(cc, -78, -32, 156, 11, 4), '#5a5f68', '#3a3f48', 1, 1, 2.4);
+  cel(c, cc => rr(cc, -15, -30, 30, 8, 2), '#ffffff', '#d0d0d0', 0, 1, 1.6);
+}
+function truckTail(c){ // 뒷문(짐칸 뒤판)과 빨간 뒷등
+  cel(c, cc => rr(cc, -74, -66, 148, 38, 4), '#c8ccd4', '#8a9098', 3, 3, 3);
+  for (const rx of [-40, 0, 40]) line(c, [rx, -60, rx, -34], 2, '#9aa0aa');
+  for (const sx of [-1, 1]) cel(c, cc => rr(cc, sx * 64 - 6, -62, 12, 16, 3), '#ff5a4a', '#c0302a', 1, 1, 2.2);
+  cel(c, cc => rr(cc, -78, -32, 156, 11, 4), '#5a5f68', '#3a3f48', 1, 1, 2.4);
+  cel(c, cc => rr(cc, -15, -30, 30, 8, 2), '#ffffff', '#d0d0d0', 0, 1, 1.6);
+}
+function truckCabBack(c, b){ // 운전석 뒷벽 + 뒷창(아저씨 뒤통수)
+  const B = b.col, S = mix(B, '#0a2050', .35);
+  cel(c, cc => { cc.moveTo(-68, -60); cc.lineTo(-68, -114); cc.quadraticCurveTo(-68, -128, -54, -128); cc.lineTo(54, -128); cc.quadraticCurveTo(68, -128, 68, -114); cc.lineTo(68, -60); cc.closePath(); }, B, S, 4, 4, 3);
+  const win = cc => rr(cc, -42, -120, 84, 28, 6);
+  c.save(); c.beginPath(); win(c); c.fillStyle = '#cfeeff'; c.fill(); c.clip(); c.translate(-20, -60); c.scale(.55, .55); drawPerson(c, 0, 0, 'worker', 1, 0, 0); c.restore();
+  c.beginPath(); win(c); c.lineWidth = 2.4; c.strokeStyle = INK; c.stroke();
+}
+function truckCrates(c, xs, y){ for (const bx of xs) { cel(c, cc => rr(cc, bx, y, 28, 22, 3), '#d9a05a', '#a8703a', 2, 2, 2.4); drawApple(c, bx + 9, y + 2, 5, '#ec3b30', '#a51d16'); drawApple(c, bx + 19, y + 2, 5, '#ec3b30', '#a51d16'); } }
+function tkShadow(c, x, y, rx, ry, an){ c.beginPath(); c.ellipse(x, y, rx, ry, an, 0, 7); c.fillStyle = 'rgba(30,40,20,.25)'; c.fill(); }
+function drawTruck8(c, b, d8){
+  const ride = BUS.ride === b;
+  if (d8 % 4 === 0) { // 옆
+    const mir = d8 === 4; if (mir) c.scale(-1, 1);
+    tkShadow(c, 0, -2, 150, 26, 0); truckSide(c, b, ride ? (x, y) => truckHero(c, x, y, 1, 0, mir) : null); return;
+  }
+  if (d8 === 2) { tkShadow(c, 0, -4, 92, 30, 0); truckWheelsFB(c); if (ride) truckHero(c, 0, -74); truckFront(c, b); return; }
+  if (d8 === 6) { tkShadow(c, 0, -4, 92, 30, 0); truckWheelsFB(c); truckCabBack(c, b); truckCrates(c, [-50, -14, 22], -94); if (ride) truckHero(c, 0, -52); truckTail(c); return; }
+  const mir = d8 === 3 || d8 === 5; if (mir) c.scale(-1, 1);
+  const B = b.col, S = mix(B, '#0a2050', .35), roof = (k, fx, fy) => { // 운전석 지붕(위에서 보이는 면)
+    const p = (x, y) => [x * TK_A, y + x * k];
+    const [x1, y1] = p(36, -128), [x2, y2] = p(140, -128);
+    cel(c, cc => { cc.moveTo(x1, y1); cc.lineTo(x2, y2); cc.lineTo(x2 + fx, y2 + fy); cc.lineTo(x1 + fx, y1 + fy); cc.closePath(); }, mix(B, '#ffffff', .18), B, 2, 2, 3);
+  }, bed = (k, fx, fy) => { // 위에서 보이는 짐칸 안쪽 바닥 + 건너편 난간
+    const p = (x, y) => [x * TK_A, y + x * k];
+    const [x1, y1] = p(-136, -64), [x2, y2] = p(36, -64);
+    cel(c, cc => { cc.moveTo(x1, y1); cc.lineTo(x2, y2); cc.lineTo(x2 + fx, y2 + fy); cc.lineTo(x1 + fx, y1 + fy); cc.closePath(); }, '#a8aeb8', '#8a9098', 0, 0, 3);
+    line(c, [x1 + fx, y1 + fy, x2 + fx, y2 + fy], 6, INK); line(c, [x1 + fx, y1 + fy, x2 + fx, y2 + fy], 3, '#e4e8ee');
+  };
+  if (d8 === 1 || d8 === 3) { // 앞 대각선: 옆판(앞이 오른아래) + 지붕 + 앞판
+    c.translate(-36, -20); tkShadow(c, 40, -6, 150, 34, Math.atan(TK_K / TK_A));
+    bed(TK_K, TK_W * .5, -TK_W * .25);
+    c.save(); c.transform(TK_A, TK_K, 0, 1, 0, 0); truckSide(c, b, ride ? (x, y) => truckHero(c, x, y, TK_A, TK_K, mir) : null); c.restore();
+    roof(TK_K, TK_W * .5, -TK_W * .25);
+    c.save(); c.translate(140 * TK_A, 140 * TK_K); c.transform(.5, -.25, 0, 1, 0, 0); c.translate(TK_W / 2, 0); truckFront(c, b); c.restore();
+  } else { // 뒤 대각선: 운전석 뒷벽·지붕 + 옆판(앞이 오른위) + 뒷판
+    c.translate(30, 26); tkShadow(c, -30, -6, 150, 34, -Math.atan(TK_K / TK_A));
+    c.save(); c.translate(36 * TK_A, -36 * TK_K); c.transform(-.5, -.25, 0, 1, 0, 0); c.translate(TK_W / 2, 0); truckCabBack(c, b); c.restore();
+    roof(-TK_K, -TK_W * .5, -TK_W * .25);
+    bed(-TK_K, -TK_W * .5, -TK_W * .25);
+    c.save(); c.transform(TK_A, -TK_K, 0, 1, 0, 0); truckSide(c, b, ride ? (x, y) => truckHero(c, x, y, TK_A, -TK_K, mir) : null); c.restore();
+    c.save(); c.translate(-138 * TK_A, 138 * TK_K); c.transform(-.5, -.25, 0, 1, 0, 0); c.translate(TK_W / 2, 0); truckTail(c); c.restore();
+  }
+}
+function drawBus(c, b, T){
+  const d8 = b.d8 != null ? b.d8 : b.flip ? 4 : 0;
+  c.save(); c.translate(b.x, b.y);
+  const bob = b.wait > 0 ? 0 : Math.sin(T * 16) * 1.2;
+  c.translate(0, bob);
+  drawTruck8(c, b, d8);
   c.restore();
   c.save(); c.font = '20px Jua'; c.textAlign = 'center'; const t = b.wait > 0 ? `🛻 동네 아저씨 포터 · ${Math.ceil(b.wait)}초 뒤 ${BUS_STOPS[b.ni].name}로` : '🛻 동네 아저씨 포터', tw = c.measureText(t).width + 18;
-  c.beginPath(); rr(c, b.x - tw / 2, b.y - 178, tw, 28, 10); c.fillStyle = 'rgba(255,250,241,.95)'; c.fill(); c.lineWidth = 2.4; c.strokeStyle = INK; c.stroke();
-  c.fillStyle = INK; c.fillText(t, b.x, b.y - 157); c.restore();
+  c.beginPath(); rr(c, b.x - tw / 2, b.y - 206, tw, 28, 10); c.fillStyle = 'rgba(255,250,241,.95)'; c.fill(); c.lineWidth = 2.4; c.strokeStyle = INK; c.stroke();
+  c.fillStyle = INK; c.fillText(t, b.x, b.y - 185); c.restore();
 }
 function busEntities(ctx, add, vis){
   const T = performance.now() / 1000;
@@ -8966,7 +9122,7 @@ function act(t){
     if (k === 'plant' && G.money < SAPLING) { toast('돈이 모자라서 묘목을 못 사요.', 'bad'); return; }
     if (k === 'plant' && AUTO) { const opts = VAR_KEYS.filter(unlocked); G.selVar = opts[Math.floor(t.i / PER_ROW) % opts.length]; }
     const p = treePos(t.i);
-    P.dir = Math.abs(p.x - P.x) > Math.abs(p.y - P.y) ? (p.x < P.x ? 2 : 3) : (p.y < P.y ? 1 : 0);
+    P.dir = Math.abs(p.x - P.x) > Math.abs(p.y - P.y) ? (p.x < P.x ? 2 : 3) : (p.y < P.y ? 1 : 0); P.d8 = (Math.round(Math.atan2(p.y - P.y, p.x - P.x) / (Math.PI / 4)) + 8) % 8;
     // 2026-10-15 꽃솎기·열매솎기·가지치기는 미니게임, 수확은 익음 검사부터 (05f_farm.js)
     if (fgHook(k, t.i)) return;
     P.actI = t.i; P.sw = .3; finishAct(); // 기다림 없이 바로
@@ -9041,7 +9197,7 @@ function update(dt){
   // 인부
   if (workerS.on) {
     const dx = workerS.tx - workerS.x, dy = workerS.ty - workerS.y, d = Math.hypot(dx, dy);
-    if (d > 4) { const s = Math.min(d, 320 * dt); workerS.x += dx / d * s; workerS.y += dy / d * s; workerS.walk += dt * 11; workerS.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0); }
+    if (d > 4) { const s = Math.min(d, 320 * dt); workerS.x += dx / d * s; workerS.y += dy / d * s; workerS.walk += dt * 11; workerS.dir = hDir8(dx, dy); }
     else workerS.walk = 0;
     if (workerS.act > 0) workerS.act -= dt;
     if (G.worker <= 0) { workerS.tx = SPOT.shed.x; workerS.ty = SPOT.shed.y + 30; workerS.sit = false; if (d < 8) workerS.on = false; }
