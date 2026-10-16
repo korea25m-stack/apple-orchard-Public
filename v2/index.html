@@ -5774,8 +5774,15 @@ function busEntities(ctx, add, vis){
 }
 
 // ----- M: 전체 지도 (한 번 더 누르면 닫혀요) -----
-let BIGMAP = false;
-function toggleBigMap(){ BIGMAP = !BIGMAP; sfx('pick'); }
+let BIGMAP = false, BIGMAP_HOT = [], BIGMAP_MOUSE = null;
+// 지도 위를 누르면: 순간이동 지점이면 가고, 아니면 아무 일도 안 해요 (지도 켠 동안 공격·걷기 안 함)
+function bigMapClick(p){
+  const h = BIGMAP_HOT.find(q => Math.hypot(p.x - q.x, p.y - q.y) < q.r);
+  if (!h) return;
+  if (inCombat()) { toast('⚔️ 싸우는 중엔 순간이동할 수 없어요.', 'bad'); return; }
+  BIGMAP = false; cv.style.cursor = ''; BUS.ride = null; sfx('whirl'); h.go();
+}
+function toggleBigMap(){ BIGMAP = !BIGMAP; sfx('pick'); if (!BIGMAP) cv.style.cursor = ''; }
 function drawBigMap(ctx){
   if (!BIGMAP) return;
   if (!miniBase) buildMiniBase();
@@ -5793,17 +5800,29 @@ function drawBigMap(ctx){
   const lab = (t, x, y, f = 20) => { ctx.font = `${f}px Jua`; ctx.textAlign = 'center'; ctx.lineWidth = 5; ctx.strokeStyle = '#fffaf1'; ctx.strokeText(t, x, y); ctx.fillStyle = INK; ctx.fillText(t, x, y); };
   for (const A of SAFE) lab(`${A.ic} ${A === HOME ? '우리 과수원' : A.name}`, mx(A.cx), my(A.y0) - 8, 22);
   ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
-  for (const p of PORTALS) ctx.fillText('🌀', mx(p.x), my(p.y) + 8);
   for (const st of BUS_STOPS) ctx.fillText('🚏', mx(st.px), my(st.py) + 8);
-  for (const r of RESTS) { const f = G.rests && G.rests[r.id]; ctx.globalAlpha = f ? 1 : .6; if (f) ctx.fillText('⛺', mx(r.x), my(r.y) + 8); else lab('?', mx(r.x), my(r.y) + 8, 22); ctx.globalAlpha = 1; }
+  for (const r of RESTS) if (!restsFound().includes(r)) { ctx.globalAlpha = .6; lab('?', mx(r.x), my(r.y) + 8, 22); ctx.globalAlpha = 1; }
   ctx.font = '26px sans-serif'; ctx.fillText(DEN.ic, mx(DEN.x), my(DEN.y) + 9); lab('호랑이 굴', mx(DEN.x), my(DEN.y) - 22, 18);
   ctx.font = '26px sans-serif'; for (const b of BUSES) if (b.x != null) ctx.fillText('🚌', mx(b.x), my(b.y) + 9);
   lab('동계천', ...[mx(mapXY(300, 262)[0]), my(mapXY(300, 262)[1])], 18);
   for (const m of MONS) if (!m.dead && (m.raid || m.boss)) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), 5, 0, 7); ctx.fillStyle = '#ff3b30'; ctx.fill(); }
+  // 2026-10-16 달 요청: 순간이동 지점(장치 5곳 + 찾은 쉼터)을 누르면 바로 가요
+  BIGMAP_HOT = []; let tip = null;
+  const hot = (x, y, ic, name, go) => {
+    const sx = mx(x), sy = my(y), on = BIGMAP_MOUSE && Math.hypot(BIGMAP_MOUSE.x - sx, BIGMAP_MOUSE.y - sy) < 24;
+    BIGMAP_HOT.push({x:sx, y:sy, r:24, go});
+    ctx.beginPath(); ctx.arc(sx, sy, on ? 22 : 18, 0, 7); ctx.fillStyle = on ? '#fff2b8' : 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = on ? 4 : 3; ctx.strokeStyle = on ? '#e8a020' : '#7a5af0'; ctx.stroke();
+    ctx.font = `${on ? 24 : 20}px sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(ic, sx, sy + 8);
+    if (on) tip = [`🌀 ${name}로 순간이동 (누르기)`, sx, sy - 34];
+  };
+  for (const p of PORTALS) hot(p.x, p.y, '🌀', p.name, () => warpTo(p.x, p.y + 90, `🌀 ${p.name}로 순간이동!`));
+  for (const r of restsFound()) hot(r.x, r.y, '⛺', r.name, () => warpTo(r.x, r.y + 70, `🌀 ${r.name}로 순간이동!`));
   ctx.beginPath(); ctx.arc(mx(P.x), my(P.y), 9, 0, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
-  lab(`📍 ${HN()}`, mx(P.x), my(P.y) - 16, 20);
+  lab(`📍 ${HN()}`, mx(P.x), my(P.y) + 30, 20);
+  if (tip) { ctx.font = '20px Jua'; const tw = ctx.measureText(tip[0]).width + 24, tx = clamp(tip[1], x0 + tw / 2 + 4, x0 + w - tw / 2 - 4); ctx.beginPath(); rr(ctx, tx - tw / 2, tip[2] - 26, tw, 34, 12); ctx.fillStyle = '#fff2b8'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke(); ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(tip[0], tx, tip[2] - 2); }
+  cv.style.cursor = tip ? 'pointer' : '';
   ctx.restore();
-  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🌀 순간이동 장치 · 🚏 버스 정류장 · 🚌 마을버스(노란 점선 = 버스 길) · ⛺ 쉼터 · ? 아직 못 찾은 쉼터', x0 + 6, y0 + h + 26);
+  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🌀·⛺ 누르면 바로 순간이동 · 🚏 버스 정류장 · 🚌 마을버스(노란 점선 = 버스 길) · ? 아직 못 찾은 쉼터', x0 + 6, y0 + h + 26);
   ctx.restore();
 }
 // 버스 탄 동안 화면 아래 안내
@@ -8396,7 +8415,7 @@ addEventListener('keydown', e => {
   if (!e.repeat) for (const a of acts) pressAct(a);
   else if (acts.includes('attack')) pressAct('attack');
   if (e.code === 'Escape' && UI.modal && !UI.modal.noX) UI.close();
-  else if (e.code === 'Escape' && BIGMAP) BIGMAP = false;
+  else if (e.code === 'Escape' && BIGMAP) toggleBigMap();
   if (e.code.startsWith('Arrow')) e.preventDefault();
 });
 addEventListener('keyup', e => { if (swallow[e.code]) { e.preventDefault(); delete swallow[e.code]; } keys[e.code] = false; });
@@ -8425,6 +8444,7 @@ function mouseBtnDown(btn, p){
 }
 // 다른 버튼을 누른 채로 또 누르면 pointerdown이 안 와요 → pointermove로 알아채요
 cv.addEventListener('pointermove', e => {
+  if (BIGMAP) BIGMAP_MOUSE = stagePt(e);
   if (e.pointerType !== 'mouse' || e.button < 0) return;
   const mask = [1, 4, 2, 8, 16][e.button] || 0, code = 'Mouse' + e.button;
   if (e.buttons & mask) { if (!MB[code]) mouseBtnDown(e.button, stagePt(e)); } else MB[code] = false;
@@ -8432,6 +8452,7 @@ cv.addEventListener('pointermove', e => {
 cv.addEventListener('pointerdown', e => {
   if (!pvLocked()) try { cv.setPointerCapture(e.pointerId); } catch (er) {} // 2026-10-15 마우스가 잠긴 3인칭에선 이게 에러를 내서 공격·막기가 안 됐어요
   const p = stagePt(e);
+  if (BIGMAP && UI.free()) { bigMapClick(p); e.preventDefault(); return; } // 전체 지도: 순간이동 지점 누르기
   if (UI.free() && inMM(p)) { MM_FULL = !MM_FULL; sfx('pick'); e.preventDefault(); return; } // 작은 지도 누르면 온 세상 ↔ 우리 둘레
   // 2026-10-13 마우스 버튼도 키 설정대로 (기본: 왼쪽 = 공격, 오른쪽 = 막기)
   if (e.pointerType === 'mouse' && mouseBtnDown(e.button, p)) { e.preventDefault(); return; }
@@ -8493,7 +8514,7 @@ $('#fBtn').addEventListener('pointerdown', e => { e.preventDefault(); pressF(); 
 const fUp = () => { P.touchBlock = false; };
 $('#atkBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroAttack(); });
 // 2026-10-15 3인칭에서 화면을 누르면 마우스가 잠기고, 좌우로 움직이면 둘러봐요(Esc로 풀기)
-cv.addEventListener('pointerdown', () => { if (PV.on && UI.free() && !pvLocked() && cv.requestPointerLock) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} } });
+cv.addEventListener('pointerdown', () => { if (PV.on && UI.free() && !BIGMAP && !pvLocked() && cv.requestPointerLock) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} } });
 // 2026-10-15 달 요청: 마우스가 잠겨 있을 때만 시점이 돌아요. Esc로 풀면 화면은 멈추고 마우스만 자유로워요
 addEventListener('keydown', e => { if (e.code === 'Escape' && pvLocked()) document.exitPointerLock(); });
 document.addEventListener('mousemove', e => { if (PV.on && UI.free() && pvLocked()) pvLook(e.movementX || 0, e.movementY || 0); });
