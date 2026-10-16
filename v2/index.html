@@ -6066,13 +6066,9 @@ function drawBigMap(ctx){
   tick('x →', x0 + w - 8, y0 + 15, 'right'); tick('y ↓', x0 + 5, y0 + h - 8, 'left'); tick('0', x0 + 5, y0 + 15, 'left');
   ctx.restore();
   // 버스 길
-  ctx.strokeStyle = 'rgba(255,207,61,.9)'; ctx.lineWidth = 4; ctx.setLineDash([10, 8]); ctx.beginPath(); BUS_LINE.forEach(([x, y], i) => i ? ctx.lineTo(mx(x), my(y)) : ctx.moveTo(mx(x), my(y))); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(255,207,61,.9)'; ctx.lineWidth = 3; ctx.beginPath(); BUS_LINE.forEach(([x, y], i) => i ? ctx.lineTo(mx(x), my(y)) : ctx.moveTo(mx(x), my(y))); ctx.stroke();
   const lab = (t, x, y, f = 20) => { ctx.font = `${f}px Jua`; ctx.textAlign = 'center'; ctx.lineWidth = 5; ctx.strokeStyle = '#fffaf1'; ctx.strokeText(t, x, y); ctx.fillStyle = INK; ctx.fillText(t, x, y); };
-  // 2026-10-16 가운데서 멀수록 센 숲: 구역 경계를 점선 타원으로
-  ctx.save(); ctx.setLineDash([6, 8]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.45)';
-  ZONE_C.forEach((k, i) => { ctx.beginPath(); ctx.ellipse(mx(MCX), my(MCY), k * MHX * s, k * MHY * s, 0, 0, 7); ctx.stroke(); });
-  ctx.setLineDash([]); ctx.restore();
-  [0, ...ZONE_C].forEach((k, i) => { const k2 = i < ZONE_C.length ? ZONE_C[i] : 2.05, r = (k + k2) / 2; const yy = my(MCY - r * MHY * .72), xx = mx(MCX - r * MHX * .7); if (i) lab(`${'★'.repeat(i + 1)}`, xx, yy, 15); });
+  // 2026-10-16 달 요청: 구역 점선·★ 표시는 정신없어서 뺐어요
   for (const A of SAFE) if (A.kind !== 'lot') lab(`${A.ic} ${A === HOME ? '우리 과수원' : A.name}`, A === HOME ? mx(A.x0) - 48 : mx(A.cx), A === HOME ? my(A.cy) + 6 : my(A.y0) - 8, 19);
   ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
   for (const st of BUS_STOPS) ctx.fillText('🚏', mx(st.px), my(st.py) + 8);
@@ -6107,7 +6103,7 @@ function drawBigMap(ctx){
     ctx.beginPath(); ctx.arc(BM.x, BM.y, 4, 0, 7); ctx.fillStyle = INK; ctx.fill();
   }
   ctx.restore();
-  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🌀·⛺ 누르면 바로 순간이동 · 🚏 버스 정류장 · 🚌 마을버스(노란 점선 = 버스 길) · ? 아직 못 찾은 쉼터', x0 + 6, y0 + h + 26);
+  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🌀·⛺ 누르면 바로 순간이동 · 🚏 버스 정류장 · 🚌 마을버스(노란 선 = 버스 길) · ? 아직 못 찾은 쉼터', x0 + 6, y0 + h + 26);
   ctx.restore();
 }
 // 버스 탄 동안 화면 아래 안내
