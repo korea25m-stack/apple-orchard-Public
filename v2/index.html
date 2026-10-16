@@ -234,9 +234,9 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
 #rideBtn small{display:block;font-size:19px;font-family:var(--display);margin-top:4px}
 #rideBtn.on{background:#ff9a3a} #rideBtn:disabled{opacity:.55;filter:grayscale(.6);cursor:default}
 .mountSlot{grid-column:1/-1}.mountRow{display:flex;align-items:center;gap:16px}.mountRow p{margin:4px 0 0;font-size:16px;color:var(--muted)}.mountRow>div{flex:1}
-#atkBtn,#gongBtn{position:absolute;width:150px;height:150px;border-radius:50%;background:#ff8a6a;border:4px solid var(--ink);z-index:20;font-size:58px;box-shadow:0 6px 0 var(--ink);line-height:1}
-#atkBtn{right:310px;bottom:150px} #gongBtn{right:300px;bottom:330px;width:120px;height:120px;font-size:44px;background:#ffd25e}
-#atkBtn small,#gongBtn small{display:block;font-size:22px;font-family:var(--display)}
+#atkBtn,#gongBtn,#homeBtn{position:absolute;width:150px;height:150px;border-radius:50%;background:#ff8a6a;border:4px solid var(--ink);z-index:20;font-size:58px;box-shadow:0 6px 0 var(--ink);line-height:1}
+#atkBtn{right:310px;bottom:150px} #gongBtn{right:300px;bottom:330px;width:120px;height:120px;font-size:44px;background:#ffd25e} #homeBtn{right:440px;bottom:330px;width:120px;height:120px;font-size:44px;background:#9ad7ff}
+#atkBtn small,#gongBtn small,#homeBtn small{display:block;font-size:22px;font-family:var(--display)}
 #sleepFx{position:absolute;inset:0;z-index:300;background:#140f22;color:#fff6d8;font-family:var(--display);font-size:72px;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .7s}
 #sleepFx.on{opacity:1;pointer-events:auto}
 #sleepFx .sfIn{text-align:center;padding:0 120px}
@@ -343,6 +343,7 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
     <button id="fBtn">F<small id="fLab">일하기</small></button>
     <button id="atkBtn">⚔️<small>공격</small></button>
     <button id="gongBtn">💥<small>기합</small></button>
+    <button id="homeBtn">🏡<small>귀환</small></button>
     <button id="fsBtn" class="card">⛶</button>
   </div>
 
@@ -1468,6 +1469,7 @@ function drawHat(c, L, side, back, hy){
 // ----- 동물 -----
 function drawAnimal(c, kind, x, y, t, flip, V){
   c.save(); c.translate(x, y); if (flip) c.scale(-1, 1);
+  if (V && kind === 'pbear') { c.restore(); c.save(); c.translate(x, y); drawPolarBoss(c, V.d8 != null ? V.d8 : flip ? 4 : 0, t, V); c.restore(); return; } // 2026-10-16 무섭고 멋진 흰곰 보스(8방향)
   if (V && kind === 'tiger' && V.d8 != null && V.d8 % 4) { c.restore(); c.save(); c.translate(x, y); drawTiger8(c, V.d8, t, V); c.restore(); return; } // 8방향(대각선·앞·뒤)
   if (V && V.d8 != null && V.d8 % 4 && B8[kind]) { c.restore(); c.save(); c.translate(x, y); drawBeast8(c, kind, V.d8, t, V); c.restore(); return; } // 2026-10-16 짐승 8방향(앞·뒤·대각선)
   if (V && kind === 'tiger') { drawFierceTiger(c, t, V); c.restore(); return; } // 2026-10-16 포스 넘치는 호랑이(보스·탈것)
@@ -2701,12 +2703,12 @@ function findTarget(){
   const cands = [];
   for (let i = 0; i < G.trees.length; i++) { const p = treePos(i); cands.push({kind:'tree', i, x:p.x, y:p.y + 10}); }
   cands.push({kind:'grandma', x:SPOT.grandma.x, y:SPOT.grandma.y}, {kind:'chief', x:SPOT.chief.x, y:SPOT.chief.y}, {kind:'hunter', x:SPOT.hunter.x, y:SPOT.hunter.y},
-             {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 10}, {kind:'hanok', x:SPOT.hanok.x, y:SPOT.hanok.y + 10}, {kind:'nongmak', x:SPOT.nongmak.x, y:SPOT.nongmak.y + 10}, {kind:'portal', x:SPOT.portal.x, y:SPOT.portal.y});
+             {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 10}, {kind:'hanok', x:SPOT.hanok.x, y:SPOT.hanok.y + 10}, {kind:'nongmak', x:SPOT.nongmak.x, y:SPOT.nongmak.y + 10});
   huntTargets(cands); busTargets(cands);
   for (const n of NPCS) cands.push({kind:'npc', n:n.i, x:n.x, y:n.y});
   for (const c of cands) {
     const d = (c.x - P.x) ** 2 + ((c.y - P.y) * 1.3) ** 2;
-    const lim = c.kind === 'hanok' || c.kind === 'nongmak' || c.kind === 'rest' || c.kind === 'portal' || c.kind === 'bus' ? 150 * 150 : c.kind === 'tree' ? 70 * 70 : bd;
+    const lim = c.kind === 'hanok' || c.kind === 'nongmak' || c.kind === 'rest' || c.kind === 'taxi' || c.kind === 'bus' ? 150 * 150 : c.kind === 'tree' ? 70 * 70 : bd;
     if (d < lim && d < (best ? best.d : 1e9)) best = {...c, d};
   }
   return best;
@@ -2717,7 +2719,7 @@ function targetLabel(t){
   if (t.kind === 'npc') return NPCS[t.n].name;
   if (t.kind === 'forage') return '캐기: ' + LOOT[t.f.item].name;
   if (t.kind === 'rest') return '⛺ 쉬기';
-  if (t.kind === 'bus' || (t.kind === 'portal' && t.p)) return busLabel(t);
+  if (t.kind === 'bus' || t.kind === 'taxi') return busLabel(t);
   return {grandma:'김순자 할머니', chief:'고만수 이장님', hunter:'🏹 ' + HUNTER_NAME, shed:carryN() ? '노란 박스 내려놓기' : '창고 들어가기', hanok:'저장하기', nongmak:'농막 들어가기', portal:'🌀 순간이동 포탈'}[t.kind];
 }
 
@@ -2922,7 +2924,6 @@ function collectEntities(ctx, vis, T, w){
   add(SPOT.grandma.y, SPOT.grandma.x, () => drawPerson(ctx, SPOT.grandma.x, SPOT.grandma.y, 'grandma', 0, 0, 0));
   add(SPOT.chief.y, SPOT.chief.x, () => drawPerson(ctx, SPOT.chief.x, SPOT.chief.y, 'chief', 0, 0, 0));
   add(SPOT.hunter.y, SPOT.hunter.x, () => drawHunterSpot(ctx, T));
-  if (vis(SPOT.portal.x, SPOT.portal.y, 300)) add(SPOT.portal.y - 60, SPOT.portal.x, () => drawPortal(ctx, SPOT.portal.x, SPOT.portal.y, T));
   add(BENCH.y - 2, BENCH.x, () => drawBench(ctx, BENCH.x, BENCH.y)); add(BENCH.y + 14, BENCH.x + 60, () => drawSnackTable(ctx, BENCH.x + 60, BENCH.y + 14));
   if (workerS.on) add(workerS.y, workerS.x, () => { BENCH_SIT = workerS.sit ? 1 : 0; try { drawPerson(ctx, workerS.x, workerS.y, 'worker', workerS.dir, workerS.walk, workerS.act); } finally { BENCH_SIT = 0; } });
   for (const c of critters) if (vis(c.x, c.y)) add(c.y, c.x, () => { if (c.d8 != null && c.d8 % 4 && P8[c.k]) { ctx.save(); ctx.translate(c.x, c.y); drawPet8(ctx, c.k, c.d8, c.t); ctx.restore(); } else drawAnimal(ctx, c.k, c.x, c.y, c.t, c.d8 != null && P8[c.k] ? c.d8 === 4 : c.flip); }); // 2026-10-16 8방향
@@ -4204,10 +4205,8 @@ function uiRest(r){
   UI.open({ic:'⛺', title:r.name, w:860, render(o){
     o.body.innerHTML = `<p style="margin-top:0">모닥불 옆에서 쉬었더니 <b>체력이 가득 찼어요!</b> ❤️ ${Math.round(P.hp)}/${P.max}</p>
       <p>${zoneLv(Math.max(0, zoneAt(r.x, r.y)))} ${zoneName(Math.max(0, zoneAt(r.x, r.y)), r.x, r.y)} 한가운데예요. 쉼터 안에는 산짐승이 못 들어와요.</p>
-      <p class="gnote">찾은 쉼터 ${restsFound().length}/${RESTS.length}곳 · 찾은 쉼터끼리, 그리고 마을의 🌀 순간이동 포탈(이장님 아래)에서 바로 오갈 수 있어요.</p>`;
-    o.footEl.innerHTML = `${warpButtons(r)}<button class="btn" data-home="1">🌀 마을 포탈로</button><button class="btn pri" id="rsOk">더 둘러보기</button>`;
-    bindWarp(o);
-    o.footEl.querySelector('[data-home]').onclick = () => { sfx('whirl'); warpTo(SPOT.portal.x, SPOT.portal.y + 70, '🌀 마을 포탈로 돌아가는 중…'); };
+      <p class="gnote">찾은 쉼터 ${restsFound().length}/${RESTS.length}곳 · 찾은 쉼터는 과수원·마을의 🛻 포터 승차장에서 목적지로 고를 수 있어요. 돌아갈 땐 <b>${esc(tipKey('recall'))}</b> 귀환으로 과수원에 가요.</p>`;
+    o.footEl.innerHTML = `<button class="btn pri" id="rsOk">더 둘러보기</button>`;
     $('#rsOk').onclick = () => UI.close();
   }});
 }
@@ -4512,7 +4511,8 @@ function fadeScreen(txt, mid, done, tip, hold){
 // ----- 2026-10-14 잘 때 보여 주는 게임 팁 (지금 게임 수치와 맞는 것만) -----
 const tipKey = a => (KB[a] || []).filter(Boolean).map(keyName)[0] || '키 설정';
 const SLEEP_TIPS = [
-  () => '🌀 이장님 아래 순간이동 포탈로 한 번 찾은 숲속 쉼터에 바로 갈 수 있어요.',
+  () => '🛻 과수원·마을의 포터 승차장에서 포터를 타면 목적지까지 길을 따라 태워다 줘요. 한 번 찾은 숲속 쉼터도 고를 수 있어요.',
+  () => `🏡 ${tipKey('recall')}를 누르고 3초 가만히 있으면 과수원으로 귀환해요. 싸우는 중엔 못 써요.`,
   () => '⛺ 숲속 쉼터에서 쉬면 체력이 가득 차요. 산짐승도 못 들어와요.',
   () => '💎 장비 강화는 강화석으로도, 돈으로도 할 수 있어요.',
   () => '⚔️ 도구를 +5까지 강화하면 앞쪽 짐승들을 한 번에 가로로 베어요.',
@@ -4566,7 +4566,7 @@ function heroFaint(){
 function uiNongmak(){
   UI.open({ic:'🛖', title:HN() + '네 농막', w:960, render(o){
     o.body.innerHTML = `<canvas id="roomCv" width="880" height="330" style="width:100%;border:3px solid var(--ink);border-radius:18px;display:block"></canvas>
-      <p>⛺ 숲속 쉼터로 바로 가려면 이장님 아래 <b>🌀 순간이동 포탈</b>을 쓰세요.</p>
+      <p>🛻 마을·숲속 쉼터에 가려면 <b>포터 승차장</b>에서 포터를 타세요. 돌아올 땐 <b>${esc(tipKey('recall'))}</b> 귀환이에요.</p>
       <p>푹 자고 일어나면 <b>다음 할 일이 생기는 날 아침</b>까지 시간이 가요. 체력도 가득 차요. ${hasWork() ? '지금은 할 일이 남아 있어서 내일 아침에 깨요.' : ''}</p>`;
     drawRoom($('#roomCv'));
     o.footEl.innerHTML = `<button class="btn" id="nmSave">💾 저장</button><button class="btn" id="nmOut">나가기</button><button class="btn pri" id="nmSleep">😴 자고 일어나기 (F)</button>`;
@@ -5717,6 +5717,148 @@ function drawPet8(c, kind, d8, t){
   else { head(false); legs(); body(); tail(); }
 }
 
+// ===== 2026-10-16 달 요청: 전설의 흰곰 보스를 무섭고 강하고 멋지게 (8방향) =====
+// 산처럼 솟은 어깨 + 등에 돋은 얼음 가시 + 얼음빛으로 빛나는 가늘고 사나운 눈 + 포효하는 입과 송곳니 + 굵은 발톱 + 하얀 입김, 발밑엔 서리 기운
+// 옆(d8 0)·앞(2)·뒤(6)·앞 대각선(1)·뒤 대각선(7)을 그리고, 왼쪽(3·4·5)은 뒤집어요
+const PB = {f:'#f2f7fb', s:'#b4c6d6', d:'#8aa2b8', claw:'#23262e', ice:'#e2f7ff', iceS:'#6fc0ea', mouth:'#6e1a2a', eye:'#5ae0ff'};
+function pbAura(c, t){
+  const pul = .5 + Math.sin(t * 3) * .5;
+  c.save(); c.globalAlpha = .35 + pul * .15; const g = c.createRadialGradient(0, -4, 6, 0, -4, 92); g.addColorStop(0, '#9ae4ff'); g.addColorStop(1, 'rgba(120,200,255,0)');
+  c.beginPath(); ell(c, 0, -4, 92, 28); c.fillStyle = g; c.fill(); c.restore();
+  for (let i = 0; i < 6; i++) { const a = t * .8 + i * 1.047, x = Math.cos(a) * 62, y = -10 + Math.sin(a) * 18 - ((t * 20 + i * 13) % 50);
+    c.save(); c.globalAlpha = .75; c.translate(x, y); c.rotate(t + i); for (let k = 0; k < 3; k++) { c.rotate(1.047); line(c, [-3.5, 0, 3.5, 0], 1.4, '#ffffff'); } c.restore(); }
+  shadow(c, 0, 0, 54, 12, .3);
+}
+function pbIcicles(c, pts){ // [x, y, 높이, 기울기]
+  for (const [x, y, h, a] of pts) cel(c, cc => { cc.moveTo(x - 4.5, y + 2); cc.lineTo(x + a, y - h); cc.lineTo(x + 4.5, y + 2); cc.closePath(); }, PB.ice, PB.iceS, -1, 0, 2.2);
+}
+function pbClaws(c, x, y, n = 3, sp = 4.5, dx = 1.5){ for (let k = 0; k < n; k++) { const cx = x + (k - (n - 1) / 2) * sp; cel(c, cc => { cc.moveTo(cx - 1.8, y - 1); cc.quadraticCurveTo(cx + dx, y + 2, cx + dx * 1.6, y + 6); cc.lineTo(cx + 1.8, y - 1); cc.closePath(); }, PB.claw, '#000', 0, 0, 1.4); } }
+function pbLeg(c, x, top, w, o, far){
+  const B = far ? PB.s : PB.f, S = far ? PB.d : PB.s;
+  cel(c, cc => { cc.moveTo(x - w * .6, top); cc.lineTo(x + w * .6, top); cc.quadraticCurveTo(x + w * .55, top + (o - top) * .55, x + w * .42, o - 5); cc.lineTo(x - w * .44, o - 5); cc.quadraticCurveTo(x - w * .62, top + (o - top) * .5, x - w * .6, top); cc.closePath(); }, B, S, 2, 0, 2.6);
+  cel(c, cc => ell(cc, x + 1, o - 4, w * .64, 5.5), B, S, 1, 1, 2.6); // 큰 발
+  for (const k of [-1, 0, 1]) line(c, [x + 1 + k * w * .24, o - 6, x + 1 + k * w * .24, o - 2.5], 1.4, S);
+}
+function pbEye(c, x, y, s, t, dir = 1){ // 빛나는 가늘고 사나운 눈 + 찌푸린 눈썹 (dir: 콧등 쪽이 +x면 1)
+  const glow = .6 + Math.sin(t * 4) * .25;
+  c.save(); c.globalAlpha = .45; c.beginPath(); c.ellipse(x, y - .5 * s, 7.5 * s, 5 * s, -.25 * dir, 0, 7); c.fillStyle = '#5a6e82'; c.fill(); c.restore(); // 움푹 팬 눈자리 그늘
+  c.save(); c.globalAlpha = glow * .5; const g = c.createRadialGradient(x, y, 1, x, y, 8 * s); g.addColorStop(0, PB.eye); g.addColorStop(1, 'rgba(90,224,255,0)'); c.fillStyle = g; c.beginPath(); ell(c, x, y, 8 * s, 6 * s); c.fill(); c.restore();
+  cel(c, cc => { cc.moveTo(x - 5 * s * dir, y - 2 * s); cc.lineTo(x + 5 * s * dir, y + .5 * s); cc.lineTo(x - 3 * s * dir, y + 2.4 * s); cc.closePath(); }, PB.eye, '#1a8ab8', 0, 0, 1.5);
+  c.beginPath(); ell(c, x + .6 * dir, y + .4 * s, .9 * s, 1.6 * s); c.fillStyle = '#04121a'; c.fill();
+  line(c, [x - 6.5 * s * dir, y - 6.5 * s, x + 6.5 * s * dir, y - 1 * s], 3.2 * s, INK); // 콧등 쪽으로 내려간 눈썹 = 화난 눈
+}
+function pbBreath(c, x, y, t, dx, dy){ for (let i = 0; i < 4; i++) { const k = (t * .9 + i / 4) % 1; c.save(); c.globalAlpha = (1 - k) * .55; c.beginPath(); c.arc(x + dx * k * 26, y + dy * k * 26 - k * 6, 2.5 + k * 7, 0, 7); c.fillStyle = '#ffffff'; c.fill(); c.restore(); } }
+function pbFringe(c, x0, x1, y){ // 배 밑 거친 털 술
+  for (let x = x0; x < x1; x += 7) cel(c, cc => { cc.moveTo(x, y - 4); cc.lineTo(x + 3.5, y + 5 + ((x / 7) & 1) * 3); cc.lineTo(x + 7, y - 4); cc.closePath(); }, PB.f, PB.s, 0, 0, 2.2);
+}
+function drawPolarBoss(c, d8, t, V){
+  d8 = ((d8 | 0) % 8 + 8) % 8;
+  pbAura(c, t);
+  if ([3, 4, 5].includes(d8)) { c.scale(-1, 1); d8 = {3:1, 4:0, 5:7}[d8]; }
+  const st = Math.sin(t * 8) * 4, bob = Math.abs(Math.sin(t * 8)) * 1.6, jaw = 3 + Math.max(0, Math.sin(t * 2)) * 4;
+  c.save(); c.translate(0, -bob);
+  if (d8 === 0) pbSide(c, t, st, jaw);
+  else if (d8 === 2) pbFront(c, t, st, jaw);
+  else if (d8 === 6) pbBack(c, t, st);
+  else if (d8 === 1) pbDiagF(c, t, st, jaw);
+  else pbDiagB(c, t, st);
+  c.restore();
+}
+function pbSide(c, t, st, jaw){
+  pbLeg(c, -22, -30, 20, -st * .6, true); pbLeg(c, 24, -30, 20, st * .6, true);
+  // 몸: 낮은 엉덩이 → 산처럼 솟은 어깨 → 목
+  cel(c, cc => { cc.moveTo(-50, -26); cc.bezierCurveTo(-60, -50, -50, -66, -30, -66); cc.bezierCurveTo(-16, -68, -4, -86, 14, -84); cc.bezierCurveTo(30, -82, 38, -70, 42, -58); cc.bezierCurveTo(46, -42, 40, -22, 26, -16); cc.bezierCurveTo(10, -10, -20, -10, -36, -14); cc.bezierCurveTo(-46, -16, -50, -20, -50, -26); cc.closePath(); }, PB.f, PB.s, 6, 5, 3);
+  c.beginPath(); c.moveTo(4, -76); c.bezierCurveTo(22, -66, 26, -46, 18, -28); c.lineWidth = 2.4; c.strokeStyle = PB.s; c.stroke(); // 어깨 근육
+  c.beginPath(); c.moveTo(-36, -58); c.bezierCurveTo(-24, -50, -22, -36, -30, -24); c.stroke(); // 허벅지
+  for (const [x, y] of [[-6, -40], [6, -48], [-14, -52]]) line(c, [x, y, x + 5, y + 6], 1.8, PB.d); // 털결
+  pbIcicles(c, [[-36, -64, 10, -2], [-26, -67, 14, -2], [-14, -72, 18, -1], [-2, -80, 24, 0], [10, -84, 20, 1], [22, -80, 15, 2], [32, -72, 10, 2]]);
+  pbFringe(c, -44, 30, -15);
+  pbLeg(c, -32, -30, 23, st * .6, false); pbLeg(c, 28, -34, 24, -st * .6, false);
+  pbClaws(c, -30, st * .6, 3, 5.5, 2.4); pbClaws(c, 30, -st * .6, 3, 5.8, 2.8);
+  // 가슴 털
+  for (let k = 0; k < 4; k++) cel(c, cc => { const y = -50 + k * 7; cc.moveTo(38, y); cc.lineTo(46 - k, y + 4); cc.lineTo(36, y + 7); cc.closePath(); }, PB.f, PB.s, 0, 0, 2);
+  // 머리 + 긴 주둥이(포효)
+  c.save(); c.translate(40, -48); c.scale(1.2, 1.2); c.translate(-40, 48);
+  cel(c, cc => ell(cc, 34, -64, 5, 5), PB.f, PB.s, 1, 1, 2.4);
+  cel(c, cc => ell(cc, 44, -54, 15, 13), PB.f, PB.s, 2, 3, 2.8);
+  cel(c, cc => { cc.moveTo(48, -62); cc.quadraticCurveTo(66, -60, 72, -52); cc.lineTo(70, -46); cc.lineTo(50, -44); cc.closePath(); }, PB.f, PB.s, 1, 1, 2.6);
+  cel(c, cc => { cc.moveTo(50, -46); cc.lineTo(70, -47); cc.lineTo(64, -38 + jaw); cc.lineTo(50, -38 + jaw * .5); cc.closePath(); }, PB.mouth, '#3a0a14', 0, 0, 2.2);
+  cel(c, cc => { cc.moveTo(50, -39 + jaw * .5); cc.lineTo(65, -39 + jaw); cc.lineTo(60, -33 + jaw); cc.lineTo(48, -34 + jaw * .5); cc.closePath(); }, PB.f, PB.s, 0, 0, 2.4);
+  for (const [fx, fy, d] of [[54, -46, 1], [64, -46.5, 1], [56, -39 + jaw * .6, -1], [62, -39 + jaw * .9, -1]]) cel(c, cc => { cc.moveTo(fx - 2, fy); cc.lineTo(fx, fy + d * 7); cc.lineTo(fx + 2, fy); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.3);
+  c.beginPath(); ell(c, 71, -52, 3.4, 3); c.fillStyle = INK; c.fill();
+  for (const wx of [56, 60]) line(c, [wx, -60, wx + 3, -57], 1.6, PB.d); // 으르렁 주름
+  pbEye(c, 48, -57, 1, t);
+  for (const k of [0, 1, 2]) line(c, [33 + k * 3.2, -68 + k * .5, 36 + k * 3.2, -62 + k * .5], 1.6, '#c87a88'); // 이마의 흉터
+  pbBreath(c, 72, -42, t, 1, .1);
+  c.restore();
+}
+function pbFront(c, t, st, jaw){
+  pbLeg(c, -30, -26, 19, 0, true); pbLeg(c, 30, -26, 19, 0, true);
+  cel(c, cc => ell(cc, 0, -42, 42, 28), PB.f, PB.s, 6, 5, 3); // 몸
+  cel(c, cc => { cc.moveTo(-40, -52); cc.bezierCurveTo(-36, -84, 36, -84, 40, -52); cc.closePath(); }, PB.f, PB.s, 4, 4, 3); // 어깨 혹
+  pbIcicles(c, [[-30, -66, 12, -3], [-18, -76, 18, -2], [-6, -80, 24, -1], [6, -80, 24, 1], [18, -76, 18, 2], [30, -66, 12, 3]]);
+  const ph = Math.max(0, st) * .8, ph2 = Math.max(0, -st) * .8;
+  pbLeg(c, -22, -36, 25, -ph, false); pbLeg(c, 22, -36, 25, -ph2, false);
+  pbClaws(c, -21, -ph, 4, 5.2, 0); pbClaws(c, 23, -ph2, 4, 5.2, 0);
+  c.save(); c.translate(0, -50); c.scale(1.12, 1.12); c.translate(0, 50);
+  for (const s of [-1, 1]) cel(c, cc => ell(cc, s * 16, -70, 5.5, 5), PB.f, PB.s, 1, 1, 2.4); // 귀
+  cel(c, cc => ell(cc, 0, -56, 21, 17), PB.f, PB.s, 3, 3, 2.8); // 머리
+  for (const s of [-1, 1]) pbEye(c, s * 9, -60, .95, t, -s);
+  cel(c, cc => ell(cc, 0, -46, 12, 9), PB.f, PB.s, 1, 2, 2.4); // 주둥이
+  c.beginPath(); ell(c, 0, -51, 4, 3); c.fillStyle = INK; c.fill();
+  cel(c, cc => ell(cc, 0, -40 + jaw * .3, 8, 4 + jaw * .6), PB.mouth, '#3a0a14', 0, 0, 2.2); // 포효하는 입
+  for (const [fx, d] of [[-4.5, 1], [4.5, 1]]) cel(c, cc => { cc.moveTo(fx - 1.8, -43 + jaw * .1); cc.lineTo(fx, -37); cc.lineTo(fx + 1.8, -43 + jaw * .1); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.2);
+  for (const fx of [-4, 4]) cel(c, cc => { cc.moveTo(fx - 1.6, -37 + jaw); cc.lineTo(fx, -42 + jaw * .7); cc.lineTo(fx + 1.6, -37 + jaw); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.2);
+  for (const k of [0, 1, 2]) line(c, [-17 + k * 3, -70 + k * .5, -13 + k * 3, -64 + k * .5], 1.5, '#c87a88'); // 흉터
+  for (const s of [-1, 1]) line(c, [s * 3, -55, s * 6, -52], 1.6, PB.d);
+  pbBreath(c, -6, -36, t, -.4, .6); pbBreath(c, 6, -36, t + .5, .4, .6);
+  c.restore();
+}
+function pbBack(c, t, st){
+  pbLeg(c, -24, -30, 20, st * .5, true); pbLeg(c, 24, -30, 20, -st * .5, true);
+  for (const s of [-1, 1]) cel(c, cc => ell(cc, s * 13, -78, 5.5, 5), PB.f, PB.s, 1, 1, 2.4);
+  cel(c, cc => ell(cc, 0, -72, 17, 12), PB.f, PB.s, 2, 2, 2.6); // 뒤통수
+  cel(c, cc => { cc.moveTo(-44, -30); cc.bezierCurveTo(-48, -76, 48, -76, 44, -30); cc.bezierCurveTo(40, -12, -40, -12, -44, -30); cc.closePath(); }, PB.f, PB.s, 6, 5, 3);
+  pbIcicles(c, [[-30, -54, 12, -3], [-18, -62, 18, -2], [-6, -66, 22, -1], [6, -66, 22, 1], [18, -62, 18, 2], [30, -54, 12, 3]]);
+  line(c, [0, -46, 0, -24], 2, PB.d);
+  cel(c, cc => ell(cc, 0, -26, 6, 5), PB.f, PB.s, 1, 1, 2.4); // 꼬리
+  const ph = Math.max(0, st) * .8, ph2 = Math.max(0, -st) * .8;
+  pbFringe(c, -38, 38, -16);
+  pbLeg(c, -22, -26, 25, -ph, false); pbLeg(c, 22, -26, 25, -ph2, false);
+  for (const [x, o] of [[-24, ph], [24, ph2]]) { c.beginPath(); ell(c, x, -4 - o, 6, 3.5); c.fillStyle = INK; c.fill(); }
+}
+function pbDiagF(c, t, st, jaw){
+  pbLeg(c, -30, -28, 19, -st * .5, true); pbLeg(c, 14, -30, 19, st * .5, true);
+  cel(c, cc => { cc.moveTo(-48, -30); cc.bezierCurveTo(-56, -62, -30, -70, -14, -70); cc.bezierCurveTo(0, -84, 22, -84, 30, -66); cc.bezierCurveTo(40, -46, 34, -18, 16, -14); cc.bezierCurveTo(-6, -10, -36, -12, -48, -30); cc.closePath(); }, PB.f, PB.s, 6, 5, 3);
+  pbIcicles(c, [[-36, -64, 10, -2], [-24, -70, 14, -2], [-10, -76, 20, -1], [4, -80, 24, 0], [16, -78, 18, 1], [26, -70, 12, 2]]);
+  pbFringe(c, -40, 22, -14);
+  pbLeg(c, -20, -30, 23, st * .6, false); pbLeg(c, 26, -34, 24, -st * .6, false);
+  pbClaws(c, -19, st * .6, 3, 5.4, 1.6); pbClaws(c, 27, -st * .6, 4, 5, 1.6);
+  c.save(); c.translate(28, -48); c.scale(1.12, 1.12); c.translate(-28, 48);
+  for (const [x, y] of [[14, -68], [34, -68]]) cel(c, cc => ell(cc, x, y, 5.5, 5), PB.f, PB.s, 1, 1, 2.4);
+  cel(c, cc => ell(cc, 26, -54, 19, 16), PB.f, PB.s, 3, 3, 2.8);
+  pbEye(c, 19, -58, .78, t, 1); pbEye(c, 33, -58, .95, t, -1);
+  cel(c, cc => ell(cc, 32, -45, 11, 8.5), PB.f, PB.s, 1, 2, 2.4);
+  c.beginPath(); ell(c, 35, -49.5, 3.8, 2.8); c.fillStyle = INK; c.fill();
+  cel(c, cc => ell(cc, 33, -39 + jaw * .3, 7, 3.5 + jaw * .6), PB.mouth, '#3a0a14', 0, 0, 2.2);
+  for (const fx of [29, 37]) { cel(c, cc => { cc.moveTo(fx - 1.6, -42); cc.lineTo(fx, -36.5); cc.lineTo(fx + 1.6, -42); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.2); cel(c, cc => { cc.moveTo(fx - 1.5, -36 + jaw); cc.lineTo(fx, -41 + jaw * .7); cc.lineTo(fx + 1.5, -36 + jaw); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.2); }
+  for (const k of [0, 1, 2]) line(c, [14 + k * 3, -68 + k * .5, 18 + k * 3, -62 + k * .5], 1.5, '#c87a88');
+  pbBreath(c, 38, -36, t, .7, .5);
+  c.restore();
+}
+function pbDiagB(c, t, st){
+  pbLeg(c, 2, -30, 19, st * .5, true); pbLeg(c, 30, -32, 19, -st * .5, true);
+  for (const [x, y] of [[18, -80], [36, -78]]) cel(c, cc => ell(cc, x, y, 5.5, 5), PB.f, PB.s, 1, 1, 2.4);
+  cel(c, cc => ell(cc, 28, -70, 16, 13), PB.f, PB.s, 2, 2, 2.6); // 저 멀리 머리(뒤통수)
+  cel(c, cc => ell(cc, 41, -66, 7, 6), PB.f, PB.s, 1, 1, 2.2); // 주둥이 끝이 살짝
+  cel(c, cc => { cc.moveTo(-46, -26); cc.bezierCurveTo(-56, -60, -20, -76, 4, -76); cc.bezierCurveTo(24, -76, 38, -62, 36, -44); cc.bezierCurveTo(34, -22, 10, -12, -16, -12); cc.bezierCurveTo(-34, -12, -44, -18, -46, -26); cc.closePath(); }, PB.f, PB.s, 6, 5, 3);
+  pbIcicles(c, [[-30, -56, 10, -2], [-18, -66, 16, -2], [-4, -72, 22, -1], [10, -74, 22, 0], [22, -70, 16, 1], [32, -60, 10, 2]]);
+  cel(c, cc => ell(cc, -40, -32, 5.5, 5), PB.f, PB.s, 1, 1, 2.4); // 꼬리
+  pbFringe(c, -40, 26, -14);
+  pbLeg(c, -28, -28, 24, -Math.max(0, st) * .8, false); pbLeg(c, -4, -28, 23, -Math.max(0, -st) * .8, false);
+  for (const [x, o] of [[-28, Math.max(0, st) * .8], [-6, Math.max(0, -st) * .8]]) { c.beginPath(); ell(c, x, -4 - o, 6, 3.4); c.fillStyle = INK; c.fill(); }
+}
+
 // ===== 2026-10-13 기상 이벤트 화면 연출 (태풍·우박·늦서리) =====
 let WXFX = null;
 const WX_DUR = {typhoon:7, hail:5.5, frost:5.5};
@@ -6503,9 +6645,9 @@ function updateBus(dt){
 function busTargets(cands){
   if (BUS.ride) return;
   for (const b of BUSES) if (b.wait > .3 && b.x != null) cands.push({kind:'bus', b, x:b.x, y:b.y + 20});
-  for (const p of PORTALS.slice(1)) cands.push({kind:'portal', p, x:p.x, y:p.y});
+  for (const tx of TAXIS) if (tx.st === 'idle') cands.push({kind:'taxi', tx, x:tx.x, y:tx.y + 20}); // 2026-10-16 순간이동 대신 승차장 포터
 }
-function busLabel(t){ return t.kind === 'bus' ? `🛻 포터 얻어 타기 → ${BUS_STOPS[t.b.ni].name} (${Math.ceil(t.b.wait)}초 뒤 출발)` : `🌀 순간이동 장치`; }
+function busLabel(t){ return t.kind === 'bus' ? `🛻 포터 얻어 타기 → ${BUS_STOPS[t.b.ni].name} (${Math.ceil(t.b.wait)}초 뒤 출발)` : `🛻 포터 타기 · 목적지 고르기`; }
 function busBoard(b){
   if (riding && riding()) { toast('🐯 호랑이에서 내린 다음 타요.'); return; }
   BUS.ride = b; sfx('pop');
@@ -6513,6 +6655,7 @@ function busBoard(b){
 }
 function busGetOff(){
   const b = BUS.ride; if (!b) return false;
+  if (b.taxi) return taxiGetOff(b);
   if (b.wait <= 0) { toast('🛻 트럭이 서면 F로 내릴 수 있어요.'); return true; }
   BUS.ride = null; const st = BUS_STOPS[b.cur];
   P.x = b.x + 40; P.y = b.y + 150; if (blocked(P.x, P.y)) { P.x = b.x; P.y = b.y + 110; }
@@ -6613,13 +6756,15 @@ function drawBus(c, b, T){
   c.translate(0, bob);
   drawTruck8(c, b, d8);
   c.restore();
-  c.save(); c.font = '20px Jua'; c.textAlign = 'center'; const t = b.wait > 0 ? `🛻 동네 아저씨 포터 · ${Math.ceil(b.wait)}초 뒤 ${BUS_STOPS[b.ni].name}로` : '🛻 동네 아저씨 포터', tw = c.measureText(t).width + 18;
+  c.save(); c.font = '20px Jua'; c.textAlign = 'center'; const t = b.taxi ? (b.st === 'idle' ? (BUS.ride === b ? '🛻 포터 · 목적지를 골라 주세요' : `🛻 포터 승차장 · ${tipKey('interact')}로 타기`) : b.st === 'go' ? `🛻 ${b.dest.name}로 가는 중` : '🛻 승차장으로 돌아가는 중') : b.wait > 0 ? `🛻 동네 아저씨 포터 · ${Math.ceil(b.wait)}초 뒤 ${BUS_STOPS[b.ni].name}로` : '🛻 동네 아저씨 포터', tw = c.measureText(t).width + 18;
   c.beginPath(); rr(c, b.x - tw / 2, b.y - 206, tw, 28, 10); c.fillStyle = 'rgba(255,250,241,.95)'; c.fill(); c.lineWidth = 2.4; c.strokeStyle = INK; c.stroke();
   c.fillStyle = INK; c.fillText(t, b.x, b.y - 185); c.restore();
 }
 function busEntities(ctx, add, vis){
   const T = performance.now() / 1000;
-  for (const p of PORTALS.slice(1)) if (vis(p.x, p.y, 300)) add(p.y - 60, p.x, () => drawPortal(ctx, p.x, p.y, T));
+  for (const p of PORTALS) if (vis(p.x - 190, p.y, 300)) add(p.y, p.x - 190, () => drawTaxiStand(ctx, p));
+  for (const tx of TAXIS) if (vis(tx.x, tx.y, 300)) add(tx.y, tx.x, () => drawBus(ctx, tx, T));
+  add(P.y - 1, P.x, () => drawRecall(ctx));
   for (const b of BUSES) if (b.x != null && vis(b.x, b.y, 300)) add(b.y, b.x, () => drawBus(ctx, b, T));
 }
 
@@ -6655,8 +6800,7 @@ function bigMapUp(p){ const d = BMV.drag; BMV.drag = null; if (d && !d.moved) bi
 function bigMapClick(p){
   const h = BIGMAP_HOT.find(q => Math.hypot(p.x - q.x, p.y - q.y) < q.r);
   if (!h) return;
-  if (inCombat()) { toast('⚔️ 싸우는 중엔 순간이동할 수 없어요.', 'bad'); return; }
-  BIGMAP = false; cv.style.cursor = ''; BUS.ride = null; sfx('whirl'); h.go();
+  BIGMAP = false; cv.style.cursor = ''; h.go();
 }
 function toggleBigMap(){ BIGMAP = !BIGMAP; sfx('pick'); BMV.z = 1; BMV.cx = WX0 + WORLD_W / 2; BMV.cy = WY0 + WORLD_H / 2; BMV.drag = null; if (!BIGMAP) cv.style.cursor = ''; }
 function drawBigMap(ctx){
@@ -6697,23 +6841,22 @@ function drawBigMap(ctx){
   ctx.font = '26px sans-serif'; for (const b of BUSES) if (b.x != null) ctx.fillText('🛻', mx(b.x), my(b.y) + 9);
   lab('동계천', ...[mx(mapXY(300, 262)[0]), my(mapXY(300, 262)[1])], 18);
   for (const m of MONS) if (!m.dead && (m.raid || m.boss)) { ctx.beginPath(); ctx.arc(mx(m.x), my(m.y), 5, 0, 7); ctx.fillStyle = '#ff3b30'; ctx.fill(); }
-  // 2026-10-16 달 요청: 순간이동 지점(장치 5곳 + 찾은 쉼터)을 누르면 바로 가요
-  BIGMAP_HOT = []; let tip = null;
+  // 2026-10-16 달 요청: 순간이동은 없어요. 승차장 포터에 타 있을 때 승차장·찾은 쉼터를 누르면 그리로 태워다 줘요
+  BIGMAP_HOT = []; let tip = null; const pickTx = BUS.ride && BUS.ride.taxi && BUS.ride.st === 'idle' ? BUS.ride : null;
   const hot = (x, y, ic, name, go) => {
     const sx = mx(x), sy = my(y); if (sx < x0 || sx > x0 + w || sy < y0 || sy > y0 + h) return;
     const on = BIGMAP_MOUSE && Math.hypot(BIGMAP_MOUSE.x - sx, BIGMAP_MOUSE.y - sy) < 24;
-    BIGMAP_HOT.push({x:sx, y:sy, r:24, go});
+    if (go) BIGMAP_HOT.push({x:sx, y:sy, r:24, go});
     ctx.beginPath(); ctx.arc(sx, sy, on ? 22 : 18, 0, 7); ctx.fillStyle = on ? '#fff2b8' : 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = on ? 4 : 3; ctx.strokeStyle = on ? '#e8a020' : '#7a5af0'; ctx.stroke();
     ctx.font = `${on ? 24 : 20}px sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(ic, sx, sy + 8);
-    if (on) tip = [`🌀 ${name}로 순간이동 (누르기)`, sx, sy - 34];
+    if (on) tip = [go ? `🛻 ${name}로 가기 (누르기)` : `${ic} ${name}${ic === '⛺' ? ' · 승차장 포터로 갈 수 있어요' : ' 승차장'}`, sx, sy - 34];
   };
-  for (const p of PORTALS) hot(p.x, p.y, '🌀', p.name, () => warpTo(p.x, p.y + 90, `🌀 ${p.name}로 순간이동!`));
-  for (const r of restsFound()) hot(r.x, r.y, '⛺', r.name, () => warpTo(r.x, r.y + 70, `🌀 ${r.name}로 순간이동!`));
+  for (const d of taxiDests()) hot(d.x, d.y, d.ic, d.name, pickTx && Math.hypot(d.x - pickTx.x, d.y - pickTx.y) > 400 ? () => { BIGMAP = false; taxiGo(pickTx, d); } : null);
   drawFacingFan(ctx, mx(P.x), my(P.y), 42);
   ctx.beginPath(); ctx.arc(mx(P.x), my(P.y), 9, 0, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
   lab(`📍 ${HN()}`, mx(P.x), my(P.y) + 30, 20);
   if (tip) { ctx.font = '20px Jua'; const tw = ctx.measureText(tip[0]).width + 24, tx = clamp(tip[1], x0 + tw / 2 + 4, x0 + w - tw / 2 - 4); ctx.beginPath(); rr(ctx, tx - tw / 2, tip[2] - 26, tw, 34, 12); ctx.fillStyle = '#fff2b8'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke(); ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(tip[0], tx, tip[2] - 2); }
-  cv.style.cursor = tip ? 'pointer' : '';
+  cv.style.cursor = tip && pickTx ? 'pointer' : '';
   // 마우스가 가리키는 곳의 좌표
   const BM = BIGMAP_MOUSE;
   if (!tip && BM && BM.x > x0 && BM.x < x0 + w && BM.y > y0 && BM.y < y0 + h) {
@@ -6724,13 +6867,14 @@ function drawBigMap(ctx){
     ctx.beginPath(); ctx.arc(BM.x, BM.y, 4, 0, 7); ctx.fillStyle = INK; ctx.fill();
   }
   ctx.restore();
-  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText('🌀·⛺ 누르면 바로 순간이동 · 🛻 동네 아저씨 포터(노란 선 = 다니는 길) · ? 아직 못 찾은 쉼터 · 휠 = 확대·축소, 끌기 = 옮기기', x0 + 6, y0 + h + 26);
+  ctx.font = '16px Jua'; ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.fillText((pickTx ? '🛻·⛺ 눌러서 목적지 고르기' : '🛻 포터 승차장 · ⛺ 찾은 쉼터(승차장 포터로 가요)') + ' · 노란 선 = 동네 아저씨 포터 길 · ? 아직 못 찾은 쉼터 · 휠 = 확대·축소, 끌기 = 옮기기', x0 + 6, y0 + h + 26);
   ctx.restore();
 }
 // 버스 탄 동안 화면 아래 안내
 function drawBusHint(ctx){
+  drawRecallBar(ctx);
   const b = BUS.ride; if (!b) return;
-  const t = b.wait > 0 ? `🛻 ${BUS_STOPS[b.cur].name} · F를 누르면 내려요 (${Math.ceil(b.wait)}초 뒤 출발)` : `🛻 포터 짐칸에 탔어요 · 다음: ${BUS_STOPS[b.ni].name}`;
+  const t = b.taxi ? (b.st === 'idle' ? `🛻 목적지를 고르세요 (${tipKey('map')} 지도에서 눌러도 돼요) · ${tipKey('interact')} = 내리기` : `🛻 ${b.dest.name}로 가는 중 · ${tipKey('interact')}를 누르면 바로 내려요`) : b.wait > 0 ? `🛻 ${BUS_STOPS[b.cur].name} · F를 누르면 내려요 (${Math.ceil(b.wait)}초 뒤 출발)` : `🛻 포터 짐칸에 탔어요 · 다음: ${BUS_STOPS[b.ni].name}`;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = '28px Jua'; ctx.textAlign = 'center'; const tw = ctx.measureText(t).width + 50;
   ctx.beginPath(); rr(ctx, W / 2 - tw / 2, H - 196, tw, 50, 18); ctx.fillStyle = b.wait > 0 ? '#fff2b8' : '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
   ctx.fillStyle = INK; ctx.fillText(t, W / 2, H - 162); ctx.restore();
@@ -8180,13 +8324,149 @@ function blemTalk(n){
   return true;
 }
 
+// ===== 2026-10-16 달 요청: 순간이동은 전부 없애고, 순간이동 장치가 있던 다섯 곳마다 포터가 한 대씩 기다려요 =====
+// 타면 목적지(과수원·마을·확장 부지 + 찾은 숲속 쉼터)를 누르고, 포터가 길을 따라 태워다 줘요. 가는 중에 F를 누르면 그 자리에서 바로 내려요.
+// 내려 준 포터는 혼자 승차장으로 돌아가요. 돌아올 땐 귀환(기본 B, 3초)으로 과수원에 와요.
+const TAXI_V = 820, RECALL_T = 3;
+// ----- 길 그물: 큰길·숲길·동네 아저씨 포터 길을 이어서, 두 곳 사이 가장 짧은 길을 찾아요 -----
+const TX_G = (() => {
+  const N = [], A = [];
+  const node = (x, y) => { for (let i = 0; i < N.length; i++) if (Math.hypot(N[i][0] - x, N[i][1] - y) < 60) return i; N.push([x, y]); A.push([]); return N.length - 1; };
+  const link = (a, b) => { if (a === b || A[a].some(e => e[0] === b)) return; const d = Math.hypot(N[a][0] - N[b][0], N[a][1] - N[b][1]); A[a].push([b, d]); A[b].push([a, d]); };
+  const lines = [...MAP_ROADS, ...FOREST_PATHS, BUS_LINE], segs = [];
+  lines.forEach((L, li) => { let pv = null; for (const p of L) { const n = node(p[0], p[1]); if (pv != null && pv !== n) { link(pv, n); segs.push([pv, n, li]); } pv = n; } });
+  // 길 끝이 다른 길 중간에 닿으면 그 자리에 갈림길을 만들어 이어요
+  lines.forEach((L, li) => [L[0], L[L.length - 1]].forEach(p => {
+    const e = node(p[0], p[1]); let best = null;
+    for (const [a, b, lj] of segs) { if (lj === li) continue; const [ax, ay] = N[a], [bx, by] = N[b], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1;
+      const k = clamp(((p[0] - ax) * dx + (p[1] - ay) * dy) / L2, 0, 1), qx = ax + dx * k, qy = ay + dy * k, d = Math.hypot(p[0] - qx, p[1] - qy);
+      if (d < 500 && (!best || d < best.d)) best = {d, a, b, qx, qy}; }
+    if (best && best.d > 1) { const q = node(best.qx, best.qy); link(q, best.a); link(q, best.b); link(e, q); }
+  }));
+  // 그래도 떨어진 조각이 있으면 가장 가까운 점끼리 이어요
+  for (let guard = 0; guard < 40; guard++) {
+    const seen = new Set([0]), st = [0]; while (st.length) { const u = st.pop(); for (const [v] of A[u]) if (!seen.has(v)) { seen.add(v); st.push(v); } }
+    if (seen.size === N.length) break;
+    let best = null; for (let i = 0; i < N.length; i++) if (!seen.has(i)) for (const j of seen) { const d = Math.hypot(N[i][0] - N[j][0], N[i][1] - N[j][1]); if (!best || d < best[2]) best = [i, j, d]; }
+    link(best[0], best[1]);
+  }
+  return {N, A};
+})();
+function txNear(x, y){ let b = 0, bd = 1e18; TX_G.N.forEach(([nx, ny], i) => { const d = (nx - x) ** 2 + (ny - y) ** 2; if (d < bd) { bd = d; b = i; } }); return b; }
+function txRoute(ax, ay, bx, by){
+  const {N, A} = TX_G, s = txNear(ax, ay), g = txNear(bx, by), D = new Float64Array(N.length).fill(Infinity), pre = new Int32Array(N.length).fill(-1), done = new Uint8Array(N.length);
+  D[s] = 0;
+  for (;;) { let u = -1; for (let i = 0; i < N.length; i++) if (!done[i] && D[i] < Infinity && (u < 0 || D[i] < D[u])) u = i; if (u < 0 || u === g) break; done[u] = 1; for (const [v, w] of A[u]) if (D[u] + w < D[v]) { D[v] = D[u] + w; pre[v] = u; } }
+  const mid = []; for (let v = g; v >= 0; v = v === s ? -1 : pre[v]) { mid.push(N[v]); if (v !== s && pre[v] < 0) break; }
+  mid.reverse();
+  const pts = [[ax, ay], ...mid, [bx, by]].filter((p, i, a) => !i || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1);
+  return chaikin(chaikin(pts));
+}
+function txPath(pts){ const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); return {pts, cum, len:cum[cum.length - 1]}; }
+function txAt(P0, s){
+  const {pts, cum} = P0; s = clamp(s, 0, P0.len); let lo = 0, hi = cum.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= s) lo = m; else hi = m; }
+  const [ax, ay] = pts[lo], [bx, by] = pts[hi], L = cum[hi] - cum[lo] || 1, t = (s - cum[lo]) / L;
+  return {x:ax + (bx - ax) * t, y:ay + (by - ay) * t, dx:(bx - ax) / L, dy:(by - ay) / L};
+}
+// ----- 목적지: 승차장 다섯 곳 + 찾은 숲속 쉼터 -----
+const taxiDests = () => [...PORTALS.map(p => ({id:p.id, ic:'🛻', name:p.name, x:p.x, y:p.y})), ...restsFound().map(r => ({id:'r_' + r.id, ic:'⛺', name:r.name, x:r.x, y:r.y + 90}))];
+const TAXIS = PORTALS.map(p => ({taxi:1, id:'tx_' + p.id, home:p, x:p.x, y:p.y, d8:0, st:'idle', col:'#e8603a', wait:1}));
+function taxiBoard(tx){
+  if (riding && riding()) { toast('🐯 호랑이에서 내린 다음 타요.'); return; }
+  if (P.rc) P.rc = null;
+  BUS.ride = tx; sfx('pop');
+  uiTaxiDest(tx);
+}
+function uiTaxiDest(tx){
+  const list = taxiDests().filter(d => Math.hypot(d.x - tx.x, d.y - tx.y) > 400);
+  UI.open({ic:'🛻', title:`포터 승차장 · ${tx.home.name}`, w:900, render(o){
+    o.body.innerHTML = `<p style="margin-top:0">🧑‍🌾 기사 아저씨: "어디로 모셔다 드릴까?"</p>
+      <p class="gnote">길을 따라 태워다 줘요. 가는 중에 <b>${esc(tipKey('interact'))}</b>를 누르면 그 자리에서 바로 내려요 · 숲속 쉼터는 한 번 찾아야 목적지에 나와요(${restsFound().length}/${RESTS.length}곳) · 돌아올 땐 <b>${esc(tipKey('recall'))}</b> 귀환으로 과수원에 와요.</p>`;
+    o.footEl.innerHTML = list.map(d => `<button class="btn" data-tx="${d.id}">${d.ic} ${d.name}</button>`).join('') + `<button class="btn" id="txMap">🗺️ 지도에서 고르기</button><button class="btn" id="txOff">🚶 내리기</button>`;
+    o.footEl.querySelectorAll('[data-tx]').forEach(b => b.onclick = () => { UI.close(); taxiGo(tx, list.find(d => d.id === b.dataset.tx)); });
+    $('#txMap').onclick = () => { UI.close(); setTimeout(() => { if (!BIGMAP) toggleBigMap(); }, 0); };
+    $('#txOff').onclick = () => { UI.close(); taxiGetOff(tx); };
+  }});
+}
+function taxiGo(tx, d){
+  if (!d || BUS.ride !== tx || tx.st !== 'idle') return;
+  tx.dest = d; tx.path = txPath(txRoute(tx.x, tx.y, d.x, d.y)); tx.s = 0; tx.st = 'go';
+  sfx('pick'); toast(`🛻 "꽉 잡아라!" ${d.name}로 출발해요. (${tipKey('interact')} = 바로 내리기)`, 'good');
+}
+function taxiReturn(tx){ tx.dest = null; tx.path = txPath(txRoute(tx.x, tx.y, tx.home.x, tx.home.y)); tx.s = 0; tx.st = 'back'; }
+function taxiGetOff(tx){
+  if (BUS.ride !== tx) return false;
+  BUS.ride = null;
+  const px = tx.x + 40, py = tx.y + 150; P.x = px; P.y = py; if (blocked(P.x, P.y)) { P.x = tx.x; P.y = tx.y + 110; }
+  P.tgt = null; cam.x = P.x; cam.y = P.y; sfx('pick');
+  if (tx.st === 'go') { toast(tx.dest && tx.s >= tx.path.len - 2 ? `🛻 ${tx.dest.name}에 왔어요. "조심히 가거라~"` : '🛻 여기서 내렸어요. 포터는 승차장으로 돌아가요.'); taxiReturn(tx); }
+  return true;
+}
+function updateTaxi(dt){
+  for (const tx of TAXIS) {
+    if (tx.st === 'idle') { tx.x = tx.home.x; tx.y = tx.home.y; tx.wait = 1; continue; }
+    tx.wait = 0;
+    const left = tx.path.len - tx.s, v = clamp(Math.min(left, tx.s) * 1.4 + 120, 120, TAXI_V);
+    tx.s = Math.min(tx.path.len, tx.s + v * dt);
+    const p = txAt(tx.path, tx.s); tx.x = p.x; tx.y = p.y;
+    const n8 = (Math.round(Math.atan2(p.dy, p.dx) / (Math.PI / 4)) + 8) % 8;
+    if (n8 === tx.d8) tx.d8T = 0; else if ((tx.d8T = (tx.d8T || 0) + dt) > .25) { tx.d8 = n8; tx.d8T = 0; }
+    if (tx.s >= tx.path.len - .5) {
+      if (tx.st === 'go') { if (BUS.ride === tx) taxiGetOff(tx); else taxiReturn(tx); }
+      else { tx.st = 'idle'; tx.d8 = 0; }
+    }
+  }
+  updateRecall(dt);
+}
+// ----- 귀환: 3초 동안 가만히 있으면 과수원(승차장 앞)으로 돌아와요. 싸우는 중·포터 탄 중엔 못 써요 -----
+function heroRecall(){
+  ensureHero();
+  if (P.rc) return;
+  if (BUS.ride) { toast('🛻 포터에서 내린 다음 귀환할 수 있어요.'); return; }
+  if (inCombat()) { toast('⚔️ 싸우는 중엔 귀환할 수 없어요.', 'bad'); return; }
+  if (HOME && inRect(HOME, P.x, P.y)) { toast('🏡 벌써 과수원이에요.'); return; }
+  P.rc = {t:0, x:P.x, y:P.y, hp:P.hp}; sfx('pop');
+}
+function updateRecall(dt){
+  const r = P.rc; if (!r) return;
+  if (Math.hypot(P.x - r.x, P.y - r.y) > 6 || P.hp < r.hp || inCombat() || BUS.ride) { P.rc = null; toast('🌀 귀환이 끊겼어요. (움직이거나 맞으면 끊겨요)'); return; }
+  r.t += dt;
+  if (r.t >= RECALL_T) { P.rc = null; sfx('whirl'); fadeScreen('🏡 과수원으로 귀환하는 중…', () => { P.x = PORTALS[0].x + 60; P.y = PORTALS[0].y + 170; P.tgt = null; P.kb = null; cam.x = P.x; cam.y = P.y; for (const m of MONS) if (!m.raid) { m.eng = false; m.st = 'wander'; } }, () => {}); }
+}
+function drawRecall(c){ // 주인공 발밑 빛 기둥 (월드 좌표)
+  const r = P.rc; if (!r) return;
+  const k = r.t / RECALL_T, T = performance.now() / 1000;
+  c.save(); c.globalAlpha = .35 + k * .4; const g = c.createLinearGradient(0, P.y - 190, 0, P.y); g.addColorStop(0, 'rgba(150,230,255,0)'); g.addColorStop(1, 'rgba(120,200,255,.9)');
+  c.fillStyle = g; c.fillRect(P.x - 34 - k * 10, P.y - 190, 68 + k * 20, 190); c.restore();
+  c.save(); c.beginPath(); c.ellipse(P.x, P.y, 50, 16, 0, 0, 7); c.lineWidth = 4; c.strokeStyle = `rgba(90,200,255,${.6 + Math.sin(T * 8) * .3})`; c.stroke(); c.restore();
+}
+function drawRecallBar(ctx){ // 화면 아래 귀환 진행 막대
+  const r = P.rc; if (!r) return;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const w = 360, x = W / 2 - w / 2, y = H - 250, k = clamp(r.t / RECALL_T, 0, 1);
+  ctx.beginPath(); rr(ctx, x, y, w, 44, 16); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.beginPath(); rr(ctx, x + 6, y + 6, (w - 12) * k, 32, 12); ctx.fillStyle = '#7ad0ff'; ctx.fill();
+  ctx.font = '22px Jua'; ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(`🏡 과수원으로 귀환 ${Math.max(0, RECALL_T - r.t).toFixed(1)}초 · 움직이면 끊겨요`, W / 2, y + 30);
+  ctx.restore();
+}
+// 승차장 표지판 (포터가 손님을 태우러 나가 있어도 자리를 알 수 있게)
+function drawTaxiStand(c, p){
+  c.save(); c.translate(p.x - 190, p.y + 10);
+  c.beginPath(); ell(c, 190, 0, 230, 44); c.fillStyle = 'rgba(120,110,100,.18)'; c.fill();
+  cel(c, cc => rr(cc, -4, -110, 8, 110, 3), '#8a6a4a', '#5a4430', 1, 0, 2.4);
+  cel(c, cc => rr(cc, -54, -150, 108, 46, 10), '#ffd23a', '#d8a020', 2, 2, 2.8);
+  c.font = '20px Jua'; c.textAlign = 'center'; c.fillStyle = INK; c.fillText('🛻 포터', 0, -132); c.font = '15px Jua'; c.fillText('승차장', 0, -113);
+  c.restore();
+}
+
 // ===== 키 설정 (2026-10-13): 기본은 마우스 왼쪽 = 공격, 오른쪽 = 막기. 플레이어가 직접 바꿀 수 있어요 =====
 const KEY_ACTS = [
   ['attack', '⚔️ 공격 (휘두르기)'], ['block', '🛡️ 막기 (누르고 있기)'], ['interact', '✋ 일하기·말 걸기'],
-  ['gong', '🥁 꽹과리'], ['bag', '🎒 가방'], ['ride', '🐯 호랑이 타기·내리기'], ['view', '🎥 시점 바꾸기'], ['map', '🗺️ 전체 지도'],
+  ['gong', '🥁 꽹과리'], ['recall', '🏡 귀환 (과수원으로)'], ['bag', '🎒 가방'], ['ride', '🐯 호랑이 타기·내리기'], ['view', '🎥 시점 바꾸기'], ['map', '🗺️ 전체 지도'],
   ['up', '⬆️ 위로 걷기'], ['down', '⬇️ 아래로 걷기'], ['left', '⬅️ 왼쪽으로 걷기'], ['right', '➡️ 오른쪽으로 걷기']
 ];
-const KEY_DEF = {attack:['Mouse0', 'Space'], block:['Mouse2', 'KeyF'], interact:['KeyF', ''], gong:['KeyQ', ''], bag:['KeyI', ''], ride:['KeyR', ''], view:['KeyV', ''], map:['KeyM', ''],
+const KEY_DEF = {attack:['Mouse0', 'Space'], block:['Mouse2', 'KeyF'], interact:['KeyF', ''], gong:['KeyQ', ''], recall:['KeyB', ''], bag:['KeyI', ''], ride:['KeyR', ''], view:['KeyV', ''], map:['KeyM', ''],
   up:['KeyW', ''], down:['KeyS', ''], left:['KeyA', ''], right:['KeyD', '']};
 let KB = JSON.parse(JSON.stringify(KEY_DEF));
 (function loadKeys(){ try { const s = JSON.parse(store.get('haru-keys', 'null')); if (s) for (const k in KEY_DEF) if (Array.isArray(s[k])) KB[k] = [s[k][0] || '', s[k][1] || '']; } catch (e) {} })();
@@ -8212,6 +8492,7 @@ function pressAct(act, ev){
   if (act === 'attack') { if (UI.free()) { if (ev && ev.wx != null && Math.abs(ev.wx - P.x) > 8) P.face = ev.wx < P.x ? -1 : 1; heroAttack(); } return true; }
   if (act === 'interact') { if (UI.modal && $('#nmSleep')) { $('#nmSleep').click(); return true; } if (!inCombat()) pressF(); return true; }
   if (act === 'gong') { if (UI.free()) heroGong(); return true; }
+  if (act === 'recall') { if (UI.free()) heroRecall(); return true; }
   if (act === 'ride') { if (UI.free()) toggleRide(); return true; }
   if (act === 'map') { if (UI.free()) toggleBigMap(); return true; }
   if (act === 'view') { if (UI.free()) toggleView(); return true; }
@@ -8230,6 +8511,7 @@ function renderHelp(){
     <div><b>마우스 드래그</b>화면 둘러보기</div>
     <div><b>${esc(k('bag'))}</b>가방 (전리품·장비)</div>
     <div><b>${esc(k('gong'))}</b>꽹과리 (산짐승 깜짝)</div>
+    <div><b>${esc(k('recall'))}</b>귀환 (3초 가만히 → 과수원으로)</div>
     <div><b>${esc(k('map'))}</b>전체 지도 켜기·끄기</div>
     <div><b>${esc(k('ride'))}</b>호랑이 타기·내리기 (숲에서만, 탈것이 있을 때)</div>
     <div style="margin-top:8px"><button class="btn pri" id="keyBtn" style="font-size:17px;padding:6px 14px">⌨️ 키 설정 바꾸기</button></div>`;
@@ -9132,7 +9414,7 @@ function act(t){
   else if (t.kind === 'hunter') talkHunter();
   else if (t.kind === 'npc') talkNpc(NPCS[t.n]);
   else if (t.kind === 'nongmak') uiNongmak();
-  else if (t.kind === 'portal') uiPortalAt(t.p);
+  else if (t.kind === 'taxi') taxiBoard(t.tx);
   else if (t.kind === 'bus') busBoard(t.b);
   else if (t.kind === 'forage') pickForage(t.f);
   else if (t.kind === 'rest') uiRest(t.r);
@@ -9206,7 +9488,7 @@ function update(dt){
       if (workerS.idle > 3) { workerS.tx = BENCH.x; workerS.ty = BENCH.y + 4; workerS.sit = d < 6; if (workerS.sit) workerS.dir = 0; }
     }
   }
-  updateCritters(dt); updateVillagers(dt); updateHunt(dt); updateBus(dt);
+  updateCritters(dt); updateVillagers(dt); updateHunt(dt); updateBus(dt); updateTaxi(dt);
   for (const f of flies) { f.t += dt; f.x += Math.cos(f.t * .7) * 40 * dt + 10 * dt; f.y += Math.sin(f.t * 1.3) * 30 * dt; if (f.x > WORLD_W) f.x = 0; }
   for (const f of floats) { f.t -= dt; f.y -= dt * 40; }
   for (let i = floats.length - 1; i >= 0; i--) if (floats[i].t <= 0) floats.splice(i, 1);
@@ -9399,6 +9681,7 @@ $('#viewBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopP
 viewBtnSync();
 $('#rideBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (UI.free()) toggleRide(); });
 $('#gongBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroGong(); });
+$('#homeBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (UI.free()) heroRecall(); });
 $('#fBtn').addEventListener('pointerup', fUp); $('#fBtn').addEventListener('pointercancel', fUp); $('#fBtn').addEventListener('pointerleave', fUp);
 $('#fsBtn').onclick = () => {
   const d = document;
