@@ -2237,11 +2237,12 @@ function drawPortrait(cv, who){
 // ===== 과수원 세상 =====
 const SPOT = {
   hanok:{x:-450, y:900}, shed:{x:510, y:830} /* 2026-10-13 저장하는 한옥은 왼쪽 빈 터로, 사과 창고가 한옥 자리로 크게 */, grandma:{x:480, y:1440}, chief:{x:270, y:1440}, hunter:{x:110, y:1440},
-  sarang:{x:170, y:820}, cold:{x:200, y:1190}, factory:{x:430, y:1160}, wondumak:{x:3200, y:780},
+  // 2026-10-16 달 요청: 옹기종기 모여 있던 건물을 넓게. 사랑채·저온저장고·가공실은 이장님 아래 빈 터로 줄지어 옮겼어요
+  sarang:{x:-560, y:1800}, cold:{x:-80, y:1780}, factory:{x:360, y:1780}, wondumak:{x:3200, y:780},
   hives:[[3180, 1040], [3230, 1075], [3180, 1110]], drone:{x:900, y:830},
   pond:{x:520, y:2200}, flowers:[[360, 925], [650, 985], [120, 1080]], blossom:[[110, 620], [880, 480], [130, 1530]],
-  rabbit:{x:3300, y:1360}, chicken:{x:560, y:1720}, cat:{x:250, y:880}, dog:{x:690, y:980},
-  jangdok:{x:110, y:960}, sotdae:{x:-90, y:1560}, nongmak:{x:800, y:1400}, portal:{x:110, y:1680} /* 2026-10-13 이장님 아래 순간이동 포탈 */ // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
+  rabbit:{x:3300, y:1360}, chicken:{x:680, y:1760}, cat:{x:250, y:880}, dog:{x:690, y:980},
+  jangdok:{x:110, y:960}, sotdae:{x:-90, y:1560}, nongmak:{x:650, y:1400} /* 2026-10-16 울타리(x 850)에 안 걸리게 왼쪽으로 */, portal:{x:110, y:1680} /* 2026-10-13 이장님 아래 순간이동 포탈 */ // 2026-10-13 농막을 처음 서 있는 자리(930, 1000) 바로 아래로
 };
 const ROAD = [[HOME.x0 - 40, 1250], [930, 1250], [930, 1150]]; // 2026-10-16 서쪽 입구에서 마당까지 // 2026-10-14 달 요청: 마을 길은 반듯하게(가로·세로로만)
 const YARD = {x:520, y:925, rx:270, ry:85}, HYARD = {x:-450, y:1000, rx:230, ry:72};
@@ -4610,7 +4611,7 @@ const SLEEP_TIPS = [
   () => '🐯 호랑이는 도구 데미지가 27 이상이어야 상처를 낼 수 있어요.',
   () => '🍯 석청을 모으면 꿀벌통을 3단계까지 키울 수 있어요.',
   () => '💰 전리품은 금비상회에서 팔아요. 한 주에 많이 팔면 값이 조금씩 내려가요.',
-  () => '❓ 이장님과 순자 할머니의 사과 퀴즈를 맞히면 5만원과 평판을 받아요.',
+  () => '❓ 이장님과 순자 할머니의 사과 퀴즈를 맞히면 10만원과 평판 2를 받아요.',
   () => '🚚 경매 출하 때 수확량 %나 상자 수를 골라 일부만 팔 수 있어요.',
   () => '🏠 사과 창고를 키우면 경매값이 오르고 소매 주문도 더 자주 와요.',
   () => `🎒 가방(${tipKey('bag')})에서 장비를 끌어다 끼면 옷차림도 바뀌어요.`,
@@ -6696,8 +6697,8 @@ function talk(who, html, foot){
 }
 function weekId(){ return absDay() - G.day; }
 // 사과 퀴즈: 순자 할머니(G.quizDay)·이장님(G.quizDayC) 각각 한 주에 한 문제
-const QZ = {grandma:{k:'quizDay', name:'김순자 할머니', ask:n => `${jo(n, '아', '야')}, 할미가 사과 문제 하나 낼게. 맞히면 용돈 줄게!`, ok:n => `딩동댕! 역시 우리 ${jo(n, '이야', '야')}. 용돈 5만원 받으렴.`, no:'아깝다! 정답은'},
-  chief:{k:'quizDayC', name:'고만수 이장님', ask:n => `${n}, 이장이 사과 문제 하나 내 보겠네. 맞히면 마을에서 상금을 주지!`, ok:n => `허허, 정답이네! 역시 ${jo(n, '이', '가')} 사과 박사구먼. 상금 5만원 받게.`, no:'아쉽구먼! 정답은'}};
+const QZ = {grandma:{k:'quizDay', name:'김순자 할머니', ask:n => `${jo(n, '아', '야')}, 할미가 사과 문제 하나 낼게. 맞히면 용돈 줄게!`, ok:n => `딩동댕! 역시 우리 ${jo(n, '이야', '야')}. 용돈 10만원 받으렴.`, no:'아깝다! 정답은'},
+  chief:{k:'quizDayC', name:'고만수 이장님', ask:n => `${n}, 이장이 사과 문제 하나 내 보겠네. 맞히면 마을에서 상금을 주지!`, ok:n => `허허, 정답이네! 역시 ${jo(n, '이', '가')} 사과 박사구먼. 상금 10만원 받게.`, no:'아쉽구먼! 정답은'}};
 // 2026-10-13 퀴즈는 문제를 낸 순간부터 2~3주 뒤에 다시 나와요(창을 닫아 버려도 다시 안 나옴)
 const quizReady = who => absDay() >= ((G.quizNext || {})[who] || 0);
 function quizUsed(who){ if (!G.quizNext) G.quizNext = {}; G.quizNext[who] = absDay() + rint(14, 21); G[QZ[who].k] = weekId(); }
@@ -6716,8 +6717,8 @@ function askQuiz(who){
   $('#talkX').innerHTML = `<div class="quiz">${q.a.map((a, i) => `<button class="btn" data-a="${i}">${'①②③'[i]} ${esc(a)}</button>`).join('')}</div>`;
   const answer = i => {
     const right = i === q.c;
-    if (right) { G.money += 50000; G.rep += 1; G.stats.quiz++; if (G.stats.quiz >= 5) unlock('quiz5'); updateHUD(true); }
-    o.body.querySelector('.bubble').innerHTML = `<div class="who">${Z.name}</div>${right ? `${Z.ok(HN())} (평판 +1)` : `${Z.no} <b>${esc(q.a[q.c])}</b>${who === 'chief' ? '일세.' : '이란다.'}`}${q.e ? `<div class="fact" style="margin-top:10px">💡 ${esc(q.e)}</div>` : ''}`;
+    if (right) { G.money += 100000; G.rep += 2; /* 2026-10-16 달 요청: 퀴즈 보상 2배 */ G.stats.quiz++; if (G.stats.quiz >= 5) unlock('quiz5'); updateHUD(true); }
+    o.body.querySelector('.bubble').innerHTML = `<div class="who">${Z.name}</div>${right ? `${Z.ok(HN())} (평판 +2)` : `${Z.no} <b>${esc(q.a[q.c])}</b>${who === 'chief' ? '일세.' : '이란다.'}`}${q.e ? `<div class="fact" style="margin-top:10px">💡 ${esc(q.e)}</div>` : ''}`;
     $('#talkX').innerHTML = '';
     o.footEl.innerHTML = `<button class="btn pri" id="tOk">고마워요</button>`; $('#tOk').onclick = () => UI.close();
     if (AUTO) o.timer = setTimeout(() => UI.modal === o && UI.close(), POPMS / 2);
