@@ -2707,6 +2707,7 @@ function findTarget(){
              {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 10}, {kind:'hanok', x:SPOT.hanok.x, y:SPOT.hanok.y + 10}, {kind:'nongmak', x:SPOT.nongmak.x, y:SPOT.nongmak.y + 10});
   huntTargets(cands); busTargets(cands);
   for (const n of NPCS) cands.push({kind:'npc', n:n.i, x:n.x, y:n.y});
+  if (SPITZ.init) cands.push({kind:'spitz', x:SPITZ.x, y:SPITZ.y}); // 2026-10-16 달이 쓰다듬기
   for (const c of cands) {
     const d = (c.x - P.x) ** 2 + ((c.y - P.y) * 1.3) ** 2;
     const lim = c.kind === 'hanok' || c.kind === 'nongmak' || c.kind === 'rest' || c.kind === 'taxi' || c.kind === 'bus' ? 150 * 150 : c.kind === 'tree' ? 70 * 70 : bd;
@@ -2718,6 +2719,7 @@ function targetLabel(t){
   if (!t) return '';
   if (t.kind === 'tree') { const k = taskFor(t.i); if (k) return TASKS[k].verb; return G.trees[t.i] ? '살펴보기' : ''; }
   if (t.kind === 'npc') return NPCS[t.n].name;
+  if (t.kind === 'spitz') return '🐶 달 쓰다듬기';
   if (t.kind === 'forage') return '캐기: ' + LOOT[t.f.item].name;
   if (t.kind === 'rest') return '⛺ 쉬기';
   if (t.kind === 'bus' || t.kind === 'taxi') return busLabel(t);
@@ -5954,78 +5956,95 @@ function spzMouth(c, x, y, s, open){ // 웃는 입(옆은 s=1 한쪽만)
   c.beginPath(); c.moveTo(x - 5 * (s === 1 ? 1.4 : 1), y - 1); c.quadraticCurveTo(x - 2.5, y + 2.5, x, y); if (s === 2) c.quadraticCurveTo(x + 2.5, y + 2.5, x + 5, y - 1); c.lineWidth = 1.8; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke();
 }
 const spzBlush = (c, x, y) => { c.beginPath(); ell(c, x, y, 3, 1.9); c.fillStyle = 'rgba(255,140,160,.38)'; c.fill(); };
+// 2026-10-16 달 요청: 귀는 방향마다 다르게. face 1 = 안쪽(분홍)이 정면, 0.3~0.6 = 비스듬히(분홍이 한쪽으로 좁게), -1 = 귀 뒷면(하양만)
+function spzEar2(c, bx, by, w, h, lean, face){
+  const L = [bx - w / 2, by], R = [bx + w / 2, by], T = [bx + lean, by - h];
+  cel(c, cc => { cc.moveTo(...L); cc.quadraticCurveTo(L[0] + (T[0] - L[0]) * .45 - w * .12, L[1] + (T[1] - L[1]) * .55, ...T); cc.quadraticCurveTo(R[0] + (T[0] - R[0]) * .45 + w * .12, R[1] + (T[1] - R[1]) * .55, ...R); cc.quadraticCurveTo(bx, by + 3, ...L); cc.closePath(); },
+    face < 0 ? '#f7f9fc' : SPZ.w, SPZ.s, face < 0 ? 0 : 1, 1, 2.3);
+  if (face > 0) { const k = .58, sh = (1 - face) * w * .22 * Math.sign(lean || 1), cx = bx + sh, iw = w * k * (.45 + face * .55);
+    c.beginPath(); c.moveTo(cx - iw / 2, by - 2); c.quadraticCurveTo(cx - iw * .2, by - h * .5, bx + lean * .85 + sh * .4, by - h * .8); c.quadraticCurveTo(cx + iw * .2, by - h * .5, cx + iw / 2, by - 2); c.closePath(); c.fillStyle = SPZ.pink; c.fill();
+    line(c, [cx, by - 3, bx + lean * .7 + sh * .3, by - h * .55], 1.1, '#ffffff'); } // 귀 안 하얀 솜털
+  else if (face < 0) line(c, [bx, by - 2, bx + lean * .7, by - h * .65], 1.2, '#d6dce6');
+}
 function drawSpitz8(c, d8, t, walk, happy){
   c.save();
   if ([3, 4, 5].includes(d8)) { c.scale(-1, 1); d8 = d8 === 3 ? 1 : d8 === 4 ? 0 : 7; }
   const sw = walk ? Math.sin(t * 13) * 3.5 : 0, bob = walk ? -Math.abs(Math.sin(t * 13)) * 1.6 : 0, wag = Math.sin(t * (happy ? 18 : 5)) * (happy ? .14 : .04), pant = walk || happy;
-  shadow(c, 0, 1, d8 % 4 === 0 ? 30 : 22, 6);
+  shadow(c, 0, 1, d8 % 4 === 0 ? 40 : d8 % 2 ? 32 : 22, 6);
   c.translate(0, bob);
-  if (d8 === 0) { // 옆(오른쪽)
-    spzLeg(c, -16, -17, -sw, 1); spzLeg(c, 10, -17, sw, 1);
-    spzFluff(c, -3, -27, 22, 14, 11, .1);
-    spzLeg(c, -11, -17, sw, 0); spzLeg(c, 15, -17, -sw, 0);
-    spzFluff(c, -10, -41, 19, 11.5, 10, .14, -.5 + wag, .3); spzFluff(c, 3, -49, 7, 5.5, 6, .14, -.2 + wag); // 끝이 머리 쪽으로 살짝 말려요
-    // 엉덩이에서 등 위로 말린 꼬리
-    spzFur(c, [-20, -36, -14, -38, -9, -45, -3, -43]);
-    spzEar(c, [12, -69], [21, -72], [15, -88], 0);
-    spzFluff(c, 14, -37, 14, 15, 10, .13, 0, .2); // 가슴 갈기털
-    spzFur(c, [17, -29, 19, -24, 10, -32, 11, -27]);
-    spzFluff(c, 22, -57, 17, 15.5, 13, .05);
-    cel(c, cc => { cc.moveTo(34, -63); cc.quadraticCurveTo(44, -59, 47, -54); cc.quadraticCurveTo(45, -48, 35, -48); cc.closePath(); }, SPZ.w, SPZ.s, 0, 1, 2.2); // 짧은 주둥이
-    spzEar(c, [18, -70], [30, -70], [24, -91], 1);
-    c.beginPath(); ell(c, 46.5, -54.5, 3.4, 2.9); c.fillStyle = SPZ.nose; c.fill();
-    spzEye(c, 31, -60, 3.3);
-    spzMouth(c, 43, -48.5, 1, pant);
-    spzBlush(c, 28, -52);
-  } else if (d8 === 2) { // 앞(아래)
-    spzFluff(c, 17, -46, 10, 9, 9, .14, .3 + wag); // 어깨 너머로 보이는 꼬리
+  if (d8 === 0) { // 옆(오른쪽): 사진 비율대로 몸통이 길어요(코끝~엉덩이 ≈ 키의 2배)
+    spzLeg(c, -27, -17, -sw, 1); spzLeg(c, 18, -17, sw, 1);
+    spzFluff(c, -5, -28, 31, 14, 14, .09);
+    spzFluff(c, -27, -31, 12, 13, 8, .12); // 엉덩이 털(바지)
+    spzLeg(c, -21, -17, sw, 0); spzLeg(c, 24, -17, -sw, 0);
+    spzFluff(c, -16, -43, 20, 11, 10, .14, -.42 + wag, .3); spzFluff(c, -1, -50, 8, 6, 6, .14, -.2 + wag); // 엉덩이에서 등 위로 말린 꼬리, 끝은 머리 쪽으로
+    spzFur(c, [-29, -40, -22, -41, -14, -48, -7, -46]);
+    spzEar2(c, 22, -69, 10, 15, -3, -1); // 먼 귀(뒷면)
+    spzFluff(c, 22, -38, 14, 15, 10, .13, 0, .2); // 가슴 갈기털
+    spzFur(c, [24, -29, 26, -24, 16, -32, 17, -27]);
+    spzFluff(c, 31, -57, 16, 15, 13, .05);
+    cel(c, cc => { cc.moveTo(42, -63); cc.quadraticCurveTo(52, -59, 55, -54); cc.quadraticCurveTo(53, -48, 43, -48); cc.closePath(); }, SPZ.w, SPZ.s, 0, 1, 2.2); // 짧은 주둥이
+    spzEar2(c, 30, -69, 12, 17, 1, .45); // 가까운 귀: 앞쪽을 향해 안쪽이 조금 보여요
+    c.beginPath(); ell(c, 54.5, -54.5, 3.4, 2.9); c.fillStyle = SPZ.nose; c.fill();
+    spzEye(c, 40, -60, 3.3);
+    spzMouth(c, 51, -48.5, 1, pant);
+    spzBlush(c, 37, -52);
+  } else if (d8 === 2) { // 앞(아래): 몸통이 뒤로 길게 이어져 엉덩이·꼬리가 어깨 너머로 보여요
+    spzFluff(c, 0, -33, 15, 12, 10, .1); // 뒤쪽 몸통(멀리)
+    spzFluff(c, 14, -49, 12, 10, 10, .14, .35 + wag); // 등 위 꼬리
+    spzLeg(c, -9, -12, 0, 1); spzLeg(c, 9, -12, 0, 1); // 뒷다리(멀리, 짧게)
     spzFluff(c, 0, -24, 17, 12, 10, .1);
     spzLeg(c, -8, -16, sw * .4, 0); spzLeg(c, 8, -16, -sw * .4, 0);
     spzFluff(c, 0, -34, 20, 15, 11, .13, 0, .2); // 갈기털(가슴까지 풍성하게)
     spzFur(c, [-4, -30, -3, -25, 4, -30, 3, -25, -11, -34, -12, -29, 11, -34, 12, -29]);
-    spzEar(c, [-17, -66], [-5, -73], [-13, -91], 1); spzEar(c, [5, -73], [17, -66], [13, -91], 1);
+    spzEar2(c, -10, -71, 14, 17, -3, 1); spzEar2(c, 10, -71, 14, 17, 3, 1);
     spzFluff(c, 0, -59, 19, 16.5, 14, .045);
     c.beginPath(); ell(c, 0, -51, 7.5, 5.5); c.fillStyle = '#f4f6fa'; c.fill();
     spzEye(c, -7, -61, 3.4); spzEye(c, 7, -61, 3.4);
     c.beginPath(); ell(c, 0, -54, 3.8, 3); c.fillStyle = SPZ.nose; c.fill(); c.beginPath(); c.arc(-1, -55, 1, 0, 7); c.fillStyle = '#6a646a'; c.fill();
     spzMouth(c, 0, -49, 2, pant);
     spzBlush(c, -12, -53); spzBlush(c, 12, -53);
-  } else if (d8 === 6) { // 뒤(위)
-    spzEar(c, [-17, -66], [-5, -73], [-13, -91], 0); spzEar(c, [5, -73], [17, -66], [13, -91], 0);
-    spzFluff(c, 0, -60, 19, 16.5, 14, .045);
+  } else if (d8 === 6) { // 뒤(위): 엉덩이·꼬리가 앞에, 몸통이 머리 쪽으로 길게
+    spzEar2(c, -10, -73, 14, 17, -3, -1); spzEar2(c, 10, -73, 14, 17, 3, -1);
+    spzFluff(c, 0, -61, 18, 16, 14, .045);
+    spzFluff(c, 0, -40, 15, 12, 10, .1); // 앞쪽 몸통(멀리)
+    spzLeg(c, -8, -12, -sw, 1); spzLeg(c, 8, -12, sw, 1);
+    spzFluff(c, 0, -27, 19, 15, 11, .1);
     spzLeg(c, -9, -16, sw, 0); spzLeg(c, 9, -16, -sw, 0);
-    spzFluff(c, 0, -28, 19, 15, 11, .1);
-    spzFluff(c, 0, -40, 15, 12, 10, .14, wag, .2); // 등 위 꼬리
-    spzFur(c, [-6, -42, -2, -38, 6, -42, 2, -38, 0, -47, 0, -43]);
+    spzFluff(c, 0, -38, 15, 12, 10, .14, wag, .2); // 등 위 꼬리
+    spzFur(c, [-6, -40, -2, -36, 6, -40, 2, -36, 0, -45, 0, -41]);
   } else if (d8 === 1) { // 앞 대각선(↘)
-    spzFluff(c, -14, -44, 15, 11, 10, .14, -.5 + wag); // 뒤쪽 꼬리
-    spzLeg(c, -14, -16, -sw, 1); spzLeg(c, 2, -16, sw, 1);
-    spzFluff(c, -4, -27, 19, 14, 11, .1);
-    spzLeg(c, -7, -16, sw, 0); spzLeg(c, 10, -15, -sw, 0);
-    spzFluff(c, 9, -36, 15, 15, 10, .13, 0, .2);
-    spzFur(c, [10, -29, 12, -24, 4, -32, 5, -27]);
-    spzEar(c, [-1, -67], [10, -73], [1, -89], 1);
-    spzFluff(c, 12, -58, 18, 16, 14, .045);
-    c.beginPath(); ell(c, 20, -51, 8, 5.5); c.fillStyle = '#f4f6fa'; c.fill();
-    spzEar(c, [15, -73], [26, -66], [25, -88], 1);
-    spzEye(c, 7, -60, 2.8); spzEye(c, 20, -60, 3.3);
-    c.beginPath(); ell(c, 23, -54, 3.6, 2.9); c.fillStyle = SPZ.nose; c.fill();
-    spzMouth(c, 21, -48.5, 2, pant);
-    spzBlush(c, 27, -53);
+    spzLeg(c, -24, -15, -sw, 1); spzLeg(c, 8, -16, sw, 1);
+    spzFluff(c, -7, -29, 26, 14, 13, .09, .22);
+    spzFluff(c, -24, -36, 11, 12, 8, .12);
+    spzFluff(c, -19, -49, 15, 11, 10, .14, -.5 + wag); spzFluff(c, -7, -54, 6, 5, 6, .14); // 등 위로 말린 꼬리
+    spzLeg(c, -16, -14, sw, 0); spzLeg(c, 14, -15, -sw, 0);
+    spzFluff(c, 12, -36, 15, 15, 10, .13, 0, .2);
+    spzFur(c, [13, -29, 15, -24, 7, -32, 8, -27]);
+    spzEar2(c, 6, -71, 11, 16, -2, .55); // 먼 귀: 비스듬히
+    spzFluff(c, 15, -58, 18, 16, 14, .045);
+    c.beginPath(); ell(c, 23, -51, 8, 5.5); c.fillStyle = '#f4f6fa'; c.fill();
+    spzEar2(c, 23, -71, 13, 17, 3, .85); // 가까운 귀: 거의 정면
+    spzEye(c, 10, -60, 2.8); spzEye(c, 23, -60, 3.3);
+    c.beginPath(); ell(c, 26, -54, 3.6, 2.9); c.fillStyle = SPZ.nose; c.fill();
+    spzMouth(c, 24, -48.5, 2, pant);
+    spzBlush(c, 30, -53);
   } else { // 뒤 대각선(↗)
-    spzEar(c, [2, -70], [13, -75], [7, -91], 0); spzEar(c, [16, -73], [26, -66], [25, -88], 0);
-    spzFluff(c, 13, -60, 18, 16, 14, .045);
-    spzLeg(c, 12, -16, sw, 1); spzLeg(c, -3, -16, -sw, 1);
-    spzFluff(c, 2, -28, 19, 14, 11, .1);
-    spzLeg(c, -10, -16, sw, 0); spzLeg(c, 5, -15, -sw, 0);
-    spzFluff(c, -6, -41, 17, 12, 10, .14, -.4 + wag, .2); // 등 위로 말린 꼬리
-    spzFur(c, [-10, -44, -5, -41, -2, -47, 2, -44]);
+    spzEar2(c, 9, -73, 11, 16, -2, -1); spzEar2(c, 24, -72, 13, 17, 3, -1);
+    spzFluff(c, 16, -61, 17, 16, 14, .045);
+    spzLeg(c, 16, -14, sw, 1); spzLeg(c, -18, -16, -sw, 1);
+    spzFluff(c, -1, -30, 26, 14, 13, .09, -.22);
+    spzLeg(c, 8, -14, -sw, 0); spzLeg(c, -24, -16, sw, 0);
+    spzFluff(c, -20, -32, 12, 13, 8, .12);
+    spzFluff(c, -12, -43, 18, 12, 10, .14, -.35 + wag, .2); // 등 위로 말린 꼬리
+    spzFur(c, [-18, -44, -12, -41, -8, -47, -3, -44]);
   }
   c.restore();
 }
+function drawHeart(c, x, y, r, col){ c.beginPath(); c.moveTo(x, y + r * .9); c.bezierCurveTo(x - r * 1.6, y - r * .1, x - r * .8, y - r * 1.3, x, y - r * .45); c.bezierCurveTo(x + r * .8, y - r * 1.3, x + r * 1.6, y - r * .1, x, y + r * .9); c.closePath(); c.fillStyle = col; c.fill(); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke(); }
 
 // ----- 움직임: 사과골 마을 안을 돌아다니다, 우주가 지나가면 2~3초 따라오고 집으로 돌아가요 -----
-const SPITZ = {name:'하양이', x:0, y:0, hx:0, hy:0, tx:0, ty:0, d8:2, t:0, st:'wander', st2:0, cool:0, walk:false, wait:1};
+const SPITZ = {name:'달', hearts:[], pet:0, x:0, y:0, hx:0, hy:0, tx:0, ty:0, d8:2, t:0, st:'wander', st2:0, cool:0, walk:false, wait:1};
 function spitzHome(){ const H = VB.find(b => b.sign === '달이네 집'); return [H.x + 150, H.y + 120]; }
 function spitzInit(){ if (SPITZ.init) return; SPITZ.init = 1; [SPITZ.hx, SPITZ.hy] = spitzHome(); SPITZ.x = SPITZ.tx = SPITZ.hx; SPITZ.y = SPITZ.ty = SPITZ.hy; }
 function spitzStep(tx, ty, sp, dt){
@@ -6037,6 +6056,13 @@ function spitzStep(tx, ty, sp, dt){
 }
 function updateSpitz(dt){
   spitzInit(); const S = SPITZ; S.t += dt; if (S.cool > 0) S.cool -= dt;
+  for (let i = S.hearts.length - 1; i >= 0; i--) { const h = S.hearts[i]; h.t += dt; h.y -= dt * 38; h.x += Math.sin(h.t * 6 + h.ph) * dt * 14; if (h.t > 1.1) S.hearts.splice(i, 1); }
+  if (S.st === 'pet') { // F로 쓰다듬는 중: 꼬리 살랑살랑, 작은 하트 뿅뿅
+    S.pet -= dt; S.walk = false; critterDir(S, P.x - S.x, P.y - S.y, dt);
+    if ((S.hT = (S.hT || 0) - dt) <= 0) { S.hT = .22; S.hearts.push({x:rnd(-16, 16), y:-78, t:0, ph:rnd(0, 6), r:rnd(5, 7)}); }
+    if (S.pet <= 0) { S.st = 'wander'; S.wait = rnd(1.5, 3); S.cool = 6; }
+    S.px = P.x; S.py = P.y; return;
+  }
   const pd = Math.hypot(P.x - S.x, P.y - S.y), heroMoving = Math.hypot(P.x - (S.px ?? P.x), P.y - (S.py ?? P.y)) > 1; S.px = P.x; S.py = P.y;
   if (S.st !== 'follow' && S.st !== 'home' && S.cool <= 0 && pd < 230 && heroMoving && !BUS.ride) { S.st = 'follow'; S.st2 = rnd(2, 3); floats.push({x:S.x, y:S.y - 100, s:'🐶 멍! 멍!', t:1, c:'#7a5af0'}); }
   if (S.st === 'follow') {
@@ -6051,7 +6077,11 @@ function updateSpitz(dt){
       for (let k = 0; k < 8; k++) { const x = rnd(V2.x0 + 300, V2.x1 - 300), y = rnd(V2.y0 + 300, V2.y1 - 300); if (!blocked(x, y)) { S.tx = x; S.ty = y; break; } } }
   }
 }
-function drawSpitzAt(ctx){ ctx.save(); ctx.translate(SPITZ.x, SPITZ.y); ctx.scale(1.05, 1.05); drawSpitz8(ctx, SPITZ.d8 ?? 2, SPITZ.t, SPITZ.walk, SPITZ.st === 'follow'); ctx.restore(); }
+function drawSpitzAt(ctx){ ctx.save(); ctx.translate(SPITZ.x, SPITZ.y); ctx.scale(1.05, 1.05); drawSpitz8(ctx, SPITZ.d8 ?? 2, SPITZ.t, SPITZ.walk, SPITZ.st === 'follow' || SPITZ.st === 'pet');
+  for (const h of SPITZ.hearts) { ctx.globalAlpha = Math.min(1, (1.1 - h.t) * 2.5); const pop = Math.min(1, h.t * 6); drawHeart(ctx, h.x, h.y, h.r * (.6 + pop * .4), '#ff6b8a'); }
+  ctx.globalAlpha = 1; ctx.restore(); }
+// 2026-10-16 달 요청: F로 '달'을 쓰다듬어요
+function petSpitz(){ const S = SPITZ; S.st = 'pet'; S.pet = 2.2; S.hT = 0; sfx('pop'); floats.push({x:S.x, y:S.y - 160, s:'💕 달이가 좋아해요!', t:1.2, c:'#ff6b8a'}); P.face = S.x < P.x ? -1 : 1; }
 
 // ===== 2026-10-13 기상 이벤트 화면 연출 (태풍·우박·늦서리) =====
 let WXFX = null;
@@ -9667,6 +9697,7 @@ function act(t){
   else if (t.kind === 'chief') talkChief();
   else if (t.kind === 'hunter') talkHunter();
   else if (t.kind === 'npc') talkNpc(NPCS[t.n]);
+  else if (t.kind === 'spitz') petSpitz();
   else if (t.kind === 'nongmak') uiNongmak();
   else if (t.kind === 'taxi') taxiBoard(t.tx);
   else if (t.kind === 'bus') busBoard(t.b);
