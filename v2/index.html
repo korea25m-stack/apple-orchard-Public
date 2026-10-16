@@ -2305,12 +2305,12 @@ function genFeatTile(tx, ty){
   }
   for (let i = n(FEAT_PER_TILE.tufts); i > 0; i--) {
     const x = X(), y = Y(), v = R();
-    if (nearHome(x, y) && (inOrchard(x, y) || nearRoad(x, y, 70) || inYard(x, y)) || inDen(x, y, 40)) continue;
+    if (nearHome(x, y) && (inOrchard(x, y) || nearRoad(x, y, 70) || inYard(x, y)) || inDen(x, y, 40) || wetDeco(x, y)) continue;
     L.tufts.push([x, y, v]);
   }
   for (let i = n(FEAT_PER_TILE.flw); i > 0; i--) {
     const x = X(), y = Y(), q = Math.floor(R() * 4);
-    if (y > SNOW_Y + 300 || nearHome(x, y) && (inOrchard(x, y, 20) || nearRoad(x, y, 80) || inYard(x, y)) || inDen(x, y, 40)) continue;
+    if (y > SNOW_Y + 300 || nearHome(x, y) && (inOrchard(x, y, 20) || nearRoad(x, y, 80) || inYard(x, y)) || inDen(x, y, 40) || wetDeco(x, y)) continue;
     L.flw.push([x, y, q]);
   }
   for (const m of ['blobs', 'tufts', 'flw']) feats[m].set(k, L[m]);
@@ -2674,6 +2674,7 @@ function blocked(x, y){
   if (x < WX0 + 40 || x > WX1 - 40 || y < WY0 + 120 || y > worldBot() - 40) return true;
   for (const r of solids()) if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return true;
   if (huntBlocked(x, y)) return true;
+  if (inWater(x, y)) return true; // 2026-10-16 강물은 다리로만 건너요
   if (G.deco.pond && ((x - SPOT.pond.x) / 160) ** 2 + ((y - SPOT.pond.y) / 78) ** 2 < 1) return true;
   // 나무 줄기
   if (inOrchard(x, y)) {
@@ -3732,7 +3733,7 @@ function buildForest(){
     FOREST.push({x, y, k:kind, s});
   }
   PEAKS = []; // 2026-10-16 설산 봉우리 없앰
-  FOREST = FOREST.filter(o => !nearMapRoad(o.x, o.y, 150) && !nearRiver(o.x, o.y));
+  FOREST = FOREST.filter(o => !nearMapRoad(o.x, o.y, 150) && !nearRiver(o.x, o.y) && !RESTS.some(r => Math.hypot(o.x - r.x - 60, (o.y - r.y) * 1.3) < 420)); // 쉼터 둘레는 빈터
   // 사냥터 경계 소나무 줄 (입구는 비워 둬요)
   BORDER = [];
   const R2 = srand(4040), gap = (x, y) => GATES.some(g => Math.hypot(x - g.x, y - g.y) < 170) || nearMapRoad(x, y, 70);
@@ -3867,12 +3868,46 @@ function drawHuntGround(c, x0, y0, w, h, win){
         c.beginPath(); c.arc(x, y, 1.8, 0, 7); c.fillStyle = '#ffd23a'; c.fill(); }
     }
   }
+  for (const B of BRIDGES) if (B.x > x0 - B.h - 100 && B.x < x0 + w + B.h + 100 && B.y > y0 - B.h - 100 && B.y < y0 + h + B.h + 100) drawBridge(c, B, win);
   // 낙엽 (자리마다 같은 곳에)
   const R = srand((x0 / 512 | 0) * 977 + (y0 / 512 | 0) * 131 + 5);
   for (let k = 0; k < 40; k++) { const x = x0 + R() * w, y = y0 + R() * h; if (!inHunt(x, y) || nearTrail(x, y, 45)) continue; c.beginPath(); ell(c, x, y, 4, 2.4); c.fillStyle = win ? '#ffffff' : ['#c98a3a', '#8a6a3a', '#5a8a3a'][k % 3]; c.fill(); }
 }
 const bbOf = T => [Math.min(...T.map(p => p[0])), Math.min(...T.map(p => p[1])), Math.max(...T.map(p => p[0])), Math.max(...T.map(p => p[1]))];
 const RIVER_BB = bbOf(RIVER), HIGHWAY_BB = bbOf(HIGHWAY);
+// ----- 2026-10-16 달 요청: 물(동계천)에는 아무것도 못 들어가요(물에 사는 것만). 길이 강을 건너는 곳엔 작은 나무다리 -----
+const WATER_HW = 135; // 강물 반폭(그림 250 + 물가 조금)
+const BRIDGES = (() => {
+  const out = [], cross = (a, b, c2, d) => { const den = (a[0] - b[0]) * (c2[1] - d[1]) - (a[1] - b[1]) * (c2[0] - d[0]); if (!den) return null;
+    const t = ((a[0] - c2[0]) * (c2[1] - d[1]) - (a[1] - c2[1]) * (c2[0] - d[0])) / den, u = -((a[0] - b[0]) * (a[1] - c2[1]) - (a[1] - b[1]) * (a[0] - c2[0])) / den;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])] : null; };
+  for (const T of TRAILS) for (let i = 0; i < T.length - 1; i++) for (let j = 0; j < RIVER.length - 1; j++) {
+    const q = cross(T[i], T[i + 1], RIVER[j], RIVER[j + 1]); if (!q || out.some(B => Math.hypot(B.x - q[0], B.y - q[1]) < 300)) continue;
+    // 다리는 길 방향 그대로 놓고, 길이는 물을 다 덮을 만큼(비스듬히 건너면 조금 길어져요)
+    const a = Math.atan2(T[i + 1][1] - T[i][1], T[i + 1][0] - T[i][0]), ux = Math.cos(a), uy = Math.sin(a);
+    let t0 = 0, t1 = 0; while (t0 < 900 && segNear(RIVER, q[0] - ux * t0, q[1] - uy * t0, WATER_HW + 25)) t0 += 10; while (t1 < 900 && segNear(RIVER, q[0] + ux * t1, q[1] + uy * t1, WATER_HW + 25)) t1 += 10;
+    const m = (t1 - t0) / 2; out.push({x:q[0] + ux * m, y:q[1] + uy * m, a, h:(t0 + t1) / 2 + 30});
+  }
+  return out;
+})();
+const onBridge = (x, y) => BRIDGES.some(B => { const dx = x - B.x, dy = y - B.y, u = dx * Math.cos(B.a) + dy * Math.sin(B.a), v = -dx * Math.sin(B.a) + dy * Math.cos(B.a); return Math.abs(u) < B.h && Math.abs(v) < 80; });
+function inWater(x, y){ return x > RIVER_BB[0] - 200 && x < RIVER_BB[2] + 200 && y > RIVER_BB[1] - 200 && y < RIVER_BB[3] + 200 && segNear(RIVER, x, y, WATER_HW) && !onBridge(x, y); }
+// 풀포기·들꽃은 물 위·다리 위엔 안 그려요
+const wetDeco = (x, y) => x > RIVER_BB[0] - 300 && x < RIVER_BB[2] + 300 && y > RIVER_BB[1] - 300 && y < RIVER_BB[3] + 300 && (segNear(RIVER, x, y, 165) || onBridge(x, y));
+// 선분이 물을 건너는지(다리 위는 괜찮아요)
+function crossesWater(ax, ay, bx, by){ const L = Math.hypot(bx - ax, by - ay), n = Math.ceil(L / 80); for (let i = 1; i < n; i++) { const t = i / n; if (inWater(ax + (bx - ax) * t, ay + (by - ay) * t)) return true; } return false; }
+function drawBridge(c, B, win){
+  c.save(); c.translate(B.x, B.y); c.rotate(B.a);
+  const L = B.h, Wd = 66, wood = win ? '#c9b8a6' : '#b8844e', woodS = win ? '#a8988a' : '#7e5430';
+  c.beginPath(); c.rect(-L, -Wd - 10, L * 2, Wd * 2 + 20); c.fillStyle = 'rgba(30,50,70,.18)'; c.fill(); // 물 위 그림자
+  c.beginPath(); c.rect(-L, -Wd, L * 2, Wd * 2); c.fillStyle = wood; c.fill(); c.lineWidth = 4; c.strokeStyle = INK; c.stroke();
+  for (let x = -L + 24; x < L; x += 24) { c.beginPath(); c.moveTo(x, -Wd); c.lineTo(x, Wd); c.lineWidth = 2; c.strokeStyle = woodS; c.stroke(); } // 널빤지
+  for (const s of [-1, 1]) { // 난간 + 기둥
+    c.beginPath(); c.rect(-L, s * Wd - 7, L * 2, 14); c.fillStyle = woodS; c.fill(); c.lineWidth = 3; c.strokeStyle = INK; c.stroke();
+    for (let x = -L; x <= L; x += 70) { c.beginPath(); c.arc(x, s * Wd, 9, 0, 7); c.fillStyle = wood; c.fill(); c.lineWidth = 3; c.stroke(); }
+  }
+  c.restore();
+}
 const TRAIL_BB = TRAILS.map(T => [Math.min(...T.map(p => p[0])), Math.min(...T.map(p => p[1])), Math.max(...T.map(p => p[0])), Math.max(...T.map(p => p[1]))]);
 
 // ----- 우주 (싸움) -----
@@ -4047,7 +4082,7 @@ function makeMon(kind, tier, x, y, raid){
 function spawnHuntMon(){
   for (let k = 0; k < 20; k++) {
     const a = rnd(0, 6.28), d = rnd(1150, 2600), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
-    if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 700 || homeDist(x, y) < 300 || restAt(x, y, 500) || inDen(x, y, 350)) continue;
+    if (x < WX0 + 200 || x > WX1 - 200 || y < WY0 + 300 || y > WY1 - 200 || !inHunt(x, y) || gateDist(x, y) < 700 || homeDist(x, y) < 300 || restAt(x, y, 500) || inDen(x, y, 350) || segNear(RIVER, x, y, WATER_HW + 200)) continue;
     const z = zoneAt(x, y), tier = Math.max(0, Math.min(6, z - (Math.random() < .3 ? 1 : 0)));
     MONS.push(makeMon(pickKind(snowK(y) > .5 ? SPAWN_SNOW : SPAWN_MIX[Math.max(0, z)]), tier, x, y, false));
     return;
@@ -4177,14 +4212,12 @@ function huntTargets(cands){ for (const f of FORAGE) cands.push({kind:'forage', 
 
 // ----- 숲속 쉼터 (2026-10-13): 체력 회복, 한 번 찾으면 마을 포탈·다른 쉼터로 바로 이동 -----
 const RESTS = [
-  // 2026-10-14 달 요청: 마을(광장 -1000,2500)에서 지금보다 1.4~1.6배 멀리, 같은 방향의 숲길 갈림길(빈터)로 옮겼어요. id는 그대로라 찾은 기록이 남아요
-  // 2026-10-16 지도대로 바뀐 길 위로 옮겼어요(길에서 살짝 비켜서)
-  {id:'e', name:'강변 동쪽 쉼터', x:mapXY(760, 55)[0], y:mapXY(760, 55)[1] + 260}, {id:'s', name:'남쪽 숲 쉼터', x:mapXY(442, 790)[0] + 280, y:mapXY(442, 790)[1]},
-  {id:'n', name:'다리 옆 쉼터', x:mapXY(588, 125)[0] + 300, y:mapXY(588, 125)[1]}, {id:'w', name:'서쪽 숲 쉼터', x:mapXY(150, 970)[0], y:mapXY(150, 970)[1] - 280},
-  {id:'v', name:'남동쪽 골짜기 쉼터', x:mapXY(860, 846)[0], y:mapXY(860, 846)[1] - 300}, {id:'m', name:'고갯길 쉼터', x:mapXY(640, 445)[0] + 120, y:mapXY(640, 445)[1] - 280},
-  // 2026-10-16 넓힌 바깥 숲(한 바퀴 도는 길 위)
-  {id:'on', name:'북쪽 끝 쉼터', x:mapXY(580, -380)[0], y:mapXY(580, -380)[1] + 280}, {id:'oe', name:'동쪽 끝 쉼터', x:mapXY(1790, 540)[0] - 300, y:mapXY(1790, 540)[1]},
-  {id:'os', name:'남쪽 끝 쉼터', x:mapXY(800, 1450)[0], y:mapXY(800, 1450)[1] - 280}, {id:'ow', name:'서쪽 끝 쉼터', x:mapXY(-480, 560)[0] + 300, y:mapXY(-480, 560)[1] + 200}
+  // 2026-10-16 달 요청: 가운데 몰려 있던 쉼터를 지도 전체에 고르게(북서·북·북동 / 서·동 / 서남·남동 골짜기 / 남서·남·남동 끝).
+  // 모두 길(큰길·숲길) 바로 옆이고 물·굴·마을에서 떨어져 있어요. id는 그대로라 찾은 기록이 남아요(이름·자리는 바뀜)
+  {id:'n', name:'북서쪽 숲 쉼터', x:-25864, y:-21789}, {id:'on', name:'북쪽 끝 쉼터', x:24712, y:-26956}, {id:'e', name:'북동쪽 숲 쉼터', x:40399, y:-17900},
+  {id:'ow', name:'서쪽 끝 쉼터', x:-27367, y:1417}, {id:'oe', name:'동쪽 끝 쉼터', x:44552, y:2849},
+  {id:'m', name:'서쪽 숲 쉼터', x:-11477, y:13479}, {id:'s', name:'동쪽 숲 쉼터', x:25442, y:-8150},
+  {id:'w', name:'남서쪽 끝 쉼터', x:-22402, y:27813}, {id:'os', name:'남쪽 끝 쉼터', x:10478, y:29973}, {id:'v', name:'남동쪽 끝 쉼터', x:38106, y:25110}
 ];
 function restAt(x, y, pad = 0){ return RESTS.find(r => Math.hypot(x - r.x, (y - r.y) * 1.2) < 160 + pad); }
 function restsFound(){ if (!G.rests) G.rests = {}; return RESTS.filter(r => G.rests[r.id]); }
@@ -8371,22 +8404,41 @@ function txSnap(x, y){
   for (const [a, b] of TX_G.E) { const [qx, qy] = TX_G.proj(x, y, a, b), d = Math.hypot(x - qx, y - qy); if (!best || d < best.d) best = {d, a, b, x:qx, y:qy}; }
   return best;
 }
+// 2026-10-16 달 요청: 기본은 길을 따라가고, 길로는 너무 돌아가는 곳만 오프로드(들판·숲을 가로질러요)
+const OFF_COST = 1.6, OFF_R = 14000;
+function offOK(ax, ay, bx, by){ // 물(다리 빼고)·보스 굴·마을/과수원 안쪽은 가로지르지 않아요
+  const L = Math.hypot(bx - ax, by - ay), n = Math.ceil(L / 90), inA = (A, x, y) => x > A.x0 && x < A.x1 && y > A.y0 && y < A.y1;
+  const safe = SAFE.filter(A => !inA(A, ax, ay) && !inA(A, bx, by)); // 출발·도착하는 마을 안은 괜찮아요
+  for (let i = 1; i < n; i++) { const t = i / n, x = ax + (bx - ax) * t, y = ay + (by - ay) * t;
+    if (inWater(x, y) || inDen(x, y, 250)) return false;
+    if (safe.some(A => inA(A, x, y))) return false; }
+  return true;
+}
 function txRoute(ax, ay, bx, by){
-  const {N, A} = TX_G, sa = txSnap(ax, ay), sb = txSnap(bx, by), n = N.length, S = n, G = n + 1; // 출발·도착을 길 위 자리에 임시 갈림길로 넣어요
-  const adj = i => i === S ? [[sa.a, Math.hypot(sa.x - N[sa.a][0], sa.y - N[sa.a][1])], [sa.b, Math.hypot(sa.x - N[sa.b][0], sa.y - N[sa.b][1])]] : A[i];
-  const tail = {}; for (const e of [sb.a, sb.b]) tail[e] = Math.hypot(sb.x - N[e][0], sb.y - N[e][1]);
-  const sameEdge = (sa.a === sb.a && sa.b === sb.b) || (sa.a === sb.b && sa.b === sb.a);
-  const D = new Float64Array(n + 2).fill(Infinity), pre = new Int32Array(n + 2).fill(-1), done = new Uint8Array(n + 2);
-  D[S] = 0; if (sameEdge) { D[G] = Math.hypot(sa.x - sb.x, sa.y - sb.y); pre[G] = S; }
+  const {N, A} = TX_G, sa = txSnap(ax, ay), sb = txSnap(bx, by), n = N.length, S = n, G = n + 1, S0 = n + 2, G0 = n + 3; // 길 위 출발·도착(S·G)과 실제 출발·도착(S0·G0)
+  const pos = i => i < n ? N[i] : i === S ? [sa.x, sa.y] : i === G ? [sb.x, sb.y] : i === S0 ? [ax, ay] : [bx, by];
+  const ext = new Map(), add = (u, v, w) => { let L = ext.get(u); if (!L) ext.set(u, L = []); L.push([v, w]); }, dd = (i, j) => Math.hypot(pos(i)[0] - pos(j)[0], pos(i)[1] - pos(j)[1]);
+  add(S, sa.a, dd(S, sa.a)); add(S, sa.b, dd(S, sa.b)); add(sb.a, G, dd(sb.a, G)); add(sb.b, G, dd(sb.b, G));
+  if ((sa.a === sb.a && sa.b === sb.b) || (sa.a === sb.b && sa.b === sb.a)) add(S, G, dd(S, G));
+  add(S0, S, dd(S0, S)); add(G, G0, dd(G, G0));
+  // 오프로드 지름길: 실제 출발점에서 가까운 갈림길로, 가까운 갈림길에서 도착점으로, 출발→도착 곧장
+  const near = (x, y) => [...N.keys()].map(i => [i, Math.hypot(N[i][0] - x, N[i][1] - y)]).filter(e => e[1] < OFF_R && e[1] > 300).sort((p, q) => p[1] - q[1]).slice(0, 30);
+  for (const [i, d] of near(ax, ay)) if (offOK(ax, ay, N[i][0], N[i][1])) add(S0, i, d * OFF_COST);
+  for (const [i, d] of near(bx, by)) if (offOK(N[i][0], N[i][1], bx, by)) add(i, G0, d * OFF_COST);
+  const dAB = Math.hypot(bx - ax, by - ay); if (dAB < OFF_R * 2 && offOK(ax, ay, bx, by)) add(S0, G0, dAB * OFF_COST);
+  if (!TX_G.off) { TX_G.off = N.map(() => []); // 갈림길끼리 오프로드 지름길(한 번만 계산)
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const d = Math.hypot(N[i][0] - N[j][0], N[i][1] - N[j][1]);
+      if (d > 1200 && d < 5000 && offOK(N[i][0], N[i][1], N[j][0], N[j][1])) { TX_G.off[i].push([j, d * OFF_COST]); TX_G.off[j].push([i, d * OFF_COST]); } } }
+  const D = new Float64Array(n + 4).fill(Infinity), pre = new Int32Array(n + 4).fill(-1), done = new Uint8Array(n + 4);
+  D[S0] = 0;
   for (;;) {
-    let u = -1; for (let i = 0; i < n + 2; i++) if (!done[i] && D[i] < Infinity && (u < 0 || D[i] < D[u])) u = i;
-    if (u < 0 || u === G) break; done[u] = 1;
-    if (u < n && tail[u] != null && D[u] + tail[u] < D[G]) { D[G] = D[u] + tail[u]; pre[G] = u; }
-    for (const [v, w] of adj(u)) if (D[u] + w < D[v]) { D[v] = D[u] + w; pre[v] = u; }
+    let u = -1; for (let i = 0; i < n + 4; i++) if (!done[i] && D[i] < Infinity && (u < 0 || D[i] < D[u])) u = i;
+    if (u < 0 || u === G0) break; done[u] = 1;
+    for (const [v, w] of [...(u < n ? A[u] : []), ...(u < n ? TX_G.off[u] : []), ...(ext.get(u) || [])]) if (D[u] + w < D[v]) { D[v] = D[u] + w; pre[v] = u; }
   }
-  const mid = []; for (let v = pre[G]; v >= 0 && v !== S; v = pre[v]) mid.push(N[v]); mid.reverse();
-  const pts = [[ax, ay], [sa.x, sa.y], ...mid, [sb.x, sb.y], [bx, by]].filter((p, i, a) => !i || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1);
-  return chaikin(chaikin(pts));
+  if (pre[G0] < 0) return [[ax, ay], [bx, by]];
+  const pts = []; for (let v = G0; v >= 0; v = pre[v]) pts.push(pos(v)); pts.reverse();
+  return chaikin(chaikin(pts.filter((p, i, a) => !i || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1)));
 }
 // 2026-10-16 달 요청: 승차장·하차 지점은 만들어진 길 바로 옆(길 가장자리에서 조금 비켜서)
 function txRoadside(x, y, off = 150){
