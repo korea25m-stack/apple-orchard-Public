@@ -789,8 +789,8 @@ function doTask(i, who){
   if (k === 'blossom') t.bl = true;
   if (k === 'thin') t.th = true;
   if (k === 'harvest') {
-    // 2026-10-15 미니게임 등급 배율(prQ·blQ·thQ, 인부·예전 저장은 1)과 익음 단계(ripeMod)를 반영해요
-    let q = 38 + Math.round((t.pr ? 14 * (t.prQ || 1) : 0) + (t.bl ? 10 * (t.blQ || 1) : 0) + (t.th ? 14 * (t.thQ || 1) : 0)) + ripeMod(t.v) + Math.min(3, G.nutri) * 4
+    // 2026-10-15 미니게임 등급 배율(prQ·blQ·thQ, 인부·예전 저장은 1)를 반영해요
+    let q = 38 + Math.round((t.pr ? 14 * (t.prQ || 1) : 0) + (t.bl ? 10 * (t.blQ || 1) : 0) + (t.th ? 14 * (t.thQ || 1) : 0)) + Math.min(3, G.nutri) * 4
           + t.bon - t.dmg + (t.age >= 3 ? 3 : 0) + (who === 'me' ? farmer().skill : Math.floor(farmer().skill / 2)) + rnd(-4, 4);
     q = Math.round(clamp(q, 5, 99));
     const g = gradeOf(q);
@@ -805,9 +805,8 @@ function doTask(i, who){
     if (g.k === 'S') unlock('gradeS');
     if (G.stats.boxes >= 100) unlock('box100');
     if (G.stats.boxes >= 500) unlock('box500');
-    // 열매솎기를 안 한 나무는 다음 해 해거리(열매가 확 줄어요). 다 익은 사과는 창고에서 25일 먼저 물러지기 시작해요
+    // 열매솎기를 안 한 나무는 다음 해 해거리(열매가 확 줄어요)
     if (!t.th) t.alt = 1;
-    if (ripeStage(t.v) > RIPE_HI) (G.lotAdj = G.lotAdj || {})[t.v] = 25;
     resetCycle(t);
     return {k, g, bx, q, v:t.v};
   }
@@ -3387,9 +3386,12 @@ const NPC_DATA = [
 for (const d of NPC_DATA) { d.home = vxy(...d.home); if (d.r) d.r = [d.r[0] * VSC, d.r[1] * VSC]; }
 // 2026-10-16 택배 기사님은 강변 우체국, 빛나는 강변 마을 광장 둘레에서 지내요
 for (const d of NPC_DATA) { if (d.name === '문태풍 기사님') { d.home = [V1.cx, V1.cy]; d.r = [30, 800]; } if (d.name === '남궁빛나') { d.home = [V1.cx, V1.cy + 120]; d.r = [700, 60]; } }
+// 2026-10-16 달 요청: 최봉구 아저씨가 길가 나무에 끼어 있어서 집 자리를 나무에서 떨어진 빈 풀밭으로 옮겨요
+for (const d of NPC_DATA) if (d.name === '최봉구 아저씨') d.home = [d.home[0] + 250, d.home[1]];
 // 아이들은 새 놀이터에서 놀아요
 for (const d of NPC_DATA) if (d.look.kid) { d.home = [PLAY.x + rnd(-120, 120), PLAY.y + 40]; d.r = [230, 70]; }
 const NPCS = NPC_DATA.map((d, i) => ({...d, i, hx:d.home[0], hy:d.home[1], x:d.home[0], y:d.home[1], tx:d.home[0], ty:d.home[1], dir:0, walk:0, wait:rnd(0, 3), li:0}));
+const nearVTree = (x, y, d) => VTREES.some(t => Math.hypot(t.x - x, (t.y - y) * 1.4) < d) || Math.hypot(BIGTREE.x - x, (BIGTREE.y - y) * 1.4) < d + 60;
 function updateVillagers(dt){
   if (!UI.free()) return;
   for (const n of NPCS) {
@@ -3401,7 +3403,9 @@ function updateVillagers(dt){
     }
     if (n.wait > 0) { n.wait -= dt; n.walk = 0; continue; }
     const dx = n.tx - n.x, dy = n.ty - n.y, d = Math.hypot(dx, dy);
-    if (d < 5) { n.wait = rnd(1.2, 4.5); n.tx = n.hx + rnd(-n.r[0], n.r[0]); n.ty = n.hy + rnd(-n.r[1], n.r[1]); continue; }
+    if (d < 5) { n.wait = rnd(1.2, 4.5); // 2026-10-16 달 요청: 나무 줄기에 겹쳐 서 있지 않게, 나무 둘레 130 안은 목적지로 안 골라요
+      for (let k = 0; k < 8; k++) { const x = n.hx + rnd(-n.r[0], n.r[0]), y = n.hy + rnd(-n.r[1], n.r[1]); if (!nearVTree(x, y, 130)) { n.tx = x; n.ty = y; break; } }
+      continue; }
     const s = Math.min(d, n.sp * dt);
     if (!moveBy(n, dx / d * s, dy / d * s)) { n.tx = n.hx; n.ty = n.hy; n.wait = .8; continue; }
     n.walk += dt * n.sp / 22;
@@ -7119,7 +7123,7 @@ function drawBusHint(ctx){
 // 꽃솎기 = 왕꽃 찾기, 열매솎기 = 한 뼘 간격, 가지치기 = 자를 가지 찾기.
 // 우주가 줄의 나무 한 그루에서 F를 누르면 미니게임이 열리고, 등급이 그 줄에서 아직 안 한 나무 전체에 적용돼요.
 // 인부가 한 나무는 예전 그대로(배율 1). 수확 품질의 작업 점수(가지치기 14·꽃솎기 10·열매솎기 14)에 배율을 곱해요.
-// 수확 = 요오드 익음 검사: 품종마다 한 주에 한 번 처음 딸 때 열려요. 익음 단계는 수확 품질과 창고 신선도에 반영돼요.
+// 2026-10-16 달 요청: 수확 전 요오드 익음 검사는 뺐어요(수확은 바로 따요).
 const FG_MULT = {S:1.3, A:1.1, B:.85, C:.55};
 const FG_GRADE = s => s >= 90 ? 'S' : s >= 75 ? 'A' : s >= 50 ? 'B' : 'C';
 const FG_GTXT = {S:'아주 잘했어요!', A:'잘했어요!', B:'괜찮아요', C:'아쉬워요'};
@@ -7138,10 +7142,6 @@ function fgRowTrees(row, k){
 function fgHook(k, i){
   if (AUTO) return false;
   if (FG_DEF[k]) { farmGame(k, i); return true; }
-  if (k === 'harvest') {
-    const v = G.trees[i].v, key = G.year + '-' + G.week;
-    if ((G.ripeChk = G.ripeChk || {})[v] !== key) { uiRipe(v, i); return true; }
-  }
   return false;
 }
 
@@ -7458,63 +7458,7 @@ const FG_DEF = {
   }
 };
 
-// ===== 3위 수확: 요오드 익음 검사 =====
-// 근거: 가로로 자른 사과에 요오드를 바르면 녹말이 있는 곳이 검푸르게 변해요. 1(녹말 가득)~6(녹말 없음) 단계,
-//       생과용은 대략 4.5~6, 당도 13°Bx 이상(WSU Tree Fruit). 단계·당도 숫자는 게임 속 값이에요.
-const RIPE_BRIX = {aori:-1, gamhong:1.5, shinano:1, yangkwang:.5};
-function ripeStage(v){
-  const h = VARS[v].hv; G.ripeOff = G.ripeOff || {};
-  if (!G.ripeOff[v] || G.ripeOff[v].y !== G.year) G.ripeOff[v] = {y:G.year, o:rnd(-.35, .35)};
-  const d = (G.week - h[0]) * 7 + G.day, tot = (h[1] - h[0] + 1) * 7;
-  return clamp(3.6 + 2.8 * d / tot + G.ripeOff[v].o, 1, 6);
-}
-// 덜 익음 -7, 알맞음 +5, 다 익음 +2(대신 창고에서 25일 먼저 물러지기 시작)
-const RIPE_LO = 4.5, RIPE_HI = 5.7;
-function ripeMod(v){ const s = ripeStage(v); return s < RIPE_LO ? -7 : s <= RIPE_HI ? 5 : 2; }
-function ripeBrix(v){ return 8.6 + ripeStage(v) * .95 + (RIPE_BRIX[v] || 0); }
-function drawRipeCut(c, cx, cy, R, stage, seed){
-  // 사과 반쪽 단면: 껍질 → 녹말(검푸름) → 익은 하얀 부분이 안쪽부터 넓어져요
-  const V = VARS[seed] || {};
-  c.beginPath(); c.arc(cx, cy, R + 8, 0, Math.PI * 2); c.fillStyle = V.col || '#e0473c'; c.fill(); c.lineWidth = 3; c.strokeStyle = INK; c.stroke();
-  c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.fillStyle = '#1f2b5c'; c.fill();
-  const clear = stage <= 1 ? 0 : stage >= 6 ? R * 1.02 : R * [0, 0, .28, .45, .66, .88][Math.floor(stage) - 1] + (stage % 1) * R * .2;
-  if (clear > 0) {
-    c.save(); c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.clip();
-    c.fillStyle = '#fbf1cf'; c.beginPath();
-    for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2, w = clear * (1 + .1 * Math.sin(a * 5 + 1) + .06 * Math.sin(a * 11)); const x = cx + Math.cos(a) * w, y = cy + Math.sin(a) * w; k ? c.lineTo(x, y) : c.moveTo(x, y); }
-    c.fill();
-    if (stage > 3 && stage < 6) { c.fillStyle = 'rgba(31,43,92,.55)'; for (let k = 0; k < 9; k++) { const a = k * .7 + 1, d = clear * .75 + 6; c.beginPath(); c.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 7, 0, Math.PI * 2); c.fill(); } }
-    c.restore();
-  }
-  // 씨방(별 모양)과 씨 5개
-  c.strokeStyle = '#c9b27a'; c.lineWidth = 2.5; c.beginPath();
-  for (let k = 0; k <= 10; k++) { const a = k / 10 * Math.PI * 2 - Math.PI / 2, d = k % 2 ? R * .1 : R * .24; const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d; k ? c.lineTo(x, y) : c.moveTo(x, y); }
-  c.stroke();
-  for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 - Math.PI / 2; c.beginPath(); c.ellipse(cx + Math.cos(a) * R * .16, cy + Math.sin(a) * R * .16, 4, 7, a + Math.PI / 2, 0, Math.PI * 2); c.fillStyle = '#4a2a17'; c.fill(); }
-}
-function uiRipe(v, i){
-  G.ripeChk = G.ripeChk || {};
-  const s = ripeStage(v), st = Math.round(s * 2) / 2, bx = ripeBrix(v).toFixed(1), V = VARS[v], last = G.week >= V.hv[1];
-  const [ic, head, say] = s < RIPE_LO ? ['🟦', '아직 덜 익었어요', '파란 녹말이 많아요. 지금 따면 덜 달아요. 며칠 기다리면 더 맛있어져요.']
-    : s <= RIPE_HI ? ['✅', '딱 알맞게 익었어요!', '녹말이 알맞게 당으로 바뀌었어요. 지금 따면 가장 맛있어요.']
-    : ['🟨', '다 익었어요', '녹말이 거의 다 당으로 바뀌었어요. 달지만 창고에서 빨리 물러져요. 서둘러 따요!'];
-  if (typeof sfx === 'function') sfx('click');
-  UI.open({ic:'🧪', title:`${V.name} 익음 검사`, w:900, render(o){
-    o.body.innerHTML = `<div style="display:flex;gap:20px;align-items:center">
-      <canvas id="rpCv" width="300" height="300" style="width:300px;height:300px;flex:none"></canvas>
-      <div style="font-size:21px;line-height:1.5">
-        <p style="margin:0 0 6px">사과 한 알을 가로로 잘라 <b>요오드</b>를 떨어뜨렸어요. 녹말이 있는 곳은 <b style="color:#1f2b5c">검푸르게</b> 변해요.</p>
-        <p style="margin:0 0 6px;font-size:26px">${ic} <b>${head}</b></p>
-        <p style="margin:0 0 6px">녹말 검사 <b>${st}단계</b> / 6 · 당도계 <b>${bx}°Bx</b></p>
-        <p style="margin:0">${say}${last ? '<br><b style="color:#c0392b">이번 주가 지나면 사과가 떨어져요!</b>' : ''}</p>
-      </div></div>
-      <div style="font-size:18px;background:#fff7d6;border:2px solid var(--ink);border-radius:12px;padding:8px 12px;margin-top:10px">💡 사과는 익을수록 녹말이 당으로 바뀌어 하얀 부분이 안쪽부터 넓어져요. 농부는 감 대신 이렇게 재 보고 딸 날을 정해요. (단계 1 녹말 가득 → 6 녹말 없음)</div>`;
-    o.footEl.innerHTML = `<button class="btn" id="rpWait">📅 조금 더 기다릴게요</button> <button class="btn go" id="rpGo">🍎 지금 딸래요</button>`;
-    drawRipeCut($('#rpCv').getContext('2d'), 150, 150, 120, st, v);
-    $('#rpWait').onclick = () => { G.ripeChk[v] = G.year + '-' + G.week; UI.close(); toast(`📅 ${V.name}는 이번 주엔 더 기다려요. 다음 주에 다시 검사할 수 있어요.`); };
-    $('#rpGo').onclick = () => { G.ripeChk[v] = G.year + '-' + G.week; UI.close(); if (taskFor(i) === 'harvest') { P.actI = i; P.sw = .3; finishAct(); } };
-  }});
-}
+// 2026-10-16 달 요청: 요오드 익음 검사(익음 단계·당도·품질 보정)는 통째로 뺐어요
 
 // ===== 사냥꾼 윤산들 · 사냥 의뢰 (2026-10-14) =====
 // 이장님 왼쪽에 서 있어요. 지금 장비·레벨(farmerPower)로 이길 만한 ★을 골라 의뢰 3개(쉬움·알맞음·도전)를 줘요.
@@ -9689,7 +9633,7 @@ function act(t){
     if (k === 'plant' && AUTO) { const opts = VAR_KEYS.filter(unlocked); G.selVar = opts[Math.floor(t.i / PER_ROW) % opts.length]; }
     const p = treePos(t.i);
     P.dir = Math.abs(p.x - P.x) > Math.abs(p.y - P.y) ? (p.x < P.x ? 2 : 3) : (p.y < P.y ? 1 : 0); P.d8 = (Math.round(Math.atan2(p.y - P.y, p.x - P.x) / (Math.PI / 4)) + 8) % 8;
-    // 2026-10-15 꽃솎기·열매솎기·가지치기는 미니게임, 수확은 익음 검사부터 (05f_farm.js)
+    // 2026-10-15 꽃솎기·열매솎기·가지치기는 미니게임 (05f_farm.js). 2026-10-16 수확 익음 검사는 뺐어요
     if (fgHook(k, t.i)) return;
     P.actI = t.i; P.sw = .3; finishAct(); // 기다림 없이 바로
   }
