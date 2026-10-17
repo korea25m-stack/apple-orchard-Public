@@ -578,6 +578,7 @@ const ACH = {
   tiger:   ['🐯','호랑이를 이긴 농부','전설의 호랑이를 이겼어요'],
   pbear:   ['🐻‍❄️','북쪽 숲의 영웅','전설의 흰곰을 이겼어요'],
   bwolf:   ['🐺','첫 보스 사냥','늑대 굴의 검은 늑대를 이겼어요'],
+  dragon:  ['🐉','얼음 둥지의 정복자','전설의 서리용을 이겼어요'],
   orchard: ['🌳','과수원 완성','빈 자리 없이 다 심었어요'],
   harvest1:['🍎','첫 수확','사과를 처음 땄어요'],
   gradeS:  ['🏅','특 등급','특 등급 사과를 땄어요'],
@@ -675,6 +676,7 @@ const FOREST_PATHS = [
   // 2026-10-16 넓힌 바깥 숲: 지도 끝에서 바깥으로 뻗는 길 + 바깥을 크게 한 바퀴 도는 길
   [MP(575, 0), MP(560, -130), MP(590, -210), MP(606, -255)],   // 2026-10-16 흰곰 굴(지도 좌표 100, 20) 입구로
   WDEN_PATH,                                                     // 2026-10-16 늑대 굴(지도 좌표 50, 90) 입구로
+  [[29417, -10061], [29900, -8700], [30300, -7400], [30432, -6300]], // 2026-10-17 동쪽 깊은 숲 오솔길에서 서리용 둥지(지도 160, 70) 북쪽 문으로
   [MP(1289, 68), MP(1450, 40), MP(1650, -60), MP(1880, -200)],
   [MP(0, 925), MP(-180, 900), MP(-380, 960), MP(-600, 1000)],
   [MP(445, 1072), MP(430, 1250), MP(470, 1420), MP(440, 1580)],
@@ -1468,6 +1470,7 @@ function drawHat(c, L, side, back, hy){
 // ----- 동물 -----
 function drawAnimal(c, kind, x, y, t, flip, V){
   c.save(); c.translate(x, y); if (flip) c.scale(-1, 1);
+  if (V && (kind === 'dragon' || kind === 'trex' || kind === 'trike')) { c.restore(); c.save(); c.translate(x, y); ({dragon:drawDragonBoss, trex:drawTrex8, trike:drawTrike8})[kind](c, V.d8 != null ? V.d8 : flip ? 4 : 0, t, V); c.restore(); return; } // 2026-10-17 서리용·호위 공룡(8방향)
   if (V && kind === 'pbear') { c.restore(); c.save(); c.translate(x, y); drawPolarBoss(c, V.d8 != null ? V.d8 : flip ? 4 : 0, t, V); c.restore(); return; } // 2026-10-16 무섭고 멋진 흰곰 보스(8방향)
   if (V && kind === 'tiger' && V.d8 != null && V.d8 % 4) { c.restore(); c.save(); c.translate(x, y); drawTiger8(c, V.d8, t, V); c.restore(); return; } // 8방향(대각선·앞·뒤)
   if (V && V.d8 != null && V.d8 % 4 && B8[kind]) { c.restore(); c.save(); c.translate(x, y); drawBeast8(c, kind, V.d8, t, V); c.restore(); return; } // 2026-10-16 짐승 8방향(앞·뒤·대각선)
@@ -3690,9 +3693,15 @@ const LOOT = {
   sansam:{name:'산삼', ic:'🌿', lo:80000, hi:150000, desc:'깊은 산에서 오래오래 자란 귀한 삼이에요. 잎이 다섯 갈래로 갈라져요.'},
   tskin:{name:'호랑이 가죽', ic:'🐯', lo:600000, hi:900000, desc:'전설의 호랑이를 이기면 얻어요. 팔거나 든든철물에서 호랑이 가죽 장비를 만들 수 있어요.'},
   pfur:{name:'흰곰 털가죽', ic:'🐻‍❄️', lo:900000, hi:1300000, desc:'설산의 전설의 흰곰을 이기면 얻어요. 아주 귀해서 비싸게 팔 수 있어요.'},
-  bwfur:{name:'검은 늑대 가죽', ic:'🐺', lo:200000, hi:320000, desc:'서쪽 숲 늑대 굴의 검은 늑대를 이기면 얻어요. 까맣고 윤기 나는 털가죽이에요.'}
+  bwfur:{name:'검은 늑대 가죽', ic:'🐺', lo:200000, hi:320000, desc:'서쪽 숲 늑대 굴의 검은 늑대를 이기면 얻어요. 까맣고 윤기 나는 털가죽이에요.'},
+  // 2026-10-17 서리용 둥지 전리품: 든든철물에서 용비늘 장화·용뿔 투구를 만들 수 있어요
+  dscale:{name:'서리용 비늘', ic:'🐉', lo:1500000, hi:2200000, desc:'전설의 서리용을 이기면 얻어요. 얼음처럼 차갑고 쇠보다 단단해요. 용비늘 장화·용뿔 투구 재료예요.'},
+  dhorn:{name:'서리용 뿔', ic:'🦴', lo:3000000, hi:4000000, desc:'전설의 서리용의 뒤로 휜 뿔이에요. 용뿔 투구 재료예요.'},
+  dgem:{name:'서리 결정', ic:'💠', lo:2500000, hi:3500000, desc:'서리용 가슴 속에서 빛나던 얼음 결정이에요. 아주 귀해서 비싸게 팔려요.'},
+  rtooth:{name:'티라노 이빨', ic:'🦷', lo:700000, hi:1000000, desc:'서리용 둥지를 지키는 티라노사우루스의 커다란 이빨이에요. 용비늘 장화 재료예요.'},
+  khorn:{name:'트리케라톱스 뿔', ic:'🦏', lo:700000, hi:1000000, desc:'서리용 둥지를 지키는 트리케라톱스의 뿔이에요. 용뿔 투구 재료예요.'}
 };
-const BOSS_LOOT = {tskin:1, pfur:1, bwfur:1}; // 보스 전리품은 많이 팔아도 값이 안 내려가요
+const BOSS_LOOT = {tskin:1, pfur:1, bwfur:1, dscale:1, dhorn:1, dgem:1, rtooth:1, khorn:1}; // 보스 전리품은 많이 팔아도 값이 안 내려가요
 const LOOT_KEYS = Object.keys(LOOT);
 // 구역별로 나오는 전리품 (숫자 = 잘 나오는 정도)
 const LOOT_TABLE = [
@@ -3799,6 +3808,7 @@ function huntBlocked(x, y){
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = SOLID_G.get((cx + i) + ',' + (cy + j)); if (L) for (const o of L) if (((x - o.x) / o.rx) ** 2 + ((y - o.y) / o.ry) ** 2 < 1) return true; }
   // 보스 굴 바위 벽: 그린 바위 고리와 같은 자리. 숲길 쪽 입구와 북쪽 동굴 옆은 열려 있어요
   for (const D of DENS) {
+    if (D.sq) { if (iceWallAt(D, x, y)) return true; continue; }
     const ux = (x - D.x) / (D.rx + 30), uy = (y - D.y) / (D.ry + 26), q = Math.hypot(ux, uy);
     if (Math.abs(q - 1) < .05) { let a = Math.atan2(uy, ux); if (a < 0) a += 6.283; let da = Math.abs(a - D.gate); da = Math.min(da, 6.283 - da); if (!(da < .24 || Math.abs(a - 4.712) < .26)) return true; }
   }
@@ -4007,7 +4017,7 @@ const KIND_DEF = {boar:2, badger:3, hare:-2, snake:-1, raccoon:0, deer:0, lynx:0
 // 2026-10-14 달 요청: ★ 대신 귀여운 레벨 숫자. ★1 = Lv1, 호랑이 Lv20, 흰곰 Lv25를 기준으로 나눴어요(플레이어 레벨은 그대로)
 const TIER_LV = [1, 3, 6, 9, 12, 15, 18];
 const KIND_LV = {hare:-1, snake:0, raccoon:0, deer:0, boar:1, badger:1, lynx:1, wdog:0, wolf:1, bear:1};
-const BOSS_LV = {tiger:20, pbear:25, bwolf:10}; // 2026-10-16 검은 늑대: 초심자용 보스(근처 골짜기 Lv8~10과 비슷)
+const BOSS_LV = {tiger:20, pbear:25, bwolf:10, dragon:50, trex:25, trike:25}; // 2026-10-16 검은 늑대: 초심자용 보스(근처 골짜기 Lv8~10과 비슷)
 function monLv(kind, tier){ return BOSS_LV[kind] || (tier ? Math.max(2, TIER_LV[tier] + (KIND_LV[kind] || 0)) : 1); }
 const zoneLv = z => z > 0 ? `Lv${Math.max(2, TIER_LV[z] - 1)}~${TIER_LV[z] + 1}` : 'Lv1';
 function lvCol(lv){ return lv >= 20 ? ['#a06ae8', '#6e3fb8'] : lv >= 15 ? ['#ff6b6b', '#c83a3a'] : lv >= 11 ? ['#ff9a3a', '#c86a14'] : lv >= 7 ? ['#ffc53a', '#c8901a'] : lv >= 3 ? ['#5cc0e8', '#2f88b8'] : ['#7fd36a', '#4a9a3a']; }
@@ -4027,9 +4037,9 @@ function hitMon(m, dmg, f, main){
   const bd = Math.max(1, Math.hypot(m.x - P.x, (m.y - P.y) * 1.2));
   const crit = main && Math.random() < .15; if (crit) dmg = Math.round(dmg * 1.6);
   dmg = Math.max(Math.ceil(dmg * .1), dmg - monDef(m)); // 방어도만큼 깎여요(최소 10%)
-  if (m.boss && !bossReady(m)) { dmg = 1; if (main && !(m.warnT > 0)) { m.warnT = 2.5; floats.push({x:m.x, y:m.y - 200, s:`끄떡없다! 도구 데미지 ${m.den.need} 이상이 필요해요`, t:1.8, c:'#b2332b'}); } }
+  if (m.boss && !bossReady(m)) { dmg = 1; if (main && !(m.warnT > 0)) { m.warnT = 2.5; floats.push({x:m.x, y:m.y - 200, s:`끄떡없다! 도구 데미지 ${m.need || m.den.need} 이상이 필요해요`, t:1.8, c:'#b2332b'}); } }
   m.hp -= dmg; m.hitT = 4; m.eng = true; m.flash = .12;
-  if (main) { sfx(crit ? 'crit' : 'hit'); setTimeout(() => sfx({boar:'oink', badger:'oink', tiger:'roar', pbear:'roar', bwolf:'growl', snake:'hiss', hare:'squeak', lynx:'growl', wdog:'growl', wolf:'growl', bear:'roar'}[m.kind] || 'bleat'), 60); FX.stop = Math.max(FX.stop, crit ? .1 : .055); FX.shake = Math.max(FX.shake, crit ? .55 : .28); }
+  if (main) { sfx(crit ? 'crit' : 'hit'); setTimeout(() => sfx({boar:'oink', badger:'oink', tiger:'roar', pbear:'roar', dragon:'roar', trex:'roar', trike:'grunt', bwolf:'growl', snake:'hiss', hare:'squeak', lynx:'growl', wdog:'growl', wolf:'growl', bear:'roar'}[m.kind] || 'bleat'), 60); FX.stop = Math.max(FX.stop, crit ? .1 : .055); FX.shake = Math.max(FX.shake, crit ? .55 : .28); }
   burst(m.x, m.y - 50 * m.V.sc, crit ? 14 : 8, crit ? ['#ffd23a', '#ff6b57', '#fffaf1'] : ['#fffaf1', '#ffe36a'], crit ? 520 : 380, .45);
   if (!['wind', 'charge', 'kick'].includes(m.st) && !m.boss) {
     m.stun = f.reach >= 1.25 ? .35 : .2;
@@ -4411,7 +4421,7 @@ function drawMon(c, m){
   drawAnimal(c, m.kind, 0, 0, m.st === 'eat' ? m.t * .5 : m.stun > 0 || m.st === 'wander' && m.wait > 0 ? 0 : m.t, d8 % 4 === 0 ? d8 === 4 : m.flip, m.V);
   c.filter = 'none'; c.restore();
   if (m.dead) return;
-  const top = m.y - (m.V.boss ? 118 : 80) * m.V.sc;
+  const top = m.y - (m.V.boss ? m.V.top || 118 : 80) * m.V.sc;
   if (m.st === 'wind' || m.st === 'kick') { c.font = '44px Jua'; c.textAlign = 'center'; c.lineWidth = 7; c.strokeStyle = '#fffaf1'; c.strokeText('!', m.x, top - 20); c.fillStyle = '#d6372c'; c.fillText('!', m.x, top - 20); }
   if (m.stun > 0) { c.font = '28px sans-serif'; c.textAlign = 'center'; c.fillText('💫', m.x, top - 18 + Math.sin(m.t * 8) * 4); }
   if (m.eng || m.hitT > 0 || m.raid || Math.hypot(m.x - P.x, m.y - P.y) < 520) {
@@ -4553,7 +4563,7 @@ function buildMiniBase(){
   c.fillStyle = 'rgba(255,255,255,.35)'; for (const p of PEAKS) { c.beginPath(); c.moveTo((p.x - 160 * p.s) * s, p.y * s); c.lineTo(p.x * s, (p.y - 300 * p.s) * s); c.lineTo((p.x + 160 * p.s) * s, p.y * s); c.fill(); }
 }
 // 글자는 지도 크기와 상관없이 같은 크기로 보이게 덮어 그려요
-const MM_LABELS = () => [['과수원', OX + ORCH_W / 2, OY - 150], ...SAFE.filter(A => A !== HOME).map(A => [A.name, A.cx, A.y0 - 300]), ['호랑이 굴', DEN.x, DEN.y - DEN.ry - 300], ['흰곰 굴', BDEN.x, BDEN.y - BDEN.ry - 300], ['늑대 굴', WDEN.x, WDEN.y - WDEN.ry - 300], ['동계천', ...mapXY(300, 262)]];
+const MM_LABELS = () => [['과수원', OX + ORCH_W / 2, OY - 150], ...SAFE.filter(A => A !== HOME).map(A => [A.name, A.cx, A.y0 - 300]), ['호랑이 굴', DEN.x, DEN.y - DEN.ry - 300], ['흰곰 굴', BDEN.x, BDEN.y - BDEN.ry - 300], ['늑대 굴', WDEN.x, WDEN.y - WDEN.ry - 300], ['서리용 둥지', DDEN.x, DDEN.y - DDEN.ry - 300], ['동계천', ...mapXY(300, 262)]];
 function drawHuntOverlay(ctx, T){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (!miniBase) buildMiniBase();
@@ -4741,9 +4751,9 @@ function drawRoom(cv){
 }
 
 // ===== 2026-10-13 새 산짐승(산토끼·뱀·너구리·오소리) + 전설 보스 호랑이 =====
-const MON_IC = {boar:'🐗', deer:'🦌', hare:'🐇', snake:'🐍', raccoon:'🦝', badger:'🦡', tiger:'🐯', bwolf:'🐺', lynx:'🐆', wdog:'🐕', wolf:'🐺', bear:'🐻', pbear:'🐻‍❄️'};
-const CHARGER = {boar:1, badger:1, tiger:1, bear:1, pbear:1};      // 돌진하는 녀석들 (나머지는 가까이 와서 할퀴기·물기)
-const CHASE_SP = {boar:150, badger:140, tiger:185, pbear:175, bwolf:215, deer:190, hare:220, raccoon:170, snake:115, lynx:215, wdog:200, wolf:205, bear:130};
+const MON_IC = {boar:'🐗', deer:'🦌', hare:'🐇', snake:'🐍', raccoon:'🦝', badger:'🦡', tiger:'🐯', bwolf:'🐺', lynx:'🐆', wdog:'🐕', wolf:'🐺', bear:'🐻', pbear:'🐻‍❄️', dragon:'🐉', trex:'🦖', trike:'🦕'};
+const CHARGER = {boar:1, badger:1, tiger:1, bear:1, pbear:1, trike:1};      // 돌진하는 녀석들 (나머지는 가까이 와서 할퀴기·물기)
+const CHASE_SP = {boar:150, badger:140, tiger:185, pbear:175, dragon:170, trex:190, trike:165, bwolf:215, deer:190, hare:220, raccoon:170, snake:115, lynx:215, wdog:200, wolf:205, bear:130};
 // 2026-10-13 구역마다 새 짐승: 얕은 숲 들개 · 깊은 숲 삵·들개 · 골짜기 늑대·삵 · 전설의 산 반달가슴곰·늑대
 const SPAWN_MIX = [{hare:3, snake:2, raccoon:3, deer:2, boar:1, badger:1, wdog:1}, {hare:2, snake:2, raccoon:2, deer:2, boar:2, badger:2, wdog:2, lynx:1},
   {hare:1, snake:2, raccoon:2, deer:2, boar:3, badger:3, wolf:2, lynx:2, wdog:1}, {hare:1, snake:2, raccoon:1, deer:2, boar:3, badger:3, wolf:2, bear:2, lynx:1},
@@ -4782,6 +4792,13 @@ const PBEAR_NEED = 34;
 const BWOLF = {name:'검은 늑대', hp:720, def:8, dmg:2.3, spd:1.3, sc:1.5, xp:260, boss:1};
 NEW_BEAST.bwolf = Array(7).fill(BWOLF);
 const BWOLF_NEED = 15; // 튼튼 쇠스랑부터
+// 2026-10-17 달 요청: 지도 (160, 70) 사각 얼음 둥지의 '전설의 서리용'. 흰곰보다 5배 강해요(체력 5배 · 기술 5가지 · 방어 · 공격 2배).
+// 호위 공룡 티라노사우루스·트리케라톱스는 흰곰만큼 세요(기술 2가지씩). 셋이 같이 덤벼요
+const DRAGON = {name:'전설의 서리용', hp:13000, def:26, dmg:8.6, spd:1.1, sc:1.25, xp:4000, boss:1, top:265};
+const TREX = {name:'호위 티라노사우루스', hp:2600, def:20, dmg:4.3, spd:1.2, sc:1.05, xp:800, boss:1, top:195};
+const TRIKE = {name:'호위 트리케라톱스', hp:2600, def:20, dmg:4.3, spd:1.1, sc:1.05, xp:800, boss:1, top:170};
+NEW_BEAST.dragon = Array(7).fill(DRAGON); NEW_BEAST.trex = Array(7).fill(TREX); NEW_BEAST.trike = Array(7).fill(TRIKE);
+const DRAGON_NEED = 40; // 호랑이 발톱 갈퀴 +8
 const DEN = {x:fromGrid(133, 133)[0], y:fromGrid(133, 133)[1], rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
 DEN.gate = Math.atan2((mapXY(1018, 1100)[1] - DEN.y) / DEN.ry, (mapXY(1018, 1100)[0] - DEN.x) / DEN.rx); // 2026-10-16 달 요청: M 지도 좌표 (133, 133). 길이 들어오는 쪽(북쪽)
 const BDEN = {x:fromGrid(100, 20)[0], y:fromGrid(100, 20)[1], rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 북쪽 숲의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
@@ -4789,23 +4806,31 @@ BDEN.gate = Math.PI / 2; // 2026-10-16 달 요청: 흰곰을 M 지도 좌표 (10
 const WDEN = {x:fromGrid(50, 90)[0], y:fromGrid(50, 90)[1], rx:820, ry:620, kind:'bwolf', need:BWOLF_NEED, day:'bwolfDay', title:'🐺 검은 늑대', label:'⚠️ 늑대 굴 · 초보 사냥꾼의 첫 보스가 살아요', sign:'⚠️ 늑대 굴 · 튼튼 쇠스랑부터', ic:'🐺', name:'늑대 굴'};
 WDEN.gate = Math.atan2((WDEN_PATH[0][1] - WDEN.y) / WDEN.ry, (WDEN_PATH[0][0] - WDEN.x) / WDEN.rx); // 숲 오솔길이 들어오는 쪽(동북동)
 DEN.name = '호랑이 굴'; BDEN.name = '흰곰 굴';
-const DENS = [DEN, BDEN, WDEN], DEN_LEASH = 260; // 2026-10-16 흰곰 굴은 지웠다가 같은 날 (100, 20)에 되살렸어요
+// 2026-10-17 달 요청: 서리용 둥지는 다른 굴과 달리 네모난 얼음 성벽(sq). 숲 오솔길이 북쪽 문으로 들어와요
+const DDEN = {x:fromGrid(160, 70)[0], y:fromGrid(160, 70)[1], rx:1150, ry:1150, sq:1, gw:210, kind:'dragon', need:DRAGON_NEED, day:'dragonDay', title:'🐉 전설의 서리용', label:'⚠️ 서리용 둥지 · 가장 무서운 전설 보스가 살아요', sign:'⚠️ 서리용 둥지 · 갈퀴 +8', ic:'🐉', snow:1, name:'서리용 둥지', gate:-Math.PI / 2,
+  esc:[{kind:'trex', dx:-480, dy:260, day:'trexDay', need:PBEAR_NEED}, {kind:'trike', dx:480, dy:260, day:'trikeDay', need:PBEAR_NEED}]};
+const DENS = [DEN, BDEN, WDEN, DDEN], DEN_LEASH = 260; // 2026-10-16 흰곰 굴은 지웠다가 같은 날 (100, 20)에 되살렸어요
 const DEN_GATE = DEN.gate;
-const inDenOf = (D, x, y, pad = 0) => ((x - D.x) / (D.rx + pad)) ** 2 + ((y - D.y) / (D.ry + pad)) ** 2 < 1;
+const inDenOf = (D, x, y, pad = 0) => D.sq ? Math.abs(x - D.x) < D.rx + pad && Math.abs(y - D.y) < D.ry + pad : ((x - D.x) / (D.rx + pad)) ** 2 + ((y - D.y) / (D.ry + pad)) ** 2 < 1;
 const inDen = (x, y, pad = 0) => DENS.some(D => inDenOf(D, x, y, pad));
 const denAt = (x, y, pad = 0) => DENS.find(D => inDenOf(D, x, y, pad));
 function tigerReady(){ return weaponDmg() >= TIGER_NEED; } // 2026-10-13 도구 데미지만으로 판정
-const bossReady = m => weaponDmg() >= m.den.need;
+const bossReady = m => weaponDmg() >= (m.need || m.den.need);
 function updateTiger(){
   for (const D of DENS) {
     const alive = MONS.find(m => m.kind === D.kind && !m.dead);
     if (!alive && absDay() >= (G[D.day] || 0) && Math.hypot(P.x - D.x, P.y - D.y) < 2600) {
       const m = makeMon(D.kind, 3, D.x, D.y - 160, false); m.boss = 1; m.den = D; MONS.push(m);
     }
+    for (const E of D.esc || []) if (!MONS.find(m => m.kind === E.kind && !m.dead) && absDay() >= (G[E.day] || 0) && Math.hypot(P.x - D.x, P.y - D.y) < 2600) {
+      const m = makeMon(E.kind, 3, D.x + E.dx, D.y + E.dy, false); m.boss = 1; m.den = D; m.need = E.need; m.cdK = 1.5; MONS.push(m);
+    }
   }
 }
 function killTiger(m){
   if (m.kind === 'pbear') return killPbear(m);
+  if (m.kind === 'dragon') return killDragon(m);
+  if (m.kind === 'trex' || m.kind === 'trike') return killDino(m);
   if (m.kind === 'bwolf') return killBwolf(m);
   ensureGear(); G.tigerDay = absDay() + 7; G.stats.tiger = (G.stats.tiger || 0) + 1;
   gainXp(TIGER.xp); unlock('tiger'); sfx('fanfare');
@@ -4835,12 +4860,33 @@ function killBwolf(m){
   floats.push({x:m.x, y:m.y - 200, s:'🏆 검은 늑대를 이겼다!', t:3, c:'#8a5af0', sz:42, pop:.3});
   setTimeout(() => popup('🐺', '검은 늑대를 이겼어요!', `첫 보스를 이겼어요! ${HN()}도 이제 어엿한 사냥꾼이에요. 💎 강화석 1개와 🐺 검은 늑대 가죽 1장을 얻었어요. 검은 늑대는 3일 뒤 다시 굴로 돌아와요. 다음은 호랑이에 도전해 봐요!`), 900);
 }
+// 2026-10-17 서리용: 처음엔 무기, 다음엔 갑옷(둘 다 단 하나뿐), 그 뒤엔 강화석 8개. 재료(비늘 3 · 뿔 1 · 결정 반반)는 매번
+function killDragon(m){
+  ensureGear(); G.dragonDay = absDay() + 7; G.stats.dragon = (G.stats.dragon || 0) + 1;
+  gainXp(DRAGON.xp); unlock('dragon'); sfx('fanfare');
+  let msg;
+  if (!('dspear' in G.gear.own)) { G.gear.own.dspear = 0; msg = '🐉 단 하나뿐인 <서리용 이빨 창>을 얻었어요!'; }
+  else if (!('darmor' in G.gear.own)) { G.gear.own.darmor = 0; msg = '🐉 단 하나뿐인 <서리용 비늘 갑옷>을 얻었어요!'; }
+  else { G.gear.stones = (G.gear.stones || 0) + 8; msg = '💎 강화석 8개를 얻었어요!'; }
+  addLoot('dscale', 3); addLoot('dhorn', 1); const gem = Math.random() < .5; if (gem) addLoot('dgem', 1);
+  msg += ` 재료로 🐉 서리용 비늘 3장 · 🦴 서리용 뿔 1개${gem ? ' · 💠 서리 결정 1개' : ''}도 얻었어요(든든철물에서 용비늘 장화·용뿔 투구를 만들 수 있어요).`;
+  floats.push({x:m.x, y:m.y - 300, s:'🏆 전설의 서리용을 이겼다!', t:3.5, c:'#5ab8ff', sz:48, pop:.3});
+  setTimeout(() => popup('🐉', '전설의 서리용을 이겼어요!', `얼음 둥지가 조용해졌어요. 이제 ${HN()}보다 센 사냥꾼은 없어요! ${msg} 서리용은 7일 뒤 다시 둥지로 돌아와요.`), 900);
+}
+function killDino(m){
+  const tr = m.kind === 'trex'; ensureGear(); G[tr ? 'trexDay' : 'trikeDay'] = absDay() + 3; G.stats[m.kind] = (G.stats[m.kind] || 0) + 1;
+  gainXp(m.V.xp); sfx('fanfare');
+  G.gear.stones = (G.gear.stones || 0) + 2; addLoot(tr ? 'rtooth' : 'khorn', 1);
+  floats.push({x:m.x, y:m.y - 220, s:`🏆 ${m.V.name}를 이겼다!`, t:2.6, c:'#ff8a3a', sz:38, pop:.3});
+  toast(`${tr ? '🦖' : '🦕'} ${m.V.name}를 이겼어요! 💎 강화석 2개와 ${tr ? '🦷 티라노 이빨' : '🦏 트리케라톱스 뿔'} 1개를 얻었어요. 3일 뒤 다시 둥지를 지켜요.`, 'good');
+}
 // ----- 보스 굴 그림: 어두운 돌바닥(흰곰 굴은 얼음 바닥) + 바위 벽 + 횃불 + 동굴 입구 -----
 const DEN_PAL = {rock:['#2f3a2a', '#4a423a', '#5a5046', '#3c352e', '#665b50', '#2a2420', 'rgba(30,24,20,.55)'],
   snow:['#c8d6e2', '#a9bccc', '#d6e4ee', '#93a8ba', '#e8f0f6', '#7a90a4', 'rgba(70,90,110,.45)']};
 function drawDenGround(c, x0, y0, w, h){ for (const D of DENS) drawDenGround1(c, D, x0, y0, w, h); }
 function drawDenGround1(c, D, x0, y0, w, h){
   if (D.x + D.rx + 200 < x0 || D.x - D.rx - 200 > x0 + w || D.y + D.ry + 200 < y0 || D.y - D.ry - 200 > y0 + h) return;
+  if (D.sq) return drawIceNestGround(c, D);
   const pl = DEN_PAL[D.snow ? 'snow' : 'rock'];
   c.save();
   c.beginPath(); ell(c, D.x, D.y, D.rx + 120, D.ry + 100); c.fillStyle = pl[0]; c.fill();
@@ -4860,6 +4906,7 @@ function drawDenGround1(c, D, x0, y0, w, h){
 function denEntities(ctx, add, vis, T){ for (const D of DENS) denEntities1(ctx, D, add, vis, T); }
 function denEntities1(ctx, D, add, vis, T){
   if (!vis(D.x, D.y, D.rx + 400)) return;
+  if (D.sq) return iceNestEntities(ctx, D, add, vis, T);
   // 동굴 입구 (북쪽)
   const cx = D.x, cy = D.y - D.ry + 40;
   if (vis(cx, cy, 400)) add(cy, cx, () => drawCave(ctx, cx, cy, D.snow));
@@ -4917,16 +4964,17 @@ function drawDenFx(c, dt){
   g.addColorStop(0, sn ? 'rgba(10,20,40,0)' : 'rgba(10,6,4,0)'); g.addColorStop(1, sn ? `rgba(10,24,48,${.7 * k})` : `rgba(10,6,4,${.78 * k})`);
   c.fillStyle = g; c.fillRect(0, 0, W, H);
   c.fillStyle = sn ? `rgba(40,70,110,${.16 * k})` : `rgba(20,10,30,${.18 * k})`; c.fillRect(0, 0, W, H);
-  const tg = MONS.find(m => m.boss && m.den === D && !m.dead);
+  const tg = MONS.find(m => m.boss && m.den === D && m.kind === D.kind && !m.dead) || MONS.find(m => m.boss && m.den === D && !m.dead);
   if (tg && tg.eng) { c.fillStyle = sn ? `rgba(60,140,220,${(.06 + Math.sin(performance.now() / 300) * .04) * k})` : `rgba(180,20,10,${(.06 + Math.sin(performance.now() / 300) * .04) * k})`; c.fillRect(0, 0, W, H); }
   if (denDust.length < (sn ? 90 : 40)) denDust.push({x:rnd(0, W), y:rnd(-40, H), v:rnd(20, 50) * (sn ? 3 : 1), r:rnd(1.5, 3.5) * (sn ? 1.4 : 1), a:rnd(.2, .5) + (sn ? .3 : 0)});
   for (const d of denDust) { d.y += d.v * dt; d.x += Math.sin(d.y / 60) * .4 + (sn ? 70 * dt : 0); if (d.y > H + 10 || d.x > W + 10) { d.y = -10; d.x = rnd(-200, W); } c.beginPath(); c.arc(d.x, d.y, d.r, 0, 7); c.fillStyle = sn ? `rgba(255,255,255,${d.a * k})` : `rgba(230,210,180,${d.a * k})`; c.fill(); }
+  drawNovaHud(c);
   if (tg && (tg.eng || Math.hypot(tg.x - P.x, tg.y - P.y) < 900)) {
     const w = 760, x = W / 2 - w / 2, y = H - 200; // 2026-10-14 화면 위쪽에 있으면 굴 안쪽(위)에 있는 호랑이를 가려서 아래로 옮겼어요
-    c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = INK; const tt = D.title + '  Lv.' + BOSS_LV[D.kind]; c.strokeText(tt, W / 2, y - 12); c.fillStyle = sn ? '#bfe8ff' : '#ffd23a'; c.fillText(tt, W / 2, y - 12);
+    c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = INK; const tt = (tg.kind === D.kind ? D.title : (MON_IC[tg.kind] || '') + ' ' + tg.V.name) + '  Lv.' + BOSS_LV[tg.kind]; c.strokeText(tt, W / 2, y - 12); c.fillStyle = sn ? '#bfe8ff' : '#ffd23a'; c.fillText(tt, W / 2, y - 12);
     c.beginPath(); rr(c, x, y, w, 26, 13); c.fillStyle = '#2a1c17'; c.fill(); c.lineWidth = 3; c.strokeStyle = '#fffaf1'; c.stroke();
     c.beginPath(); rr(c, x + 4, y + 4, (w - 8) * clamp(tg.hp / tg.max, 0, 1), 18, 9); c.fillStyle = sn ? '#4ab0f0' : '#ff5a2a'; c.fill();
-    if (!bossReady(tg)) { c.font = '22px Jua'; c.lineWidth = 5; c.strokeStyle = INK; const t = `⚠️ 지금 도구로는 상처를 못 내요 (도구 데미지 ${weaponDmg()} / ${D.need} 필요)`; c.strokeText(t, W / 2, y + 58); c.fillStyle = '#ffb3a8'; c.fillText(t, W / 2, y + 58); }
+    if (!bossReady(tg)) { c.font = '22px Jua'; c.lineWidth = 5; c.strokeStyle = INK; const t = `⚠️ 지금 도구로는 상처를 못 내요 (도구 데미지 ${weaponDmg()} / ${tg.need || D.need} 필요)`; c.strokeText(t, W / 2, y + 58); c.fillStyle = '#ffb3a8'; c.fillText(t, W / 2, y + 58); }
   }
 }
 
@@ -5105,10 +5153,15 @@ function drawPortal(c, x, y, T){
 // 보스마다 특수공격 2가지. 바닥에 빨간(얼음은 파란) 표시가 먼저 차오르고, 다 차면 그 자리에 공격이 떨어져요.
 // 표시 밖으로 피하면 안 맞아요. 막기(F)를 하고 있으면 반만 맞아요. 큰 기술 뒤엔 보스가 잠깐 지쳐서(💫) 때릴 기회가 생겨요.
 // 새 보스를 만들면 BOSS_SKILLS에 기술 이름 두 개만 적으면 돼요.
-const BOSS_SKILLS = {tiger:['claws', 'pounce'], pbear:['icefield', 'lane'], bwolf:['leap', 'rush']}; // 검은 늑대: 호랑이·흰곰 기술을 느리고 약하게(연습용)
+const BOSS_SKILLS = {tiger:['claws', 'pounce'], pbear:['icefield', 'lane'], bwolf:['leap', 'rush'],
+  dragon:['breath', 'meteor', 'tail', 'dive', 'nova'], trex:['chomp', 'roarq'], trike:['gore', 'rockfall']}; // 2026-10-17 서리용 기술 5가지(범위 공격 포함) · 호위 공룡 2가지씩 // 검은 늑대: 호랑이·흰곰 기술을 느리고 약하게(연습용)
 const BOSS_CD = [5.5, 3.8];
 const BFX = [];
-const SKILL_TXT = {claws:'🐾 발톱 자국이 따라와요! 계속 움직여요', pounce:'🐯 덮치기! 빨간 원 밖으로 피해요', icefield:'❄️ 얼음 기둥! 빈틈으로 피해요', lane:'🐻‍❄️ 돌진! 옆으로 비켜요', leap:'🐺 뛰어들기! 빨간 원 밖으로 피해요', rush:'🐺 돌진! 빨간 길 옆으로 비켜요'};
+const SKILL_TXT = {claws:'🐾 발톱 자국이 따라와요! 계속 움직여요', pounce:'🐯 덮치기! 빨간 원 밖으로 피해요', icefield:'❄️ 얼음 기둥! 빈틈으로 피해요', lane:'🐻‍❄️ 돌진! 옆으로 비켜요', leap:'🐺 뛰어들기! 빨간 원 밖으로 피해요', rush:'🐺 돌진! 빨간 길 옆으로 비켜요',
+  breath:'🐉 얼음 숨결! 부채꼴 밖으로 피해요', meteor:'☄️ 얼음 운석이 떨어져요! 계속 움직여요', tail:'🐉 꼬리 휘두르기! 용한테서 멀어져요', dive:'🐉 하늘로 날아올랐다! 그림자 밖으로 피해요',
+  nova:'❄️ 서리 폭풍! 빛나는 동그라미 안으로 숨어요', chomp:'🦖 물어뜯기 돌진! 빨간 길 옆으로 비켜요', roarq:'🦖 포효! 티라노한테서 멀어져요', gore:'🦕 뿔 돌진! 빨간 길 옆으로 비켜요', rockfall:'🦕 쿵쿵! 바위가 떨어져요, 계속 움직여요'};
+const LANE_SK = {lane:{ice:1, w:230, warn:1.0, dmg:14, txt:'돌진', max:1050}, rush:{w:200, warn:1.4, dmg:10, txt:'돌진', max:850}, chomp:{w:220, warn:1.1, dmg:13, txt:'물어뜯기', max:900}, gore:{w:240, warn:1.2, dmg:14, txt:'뿔 돌진', max:1050}};
+function inCone(z, x, y){ const dx = x - z.x, dy = (y - z.y) * 1.2, d = Math.hypot(dx, dy); if (d > z.len || d < 1) return d < 1; let da = Math.abs(Math.atan2(dy, dx) - z.ang); da = Math.min(da, 6.283 - da); return da < z.half; }
 
 function bossHit(m, base, txt){
   if (P.inv > 0 || P.hp <= 0) return;
@@ -5128,6 +5181,8 @@ function zoneHit(z){
   z.done = true; z.fade = .4;
   const ice = z.ice, cols = ice ? ['#d8f2ff', '#8ec8f0', '#fffaf1'] : ['#ffb13b', '#ff6b57', '#fffaf1'];
   if (z.shape === 'circle') { burst(z.x, z.y - 10, 14, cols, 520, .5); if (inCircle(z, P.x, P.y)) bossHit(z.m, z.dmg, z.txt); }
+  if (z.shape === 'cone') { for (let k = 1; k <= 5; k++) burst(z.x + Math.cos(z.ang) * z.len * k / 5, z.y + Math.sin(z.ang) * z.len * k / 6, 6, cols, 360, .5); if (inCone(z, P.x, P.y)) bossHit(z.m, z.dmg, z.txt); }
+  if (z.shape === 'nova') { for (let k = 0; k < 12; k++) burst(z.x + rnd(-z.w, z.w), z.y + rnd(-z.w, z.w), 5, cols, 300, .5); FX.shake = Math.max(FX.shake, .8); if (inDenOf(z.m.den, P.x, P.y, 60) && !z.safe.some(q => inCircle(q, P.x, P.y))) bossHit(z.m, z.dmg, z.txt); }
   FX.shake = Math.max(FX.shake, .35); sfx(ice ? 'crash' : 'thunder');
 }
 function startSkill(m){
@@ -5144,16 +5199,28 @@ function startSkill(m){
       for (let i = 0; i < 4; i++) { const a = rot + i * Math.PI / 2; addZone(m, {shape:'circle', ice:1, x:cx + Math.cos(a) * 290, y:cy + Math.sin(a) * 290 * .8, r:140, warn:1.3, dmg:9, txt:'얼음 기둥'}); } };
     const r0 = rnd(0, .4); make(r0); m.sk.second = () => make(r0 + Math.PI / 4);
   }
-  if (id === 'lane' || id === 'rush') {
-    const D = m.den, d = Math.hypot(P.x - m.x, P.y - m.y) || 1, ux = (P.x - m.x) / d, uy = (P.y - m.y) / d;
+  if (LANE_SK[id]) {
+    const D = m.den, d = Math.hypot(P.x - m.x, P.y - m.y) || 1, ux = (P.x - m.x) / d, uy = (P.y - m.y) / d, L = LANE_SK[id];
     let len = 1050; while (len > 200 && !inDenOf(D, m.x + ux * len, m.y + uy * len, -40)) len -= 50;
-    m.sk.z = addZone(m, id === 'rush' ? {shape:'lane', x:m.x, y:m.y, ux, uy, len:Math.min(len, 850), w:200, warn:1.4, dmg:10, txt:'돌진'} : {shape:'lane', ice:1, x:m.x, y:m.y, ux, uy, len, w:230, warn:1.0, dmg:14, txt:'돌진'});
+    m.sk.z = addZone(m, {shape:'lane', ice:L.ice, x:m.x, y:m.y, ux, uy, len:Math.min(len, L.max), w:L.w, warn:L.warn, dmg:L.dmg, txt:L.txt});
+  }
+  // ----- 2026-10-17 서리용 -----
+  if (id === 'breath') m.sk.z = addZone(m, {shape:'cone', ice:1, x:m.x, y:m.y, ang:Math.atan2((P.y - m.y) * 1.2, P.x - m.x), len:980, half:.44, warn:1.3, dmg:14, txt:'얼음 숨결'});
+  if (id === 'tail') m.sk.z = addZone(m, {shape:'circle', x:m.x, y:m.y, r:420, warn:.95, dmg:13, txt:'꼬리 휘두르기'});
+  if (id === 'roarq') m.sk.z = addZone(m, {shape:'circle', x:m.x, y:m.y, r:370, warn:1.0, dmg:11, txt:'포효'});
+  if (id === 'dive') m.sk.z = addZone(m, {shape:'circle', ice:1, x:P.x, y:P.y, r:320, warn:1.75, dmg:18, txt:'내리꽂기'});
+  if (id === 'nova') {
+    // 둥지 전체가 얼어붙어요. 빛나는 동그라미 3개 안만 안전(하나는 우주 가까이)
+    const D = m.den, safe = [], pick = (x, y) => ({x:clamp(x, D.x - D.rx + 220, D.x + D.rx - 220), y:clamp(y, D.y - D.ry + 220, D.y + D.ry - 220), r:150});
+    const a = rnd(0, 6.283); safe.push(pick(P.x + Math.cos(a) * 380, P.y + Math.sin(a) * 300));
+    while (safe.length < 3) { const q = pick(D.x + rnd(-D.rx, D.rx), D.y + rnd(-D.ry, D.ry)); if (safe.every(o => Math.hypot(o.x - q.x, o.y - q.y) > 500)) safe.push(q); }
+    m.sk.z = addZone(m, {shape:'nova', ice:1, x:D.x, y:D.y, w:D.rx, safe, warn:2.9, dmg:20, txt:'서리 폭풍'});
   }
   return true;
 }
 function bossSkillUpdate(m, dt){
   const s = m.sk, D = m.den; s.t += dt;
-  const end = rest => { m.st = 'chase'; m.sk = null; m.cc = 1.2; m.skCd = BOSS_CD[m.hp < m.max * .5 ? 1 : 0]; if (rest) { m.stun = rest; floats.push({x:m.x, y:m.y - 200, s:'💫 지쳤다! 지금 때려요!', t:1.6, c:'#2f6fb8', sz:28}); } };
+  const end = rest => { m.st = 'chase'; m.sk = null; m.cc = 1.2; m.jz = 0; m.skCd = BOSS_CD[m.hp < m.max * .5 ? 1 : 0] * (m.cdK || 1); if (rest) { m.stun = rest; floats.push({x:m.x, y:m.y - 200, s:'💫 지쳤다! 지금 때려요!', t:1.6, c:'#2f6fb8', sz:28}); } };
   if (!inDenOf(D, P.x, P.y, 60)) { end(0); return; }
   if (s.id === 'claws') {
     // 0.45초마다 우주 발밑에 발톱 자국 4번
@@ -5167,7 +5234,20 @@ function bossSkillUpdate(m, dt){
   } else if (s.id === 'icefield') {
     if (!s.n && s.t > .75) { s.second(); s.n = 1; }
     if (s.t > 2.4) end(1.1);
-  } else if (s.id === 'lane' || s.id === 'rush') {
+  } else if (s.id === 'meteor' || s.id === 'rockfall') {
+    // 운석 7개(서리용) · 바위 4개(트리케라톱스)가 우주 발밑에 차례로 떨어져요
+    const met = s.id === 'meteor', n = met ? 7 : 4, gap = met ? .3 : .42;
+    if (s.n < n && s.t >= s.n * gap) { const o = s.n && met ? 160 : 0, a = rnd(0, 6.283); addZone(m, {shape:'circle', ice:met ? 1 : 0, fall:met ? 'ice' : 'rock', x:P.x + Math.cos(a) * o, y:P.y + Math.sin(a) * o * .8, r:met ? 170 : 160, warn:met ? 1.1 : .9, dmg:met ? 11 : 10, txt:met ? '얼음 운석' : '바위'}); s.n++; }
+    if (s.t > n * gap + 1.2) end(1);
+  } else if (s.id === 'breath' || s.id === 'tail' || s.id === 'roarq' || s.id === 'nova') {
+    if (s.z.done) end({breath:1.4, tail:1, roarq:1.2, nova:2.6}[s.id]);
+  } else if (s.id === 'dive') {
+    const z = s.z, k = clamp((s.t - 1.3) / .45, 0, 1);
+    if (!s.jump) s.jump = {x:m.x, y:m.y};
+    if (k <= 0) m.jz = Math.min(1, s.t / .6) * 280;
+    else { m.x = s.jump.x + (z.x - s.jump.x) * k; m.y = s.jump.y + (z.y - s.jump.y) * k; m.jz = 280 * (1 - k); }
+    if (z.done) { m.jz = 0; FX.shake = Math.max(FX.shake, .9); end(2.4); }
+  } else if (LANE_SK[s.id]) {
     const z = s.z;
     if (z.done && !s.run) s.run = {d:0};
     if (s.run) {
@@ -5187,9 +5267,9 @@ function bossInterrupt(m){
 }
 // updateMon(chase)에서 불러요: 쿨다운이 끝나면 기술을 써요
 function bossTrySkill(m, dt, pd){
-  if (m.skCd == null) m.skCd = 2.5;
+  if (m.skCd == null) m.skCd = 2.5 * (m.cdK || 1) + (m.cdK ? rnd(0, 2) : 0);
   m.skCd -= dt;
-  return m.skCd <= 0 && pd < 700 && startSkill(m);
+  return m.skCd <= 0 && pd < (m.kind === 'dragon' ? 1000 : 700) && startSkill(m);
 }
 function updateBossFx(dt){
   for (const z of BFX) { if (z.done) z.fade -= dt; else { z.t += dt; if (z.t >= z.warn) zoneHit(z); } }
@@ -5202,7 +5282,19 @@ function drawBossFx(c){
     const edge = ice ? '#4a9ad8' : '#d6372c', fill = ice ? '120,190,240' : '230,70,50';
     c.save();
     if (z.done) { c.globalAlpha = clamp(z.fade / .4, 0, 1); }
-    if (z.shape === 'circle') {
+    if (z.shape === 'cone') {
+      const pie = r => { c.beginPath(); c.moveTo(z.x, z.y); c.ellipse(z.x, z.y, r, r / 1.2, 0, z.ang - z.half, z.ang + z.half); c.closePath(); };
+      pie(z.len); c.fillStyle = `rgba(${fill},${z.done ? .5 : .14 + .1 * Math.sin(T * 14)})`; c.fill(); c.setLineDash(z.done ? [] : [16, 10]); c.lineWidth = 4; c.strokeStyle = edge; c.stroke(); c.setLineDash([]);
+      if (!z.done) { pie(z.len * k); c.fillStyle = `rgba(${fill},.36)`; c.fill(); }
+      else for (let i = 0; i < 9; i++) { const a = z.ang + (i / 8 - .5) * z.half * 1.6, d = z.len * (.3 + (i * 37 % 7) / 10); const x = z.x + Math.cos(a) * d, y = z.y + Math.sin(a) * d / 1.2; cel(c, cc => { cc.moveTo(x - 12, y); cc.lineTo(x, y - 60 - (i % 3) * 20); cc.lineTo(x + 12, y); cc.closePath(); }, '#e8f6ff', '#9ccbe8', 2, 2, 2.4); }
+    } else if (z.shape === 'nova') {
+      const D = z.m.den; c.beginPath(); c.rect(D.x - D.rx, D.y - D.ry, D.rx * 2, D.ry * 2);
+      for (const q of z.safe) { c.moveTo(q.x + q.r, q.y); c.ellipse(q.x, q.y, q.r, q.r / 1.25, 0, 0, 7, true); }
+      c.fillStyle = `rgba(30,80,170,${z.done ? .6 : .14 + .34 * k + .06 * Math.sin(T * 14)})`; c.fill('evenodd');
+      for (const q of z.safe) { c.beginPath(); c.ellipse(q.x, q.y, q.r, q.r / 1.25, 0, 0, 7); c.fillStyle = `rgba(255,250,200,${.35 + .2 * Math.sin(T * 8)})`; c.fill(); c.setLineDash([12, 8]); c.lineWidth = 5; c.strokeStyle = '#ffe36a'; c.stroke(); c.setLineDash([]);
+        if (!z.done) { c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 5; c.strokeStyle = INK; c.strokeText('안전', q.x, q.y + 10); c.fillStyle = '#fff6c4'; c.fillText('안전', q.x, q.y + 10); } }
+    } else if (z.shape === 'circle') {
+      if (z.fall && !z.done && k > .35) { const h = (1 - k) * 700, s = z.fall === 'ice'; c.save(); c.translate(z.x, z.y - h); c.rotate(T * 4); cel(c, cc => s ? (cc.moveTo(0, -34), cc.lineTo(22, 0), cc.lineTo(0, 34), cc.lineTo(-22, 0), cc.closePath()) : ell(cc, 0, 0, 30, 24), s ? '#e2f7ff' : '#8a7a6a', s ? '#6fc0ea' : '#5a4e42', 3, 3, 3); c.restore(); }
       c.beginPath(); c.ellipse(z.x, z.y, z.r, z.r / 1.25, 0, 0, 7);
       c.fillStyle = `rgba(${fill},${z.done ? .45 : .14 + .12 * Math.sin(T * 14)})`; c.fill();
       c.setLineDash(z.done ? [] : [14, 10]); c.lineWidth = 4; c.strokeStyle = edge; c.stroke(); c.setLineDash([]);
@@ -5218,6 +5310,12 @@ function drawBossFx(c){
     }
     c.restore();
   }
+}
+// 2026-10-17 서리 폭풍 남은 시간: 화면 위쪽 가운데에 크게(둥지 얼음 가시에 안 가려지게)
+function drawNovaHud(c){
+  const z = BFX.find(q => q.shape === 'nova' && !q.done); if (!z) return;
+  const tx = `❄️ 서리 폭풍까지 ${Math.ceil(z.warn - z.t)}초 · 빛나는 '안전' 동그라미로!`;
+  c.save(); c.font = '40px Jua'; c.textAlign = 'center'; c.lineWidth = 8; c.strokeStyle = INK; c.strokeText(tx, W / 2, 150); c.fillStyle = '#bfe8ff'; c.fillText(tx, W / 2, 150); c.restore();
 }
 
 // ===== 2026-10-16 달 요청: 산짐승을 아이들이 좋아하게 더 귀엽고 특색 있게 =====
@@ -6147,6 +6245,483 @@ function drawSpitzAt(ctx){ ctx.save(); ctx.translate(SPITZ.x, SPITZ.y); ctx.scal
   ctx.globalAlpha = 1; ctx.restore(); }
 // 2026-10-16 달 요청: F로 '달'을 쓰다듬어요
 function petSpitz(){ const S = SPITZ; S.st = 'pet'; S.pet = 2.2; S.hT = 0; sfx('pop'); floats.push({x:S.x, y:S.y - 160, s:'💕 달이가 좋아해요!', t:1.2, c:'#ff6b8a'}); P.face = S.x < P.x ? -1 : 1; }
+
+// ===== 2026-10-17 달 요청: 서리용 둥지의 전설 보스 '서리용' + 호위 공룡 '티라노사우루스'·'트리케라톱스' (모두 8방향) =====
+// 서리용: 남빛 비늘 + 얼음 가시 등줄기 + 뒤로 휜 뿔 + 박쥐 같은 큰 날개 + 꼬리 끝 얼음 칼날 + 시안빛으로 빛나는 눈 + 서리 입김
+// 티라노: 올리브빛 비늘에 검은 줄무늬 + 커다란 머리와 이빨 가득한 턱 + 등의 뼈돌기 + 흉터 + 노랗게 이글거리는 눈
+// 트리케라톱스: 붉은 갈색 몸 + 뼈 가시가 돋은 큰 프릴 + 날카로운 뿔 세 개 + 부리 + 붉게 빛나는 눈
+// 옆(0)·앞(2)·뒤(6)·앞 대각선(1)·뒤 대각선(7)을 그리고 왼쪽(3·4·5)은 뒤집어요. 옆모습엔 눈 하나만 보여요. 발 밑이 (0,0)
+const DG = {s:'#3a4878', sS:'#252e54', d:'#161c34', belly:'#cfe6f2', bellyS:'#8db4cc', horn:'#efe6d2', hornS:'#b4a486', ice:'#e2f7ff', iceS:'#6fc0ea',
+  mem:'#5c4e94', memS:'#3a2f68', eye:'#7af0ff', mouth:'#4a0e24', claw:'#efe6d2'};
+const TX = {s:'#5e6e36', sS:'#3c4822', d:'#27301a', belly:'#e6d6a6', bellyS:'#b49c6c', stripe:'#2a3416', eye:'#ffcf3a', mouth:'#6a1420', plate:'#8a7a52'};
+const TK = {s:'#9a5634', sS:'#683620', d:'#4a2614', belly:'#e2c69c', bellyS:'#b0905e', frill:'#c8643a', frillS:'#8a3a1e', bone:'#f2ead6', boneS:'#b8a688', eye:'#ff5a3a', beak:'#3a2a20'};
+
+// ----- 공통 도우미 -----
+function dzAura(c, t, col, r, flakes){
+  const pul = .5 + Math.sin(t * 3) * .5;
+  c.save(); c.globalAlpha = .35 + pul * .15; const g = c.createRadialGradient(0, -4, 6, 0, -4, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.beginPath(); ell(c, 0, -4, r, r * .3); c.fillStyle = g; c.fill(); c.restore();
+  if (flakes) for (let i = 0; i < 8; i++) { const a = t * .7 + i * .785, x = Math.cos(a) * r * .75, y = -10 + Math.sin(a) * r * .22 - ((t * 24 + i * 17) % 70);
+    c.save(); c.globalAlpha = .8; c.translate(x, y); c.rotate(t + i); for (let k = 0; k < 3; k++) { c.rotate(1.047); line(c, [-4, 0, 4, 0], 1.5, '#ffffff'); } c.restore(); }
+  shadow(c, 0, 0, r * .62, r * .14, .32);
+}
+function dzSpikes(c, pts, base, sh, w = 5){ // [x, y, 높이, 기울기]
+  for (const [x, y, h, a] of pts) cel(c, cc => { cc.moveTo(x - w, y + 2); cc.lineTo(x + a, y - h); cc.lineTo(x + w, y + 2); cc.closePath(); }, base, sh, -1, 0, 2.2);
+}
+function dzLeg(c, x, top, w, o, far, P, clawCol, n = 3){
+  const B = far ? P.sS : P.s, S = far ? P.d : P.sS;
+  cel(c, cc => { cc.moveTo(x - w * .62, top); cc.lineTo(x + w * .62, top); cc.quadraticCurveTo(x + w * .56, top + (o - top) * .55, x + w * .42, o - 6); cc.lineTo(x - w * .46, o - 6); cc.quadraticCurveTo(x - w * .66, top + (o - top) * .5, x - w * .62, top); cc.closePath(); }, B, S, 2, 0, 2.8);
+  cel(c, cc => ell(cc, x + 2, o - 5, w * .66, 6), B, S, 1, 1, 2.8);
+  for (let k = 0; k < n; k++) { const cx = x + 2 + (k - (n - 1) / 2) * w * .4; cel(c, cc => { cc.moveTo(cx - 2.6, o - 3); cc.quadraticCurveTo(cx + 3, o, cx + 5, o + 6); cc.lineTo(cx + 2.6, o - 3); cc.closePath(); }, clawCol, '#8a7a5a', 0, 0, 1.6); }
+  if (!far) for (const k of [0, 1]) line(c, [x - w * .3, top + 10 + k * 10, x + w * .3, top + 12 + k * 10], 1.6, S); // 비늘결
+}
+function dzEye(c, x, y, s, t, col, dir = 1){ // 빛나는 가는 눈 + 콧등 쪽으로 내려간 눈썹
+  const glow = .6 + Math.sin(t * 4) * .25;
+  c.save(); c.globalAlpha = glow * .55; const g = c.createRadialGradient(x, y, 1, x, y, 9 * s); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.beginPath(); ell(c, x, y, 9 * s, 7 * s); c.fill(); c.restore();
+  cel(c, cc => { cc.moveTo(x - 5.5 * s * dir, y - 2 * s); cc.lineTo(x + 5.5 * s * dir, y + .6 * s); cc.lineTo(x - 3 * s * dir, y + 2.6 * s); cc.closePath(); }, col, '#7a5a10', 0, 0, 1.6);
+  c.beginPath(); ell(c, x + .8 * dir, y + .4 * s, .8 * s, 2 * s); c.fillStyle = '#060608'; c.fill();
+  line(c, [x - 7 * s * dir, y - 7 * s, x + 7 * s * dir, y - 1.2 * s], 3.4 * s, INK);
+}
+function dzFangs(c, x0, x1, y, d, n){ for (let k = 0; k < n; k++) { const fx = x0 + (x1 - x0) * (k + .5) / n, h = 5 + (k % 2) * 3; cel(c, cc => { cc.moveTo(fx - 2.2, y); cc.lineTo(fx, y + d * h); cc.lineTo(fx + 2.2, y); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 1.3); } }
+function dzBreath(c, x, y, t, dx, dy, col = '#ffffff', n = 5){ for (let i = 0; i < n; i++) { const k = (t * .9 + i / n) % 1; c.save(); c.globalAlpha = (1 - k) * .6; c.beginPath(); c.arc(x + dx * k * 34, y + dy * k * 34 - k * 6, 3 + k * 9, 0, 7); c.fillStyle = col; c.fill(); c.restore(); } }
+function dzMirror(c, d8){ d8 = ((d8 | 0) % 8 + 8) % 8; if ([3, 4, 5].includes(d8)) { c.scale(-1, 1); d8 = {3:1, 4:0, 5:7}[d8]; } return d8; }
+
+// ===== 서리용 =====
+function dgWing(c, W, far, fl){ // W = {r:뿌리, w:손목, f:[손가락 끝…], b:몸쪽 끝}
+  c.save(); c.translate(W.r[0], W.r[1]); c.rotate(fl); c.translate(-W.r[0], -W.r[1]);
+  const base = far ? DG.memS : DG.mem, sh = far ? '#241c44' : DG.memS, bone = far ? DG.sS : DG.s;
+  cel(c, cc => { cc.moveTo(W.r[0], W.r[1]); cc.lineTo(W.w[0], W.w[1]); cc.lineTo(W.f[0][0], W.f[0][1]);
+    for (let i = 1; i < W.f.length; i++) { const [ax, ay] = W.f[i - 1], [bx, by] = W.f[i]; cc.quadraticCurveTo((ax + bx) / 2 * .78 + W.w[0] * .22, (ay + by) / 2 * .78 + W.w[1] * .22, bx, by); }
+    const [lx, ly] = W.f[W.f.length - 1]; cc.quadraticCurveTo((lx + W.b[0]) / 2 * .8 + W.w[0] * .2, (ly + W.b[1]) / 2 * .8 + W.w[1] * .2, W.b[0], W.b[1]); cc.closePath(); }, base, sh, 5, 5, 3);
+  c.save(); c.globalAlpha = .35; for (const f of W.f) line(c, [W.w[0], W.w[1], (W.w[0] + f[0] * 2) / 3, (W.w[1] + f[1] * 2) / 3], 6, '#8a7ac8'); c.restore(); // 막의 결
+  inkLine(c, [W.r[0], W.r[1], W.w[0], W.w[1]], 6, bone);
+  for (const f of W.f) inkLine(c, [W.w[0], W.w[1], f[0], f[1]], 3, bone);
+  cel(c, cc => { cc.moveTo(W.w[0] - 4, W.w[1]); cc.lineTo(W.w[0] + 2, W.w[1] - 13); cc.lineTo(W.w[0] + 5, W.w[1] + 1); cc.closePath(); }, DG.claw, DG.hornS, 0, 0, 2); // 손목 발톱
+  c.restore();
+}
+function drawDragonBoss(c, d8, t, V){
+  dzAura(c, t, '#7a9cff', 150, 1);
+  d8 = dzMirror(c, d8);
+  const st = Math.sin(t * 6) * 5, bob = Math.abs(Math.sin(t * 6)) * 2, jaw = 4 + Math.max(0, Math.sin(t * 2)) * 6, fl = Math.sin(t * 2.6) * .1;
+  c.save(); c.translate(0, -bob);
+  if (d8 === 0) dgSide(c, t, st, jaw, fl);
+  else if (d8 === 2) dgFront(c, t, st, jaw, fl);
+  else if (d8 === 6) dgBack(c, t, st, fl);
+  else if (d8 === 1) dgDiagF(c, t, st, jaw, fl);
+  else dgDiagB(c, t, st, fl);
+  c.restore();
+}
+function dgTail(c, pts, w0){ // 굵은 꼬리 + 끝의 얼음 칼날. pts: 꼬리 가운데 선(몸쪽 → 끝)
+  const n = pts.length, up = [], dn = [];
+  for (let i = 0; i < n; i++) { const [x, y] = pts[i], [px, py] = pts[Math.max(0, i - 1)], [nx, ny] = pts[Math.min(n - 1, i + 1)], dx = nx - px, dy = ny - py, d = Math.hypot(dx, dy) || 1, w = w0 * (1 - i / n * .8);
+    up.push([x - dy / d * w, y + dx / d * w]); dn.push([x + dy / d * w, y - dx / d * w]); }
+  cel(c, cc => { cc.moveTo(up[0][0], up[0][1]); for (const p of up) cc.lineTo(p[0], p[1]); for (let i = n - 1; i >= 0; i--) cc.lineTo(dn[i][0], dn[i][1]); cc.closePath(); }, DG.s, DG.sS, 3, 3, 3);
+  const [ex, ey] = pts[n - 1], [qx, qy] = pts[n - 2], a = Math.atan2(ey - qy, ex - qx);
+  c.save(); c.translate(ex, ey); c.rotate(a);
+  cel(c, cc => { cc.moveTo(-6, -8); cc.lineTo(30, -16); cc.lineTo(20, 0); cc.lineTo(34, 14); cc.lineTo(-6, 8); cc.closePath(); }, DG.ice, DG.iceS, 2, 2, 2.6);
+  c.restore();
+  return {up, dn};
+}
+function dgHeadSide(c, t, jaw){ // 오른쪽을 보는 머리(눈 하나)
+  // 먼 쪽 뿔
+  cel(c, cc => { cc.moveTo(88, -134); cc.bezierCurveTo(74, -152, 62, -162, 46, -170); cc.bezierCurveTo(60, -156, 70, -144, 80, -128); cc.closePath(); }, DG.hornS, '#8a7a5a', 1, 1, 2.4);
+  // 아래턱(벌린 입)
+  cel(c, cc => { cc.moveTo(88, -108); cc.lineTo(132, -106 + jaw); cc.lineTo(128, -98 + jaw); cc.bezierCurveTo(112, -96 + jaw, 98, -98, 86, -102); cc.closePath(); }, DG.s, DG.sS, 1, 1, 2.6);
+  cel(c, cc => { cc.moveTo(92, -110); cc.lineTo(134, -112); cc.lineTo(130, -106 + jaw); cc.lineTo(92, -104 + jaw * .3); cc.closePath(); }, DG.mouth, '#2a0612', 0, 0, 2);
+  dzFangs(c, 104, 130, -106 + jaw * .8, -1, 4);
+  // 위턱 + 머리뼈
+  cel(c, cc => { cc.moveTo(74, -128); cc.bezierCurveTo(82, -142, 104, -140, 116, -130); cc.lineTo(138, -120); cc.lineTo(136, -110); cc.lineTo(96, -110); cc.bezierCurveTo(82, -110, 72, -116, 74, -128); cc.closePath(); }, DG.s, DG.sS, 3, 3, 3);
+  dzFangs(c, 100, 134, -110, 1, 5);
+  cel(c, cc => { cc.moveTo(104, -132); cc.lineTo(130, -124); cc.lineTo(126, -121); cc.lineTo(102, -127); cc.closePath(); }, DG.d, DG.d, 0, 0, 0); // 콧등 비늘 줄
+  c.beginPath(); ell(c, 132, -119, 3, 2.2); c.fillStyle = INK; c.fill(); // 콧구멍
+  // 뺨 가시
+  dzSpikes(c, [[80, -110, 12, -10], [76, -118, 14, -12]], DG.ice, DG.iceS, 3.5);
+  // 가까운 뿔
+  cel(c, cc => { cc.moveTo(84, -130); cc.bezierCurveTo(70, -148, 56, -154, 38, -158); cc.bezierCurveTo(52, -146, 64, -136, 76, -122); cc.closePath(); }, DG.horn, DG.hornS, 2, 2, 2.6);
+  for (const k of [0, 1, 2]) line(c, [70 - k * 9, -142 + k * 3, 66 - k * 9, -137 + k * 3], 1.5, DG.hornS);
+  dzSpikes(c, [[94, -136, 8, 2], [102, -136, 7, 3]], DG.ice, DG.iceS, 3); // 눈썹 위 가시
+  dzEye(c, 100, -124, 1.05, t, DG.eye, 1);
+  for (const k of [0, 1, 2]) line(c, [86 + k * 3, -118 + k * 3, 92 + k * 3, -114 + k * 3], 1.6, '#a07aa8'); // 흉터
+  dzBreath(c, 138, -112, t, 1, .2, '#e8f8ff');
+}
+function dgSide(c, t, st, jaw, fl){
+  dgWing(c, {r:[22, -86], w:[10, -164], f:[[46, -186], [-20, -198], [-74, -180], [-108, -136]], b:[-24, -80]}, true, fl * 1.1);
+  dzLeg(c, -24, -44, 24, -st * .6, true, DG, DG.claw); dzLeg(c, 44, -46, 20, st * .6, true, DG, DG.claw);
+  const T = dgTail(c, [[-40, -48], [-80, -44], [-118, -36], [-150, -32], [-168, -38]], 18);
+  // 몸통
+  cel(c, cc => { cc.moveTo(-54, -38); cc.bezierCurveTo(-64, -72, -22, -90, 10, -88); cc.bezierCurveTo(42, -86, 60, -72, 62, -54); cc.bezierCurveTo(64, -34, 42, -24, 10, -22); cc.bezierCurveTo(-22, -20, -48, -24, -54, -38); cc.closePath(); }, DG.s, DG.sS, 6, 5, 3);
+  // 배 비늘판
+  cel(c, cc => { cc.moveTo(-40, -30); cc.bezierCurveTo(-10, -20, 30, -22, 58, -46); cc.lineTo(60, -56); cc.bezierCurveTo(40, -38, 0, -34, -34, -40); cc.closePath(); }, DG.belly, DG.bellyS, 1, 2, 2.2);
+  for (let k = 0; k < 7; k++) { const x = -28 + k * 13; line(c, [x, -38 + k * .4 - (k > 4 ? (k - 4) * 4 : 0), x + 2, -27 - (k > 3 ? (k - 3) * 3.5 : 0)], 1.5, DG.bellyS); }
+  // 목
+  cel(c, cc => { cc.moveTo(30, -80); cc.bezierCurveTo(44, -104, 62, -124, 84, -128); cc.lineTo(96, -112); cc.bezierCurveTo(80, -104, 68, -84, 60, -56); cc.closePath(); }, DG.s, DG.sS, 3, 3, 3);
+  cel(c, cc => { cc.moveTo(60, -58); cc.bezierCurveTo(68, -84, 78, -100, 92, -110); cc.lineTo(96, -112); cc.bezierCurveTo(82, -102, 72, -84, 64, -54); cc.closePath(); }, DG.belly, DG.bellyS, 0, 1, 1.8);
+  // 등줄기 얼음 가시
+  dzSpikes(c, [[48, -104, 14, -3], [36, -92, 18, -4], [20, -88, 22, -4], [2, -88, 26, -4], [-16, -86, 24, -5], [-34, -78, 20, -6], [-52, -62, 16, -6], [-78, -48, 14, -6], [-104, -42, 12, -6], [-130, -38, 10, -6]], DG.ice, DG.iceS, 5);
+  for (const [x, y] of [[-20, -64], [0, -70], [20, -66], [-34, -52], [36, -58], [6, -54]]) { c.beginPath(); c.arc(x, y, 4, Math.PI * .1, Math.PI * .9); c.lineWidth = 1.6; c.strokeStyle = DG.d; c.stroke(); } // 비늘 무늬
+  dzLeg(c, -34, -46, 28, st * .6, false, DG, DG.claw); dzLeg(c, 36, -48, 24, -st * .6, false, DG, DG.claw);
+  c.save(); c.translate(84, -112); c.scale(1.25, 1.25); c.translate(-84, 112); dgHeadSide(c, t, jaw); c.restore(); // 큰 머리
+  dgWing(c, {r:[-6, -84], w:[-30, -176], f:[[4, -204], [-62, -208], [-112, -180], [-140, -124]], b:[-50, -76]}, false, fl);
+}
+function dgHeadFront(c, t, jaw, cx = 0, cy = 0, s = 1){
+  c.save(); c.translate(cx, cy); c.scale(s, s);
+  for (const sx of [-1, 1]) { // 뿔 둘
+    cel(c, cc => { cc.moveTo(sx * 14, -130); cc.bezierCurveTo(sx * 30, -152, sx * 48, -160, sx * 62, -170); cc.bezierCurveTo(sx * 46, -150, sx * 34, -138, sx * 24, -122); cc.closePath(); }, DG.horn, DG.hornS, sx * 2, 2, 2.6);
+    dzSpikes(c, [[sx * 28, -112, 12, sx * 10]], DG.ice, DG.iceS, 3.5);
+  }
+  cel(c, cc => ell(cc, 0, -122, 26, 18), DG.s, DG.sS, 3, 3, 3); // 머리뼈
+  cel(c, cc => { cc.moveTo(-17, -98); cc.lineTo(17, -98); cc.lineTo(13, -86 + jaw); cc.lineTo(-13, -86 + jaw); cc.closePath(); }, DG.mouth, '#2a0612', 0, 0, 2.2); // 벌린 입
+  dzFangs(c, -12, 12, -86 + jaw, -1, 4);
+  cel(c, cc => { cc.moveTo(-20, -118); cc.lineTo(20, -118); cc.lineTo(16, -98); cc.lineTo(-16, -98); cc.closePath(); }, DG.s, DG.sS, 1, 2, 2.8); // 주둥이
+  dzFangs(c, -14, 14, -98, 1, 5);
+  for (const sx of [-1, 1]) { c.beginPath(); ell(c, sx * 7, -112, 2.6, 2); c.fillStyle = INK; c.fill(); }
+  line(c, [0, -134, 0, -118], 3, DG.d);
+  for (const sx of [-1, 1]) dzEye(c, sx * 13, -124, .95, t, DG.eye, -sx);
+  dzBreath(c, -8, -92, t, -.5, .6, '#e8f8ff', 4); dzBreath(c, 8, -92, t + .5, .5, .6, '#e8f8ff', 4);
+  c.restore();
+}
+function dgFront(c, t, st, jaw, fl){
+  for (const sx of [-1, 1]) dgWingM(c, sx, {r:[30, -84], w:[86, -164], f:[[56, -196], [124, -192], [168, -146], [170, -92]], b:[44, -52]}, false, fl);
+  dgTail(c, [[20, -30], [70, -28], [112, -22], [140, -30]], 12);
+  dzLeg(c, -42, -40, 24, 0, true, DG, DG.claw); dzLeg(c, 42, -40, 24, 0, true, DG, DG.claw);
+  cel(c, cc => ell(cc, 0, -58, 52, 36), DG.s, DG.sS, 6, 5, 3); // 몸
+  cel(c, cc => ell(cc, 0, -54, 30, 30), DG.belly, DG.bellyS, 2, 3, 2.4); // 가슴 비늘판
+  for (let k = 0; k < 5; k++) { const y = -76 + k * 10, w = Math.sqrt(Math.max(0, 900 - (y + 54) ** 2)) * .9; line(c, [-w, y, w, y], 1.6, DG.bellyS); }
+  cel(c, cc => { cc.moveTo(-18, -84); cc.lineTo(18, -84); cc.lineTo(14, -110); cc.lineTo(-14, -110); cc.closePath(); }, DG.s, DG.sS, 2, 2, 2.8); // 목
+  const ph = Math.max(0, st) * .8, ph2 = Math.max(0, -st) * .8;
+  dzLeg(c, -26, -42, 26, -ph, false, DG, DG.claw, 4); dzLeg(c, 26, -42, 26, -ph2, false, DG, DG.claw, 4);
+  dgHeadFront(c, t, jaw);
+}
+function dgWingM(c, sx, W, far, fl){ // 좌우 대칭 날개(앞·뒤 모습)
+  const m = p => [p[0] * sx, p[1]];
+  dgWing(c, {r:m(W.r), w:m(W.w), f:W.f.map(m), b:m(W.b)}, far, fl * sx);
+}
+function dgBack(c, t, st, fl){
+  dzLeg(c, -26, -40, 24, st * .5, true, DG, DG.claw); dzLeg(c, 26, -40, 24, -st * .5, true, DG, DG.claw);
+  // 머리(뒤통수 + 뿔)
+  for (const sx of [-1, 1]) cel(c, cc => { cc.moveTo(sx * 10, -122); cc.bezierCurveTo(sx * 24, -144, sx * 40, -154, sx * 54, -164); cc.bezierCurveTo(sx * 40, -144, sx * 28, -132, sx * 20, -114); cc.closePath(); }, DG.horn, DG.hornS, sx * 2, 2, 2.6);
+  cel(c, cc => ell(cc, 0, -114, 20, 15), DG.s, DG.sS, 2, 2, 2.8);
+  cel(c, cc => { cc.moveTo(-16, -84); cc.lineTo(16, -84); cc.lineTo(12, -108); cc.lineTo(-12, -108); cc.closePath(); }, DG.s, DG.sS, 2, 2, 2.8);
+  cel(c, cc => ell(cc, 0, -56, 54, 36), DG.s, DG.sS, 6, 5, 3);
+  dzSpikes(c, [[0, -112, 14, 0], [0, -96, 18, 0], [0, -82, 22, 0], [0, -66, 24, 0], [0, -48, 20, 0], [0, -30, 16, 0]], DG.ice, DG.iceS, 5);
+  for (const sx of [-1, 1]) dgWingM(c, sx, {r:[24, -78], w:[92, -160], f:[[62, -194], [132, -188], [178, -140], [176, -84]], b:[46, -54]}, false, fl);
+  dgTail(c, [[0, -28], [-10, -8], [-34, 8], [-66, 14], [-92, 6]], 16);
+  const ph = Math.max(0, st) * .8, ph2 = Math.max(0, -st) * .8;
+  dzLeg(c, -30, -36, 28, -ph, false, DG, DG.claw); dzLeg(c, 30, -36, 28, -ph2, false, DG, DG.claw);
+}
+function dgDiagF(c, t, st, jaw, fl){
+  dgWing(c, {r:[30, -88], w:[70, -170], f:[[96, -192], [40, -206], [-6, -192], [-20, -150]], b:[10, -82]}, true, fl);
+  dgTail(c, [[-40, -46], [-80, -52], [-112, -60], [-140, -72], [-156, -88]], 16);
+  dzLeg(c, -34, -42, 24, -st * .5, true, DG, DG.claw); dzLeg(c, 20, -46, 22, st * .5, true, DG, DG.claw);
+  cel(c, cc => { cc.moveTo(-52, -36); cc.bezierCurveTo(-62, -70, -24, -90, 6, -90); cc.bezierCurveTo(36, -90, 54, -74, 54, -54); cc.bezierCurveTo(54, -30, 30, -20, 0, -20); cc.bezierCurveTo(-28, -20, -48, -24, -52, -36); cc.closePath(); }, DG.s, DG.sS, 6, 5, 3);
+  cel(c, cc => ell(cc, 26, -48, 24, 22), DG.belly, DG.bellyS, 2, 3, 2.2);
+  for (let k = 0; k < 4; k++) line(c, [8, -62 + k * 9, 44, -62 + k * 9], 1.5, DG.bellyS);
+  dzSpikes(c, [[-6, -88, 24, -4], [-24, -84, 22, -5], [-42, -72, 18, -6], [10, -92, 20, -3]], DG.ice, DG.iceS, 5);
+  cel(c, cc => { cc.moveTo(20, -80); cc.bezierCurveTo(30, -100, 46, -110, 58, -112); cc.lineTo(70, -100); cc.bezierCurveTo(58, -92, 48, -76, 46, -58); cc.closePath(); }, DG.s, DG.sS, 3, 3, 3);
+  dzLeg(c, -24, -44, 28, st * .6, false, DG, DG.claw); dzLeg(c, 32, -44, 26, -st * .6, false, DG, DG.claw, 4);
+  // 앞을 비스듬히 보는 머리: 두 눈(먼 눈은 작게)
+  c.save(); c.translate(64, 6); c.translate(0, -112); c.scale(1.12, 1.12); c.translate(0, 112);
+  for (const [sx, ox, k] of [[-1, -8, .85], [1, 10, 1]]) cel(c, cc => { cc.moveTo(ox + sx * 8, -130); cc.bezierCurveTo(ox + sx * 20, -150, ox + sx * 28 - 14, -160, ox + sx * 30 - 26, -172 * k); cc.bezierCurveTo(ox + sx * 20 - 14, -150, ox + sx * 14 - 6, -138, ox + sx * 14, -122); cc.closePath(); }, sx < 0 ? DG.hornS : DG.horn, DG.hornS, 2, 2, 2.6);
+  cel(c, cc => ell(cc, 0, -122, 24, 18), DG.s, DG.sS, 3, 3, 3);
+  cel(c, cc => { cc.moveTo(4, -100); cc.lineTo(34, -102); cc.lineTo(30, -90 + jaw); cc.lineTo(4, -92 + jaw * .6); cc.closePath(); }, DG.mouth, '#2a0612', 0, 0, 2.2);
+  dzFangs(c, 8, 30, -92 + jaw * .8, -1, 3);
+  cel(c, cc => { cc.moveTo(-6, -118); cc.lineTo(30, -118); cc.lineTo(36, -104); cc.lineTo(2, -100); cc.closePath(); }, DG.s, DG.sS, 1, 2, 2.8);
+  dzFangs(c, 6, 34, -102, 1, 4);
+  c.beginPath(); ell(c, 30, -112, 2.6, 2); c.fillStyle = INK; c.fill();
+  dzEye(c, -6, -126, .75, t, DG.eye, 1); dzEye(c, 14, -126, 1, t, DG.eye, -1);
+  dzBreath(c, 32, -96, t, .8, .4, '#e8f8ff', 4);
+  c.restore();
+  dgWing(c, {r:[-4, -84], w:[-46, -168], f:[[-10, -196], [-80, -200], [-130, -172], [-150, -120]], b:[-46, -70]}, false, -fl);
+}
+function dgDiagB(c, t, st, fl){
+  dzLeg(c, 4, -42, 22, st * .5, true, DG, DG.claw); dzLeg(c, 40, -44, 22, -st * .5, true, DG, DG.claw);
+  // 저 멀리 머리(뒤통수 + 뿔)
+  for (const [ox, k] of [[34, .9], [60, 1]]) cel(c, cc => { cc.moveTo(ox - 6, -128); cc.bezierCurveTo(ox - 14, -150, ox - 24, -160, ox - 36 * k, -172); cc.bezierCurveTo(ox - 12, -158, ox, -142, ox + 10, -124); cc.closePath(); }, DG.horn, DG.hornS, 2, 2, 2.6);
+  cel(c, cc => ell(cc, 50, -122, 18, 14), DG.s, DG.sS, 2, 2, 2.8);
+  cel(c, cc => ell(cc, 66, -116, 8, 6), DG.s, DG.sS, 1, 1, 2.2); // 주둥이 끝이 살짝
+  cel(c, cc => { cc.moveTo(18, -76); cc.bezierCurveTo(26, -96, 36, -110, 46, -114); cc.lineTo(60, -108); cc.bezierCurveTo(50, -96, 44, -80, 44, -60); cc.closePath(); }, DG.s, DG.sS, 3, 3, 3);
+  cel(c, cc => { cc.moveTo(-52, -32); cc.bezierCurveTo(-60, -66, -20, -86, 8, -86); cc.bezierCurveTo(36, -86, 52, -70, 50, -50); cc.bezierCurveTo(48, -28, 22, -18, -10, -18); cc.bezierCurveTo(-34, -18, -48, -22, -52, -32); cc.closePath(); }, DG.s, DG.sS, 6, 5, 3);
+  dzSpikes(c, [[34, -100, 14, 2], [22, -86, 20, 1], [6, -84, 24, 0], [-12, -80, 22, -2], [-30, -68, 18, -4], [-44, -50, 14, -6]], DG.ice, DG.iceS, 5);
+  dgWing(c, {r:[30, -82], w:[90, -160], f:[[70, -196], [130, -190], [172, -146], [168, -96]], b:[44, -60]}, false, fl);
+  dgWing(c, {r:[-6, -80], w:[-60, -164], f:[[-24, -196], [-96, -196], [-144, -160], [-156, -106]], b:[-44, -60]}, false, -fl);
+  dgTail(c, [[-40, -28], [-66, -14], [-96, -4], [-128, 6], [-150, 0]], 16);
+  dzLeg(c, -26, -38, 28, -Math.max(0, st) * .8, false, DG, DG.claw); dzLeg(c, 12, -38, 26, -Math.max(0, -st) * .8, false, DG, DG.claw);
+}
+
+// ===== 티라노사우루스 =====
+function drawTrex8(c, d8, t, V){
+  dzAura(c, t, '#ff7a2a', 110, 0);
+  d8 = dzMirror(c, d8);
+  const st = Math.sin(t * 7) * 6, bob = Math.abs(Math.sin(t * 7)) * 2.4, jaw = 4 + Math.max(0, Math.sin(t * 2.4)) * 8;
+  c.save(); c.translate(0, -bob);
+  if (d8 === 0) txSide(c, t, st, jaw);
+  else if (d8 === 2) txFront(c, t, st, jaw);
+  else if (d8 === 6) txBack(c, t, st);
+  else if (d8 === 1) txDiagF(c, t, st, jaw);
+  else txDiagB(c, t, st);
+  c.restore();
+}
+function txLeg(c, x, o, far){ // 굵은 뒷다리(허벅지 + 정강이 + 세 발가락)
+  const B = far ? TX.sS : TX.s, S = far ? TX.d : TX.sS;
+  cel(c, cc => ell(cc, x, -58, 22, 26), B, S, 3, 3, 2.8);
+  cel(c, cc => { cc.moveTo(x - 10, -44); cc.lineTo(x + 8, -44); cc.lineTo(x + 6 + o * .3, -6); cc.lineTo(x - 6 + o * .3, -6); cc.closePath(); }, B, S, 2, 0, 2.6);
+  cel(c, cc => ell(cc, x + 6 + o * .3, -5, 16, 6), B, S, 1, 1, 2.6);
+  for (let k = 0; k < 3; k++) { const cx = x + o * .3 + k * 8; cel(c, cc => { cc.moveTo(cx - 2.4, -3); cc.quadraticCurveTo(cx + 4, 0, cx + 6, 5); cc.lineTo(cx + 2.4, -3); cc.closePath(); }, '#efe6d2', '#8a7a5a', 0, 0, 1.4); }
+}
+function txStripes(c, pts){ for (const [x, y, a] of pts) cel(c, cc => { cc.moveTo(x - 3, y); cc.lineTo(x + a, y + 14); cc.lineTo(x + 4, y); cc.closePath(); }, TX.stripe, TX.stripe, 0, 0, 0); }
+function txPlates(c, pts){ for (const [x, y, h] of pts) cel(c, cc => { cc.moveTo(x - 4, y + 1); cc.lineTo(x, y - h); cc.lineTo(x + 4, y + 1); cc.closePath(); }, TX.plate, '#5a4e30', 0, 0, 2); }
+function txHeadSide(c, t, jaw){
+  // 아래턱
+  cel(c, cc => { cc.moveTo(66, -96); cc.lineTo(118, -92 + jaw); cc.lineTo(114, -82 + jaw); cc.bezierCurveTo(96, -80 + jaw, 76, -84, 64, -88); cc.closePath(); }, TX.s, TX.sS, 1, 1, 2.6);
+  cel(c, cc => { cc.moveTo(70, -98); cc.lineTo(122, -100); cc.lineTo(118, -92 + jaw); cc.lineTo(70, -92 + jaw * .3); cc.closePath(); }, TX.mouth, '#30060c', 0, 0, 2);
+  dzFangs(c, 80, 116, -92 + jaw * .85, -1, 6);
+  // 큰 머리
+  cel(c, cc => { cc.moveTo(54, -112); cc.bezierCurveTo(58, -132, 90, -136, 112, -124); cc.lineTo(126, -112); cc.lineTo(124, -98); cc.lineTo(72, -98); cc.bezierCurveTo(58, -98, 52, -104, 54, -112); cc.closePath(); }, TX.s, TX.sS, 3, 3, 3);
+  dzFangs(c, 76, 122, -98, 1, 8);
+  txStripes(c, [[64, -128, -2], [74, -132, -1]]);
+  cel(c, cc => ell(cc, 86, -124, 9, 4), TX.sS, TX.sS, 0, 0, 0); // 눈두덩
+  dzEye(c, 88, -118, 1, t, TX.eye, 1);
+  c.beginPath(); ell(c, 120, -112, 2.8, 2); c.fillStyle = INK; c.fill();
+  for (const k of [0, 1, 2]) line(c, [98 + k * 4, -126 + k * 2, 104 + k * 4, -120 + k * 2], 1.6, '#a85a4a'); // 흉터
+  dzBreath(c, 124, -104, t, 1, .1, 'rgba(240,230,210,1)', 3);
+}
+function txSide(c, t, st, jaw){
+  txLeg(c, -6, -st, true);
+  // 꼬리
+  cel(c, cc => { cc.moveTo(-30, -92); cc.bezierCurveTo(-70, -94, -110, -86, -150, -76); cc.lineTo(-152, -70); cc.bezierCurveTo(-110, -66, -70, -60, -30, -56); cc.closePath(); }, TX.s, TX.sS, 4, 3, 3);
+  // 몸통
+  cel(c, cc => { cc.moveTo(-40, -70); cc.bezierCurveTo(-36, -100, 10, -110, 44, -98); cc.bezierCurveTo(62, -88, 64, -66, 50, -54); cc.bezierCurveTo(28, -40, -14, -42, -40, -70); cc.closePath(); }, TX.s, TX.sS, 6, 5, 3);
+  cel(c, cc => { cc.moveTo(-20, -52); cc.bezierCurveTo(10, -44, 40, -48, 54, -62); cc.lineTo(56, -70); cc.bezierCurveTo(40, -58, 10, -54, -18, -60); cc.closePath(); }, TX.belly, TX.bellyS, 1, 2, 2);
+  // 목
+  cel(c, cc => { cc.moveTo(34, -100); cc.bezierCurveTo(44, -112, 54, -116, 62, -114); cc.lineTo(70, -96); cc.bezierCurveTo(62, -90, 58, -80, 56, -66); cc.closePath(); }, TX.s, TX.sS, 3, 3, 3);
+  txStripes(c, [[-6, -100, -3], [8, -102, -3], [22, -100, -2], [-20, -94, -4], [-60, -88, -3], [-84, -84, -3], [-108, -80, -3]]);
+  txPlates(c, [[44, -110, 8], [30, -104, 10], [14, -106, 12], [-2, -104, 12], [-18, -98, 10], [-40, -92, 9], [-66, -90, 8], [-92, -86, 7], [-118, -80, 6]]);
+  // 작은 앞다리
+  cel(c, cc => { cc.moveTo(48, -72); cc.lineTo(62, -64); cc.lineTo(60, -58); cc.lineTo(46, -64); cc.closePath(); }, TX.sS, TX.d, 1, 1, 2.2);
+  for (const k of [0, 1]) line(c, [60, -62 + k * 3, 66, -58 + k * 4], 1.8, '#efe6d2');
+  txLeg(c, -14, st, false);
+  txHeadSide(c, t, jaw);
+}
+function txFront(c, t, st, jaw){
+  cel(c, cc => { cc.moveTo(20, -80); cc.bezierCurveTo(60, -86, 100, -80, 134, -70); cc.lineTo(134, -62); cc.bezierCurveTo(100, -64, 60, -60, 20, -58); cc.closePath(); }, TX.s, TX.sS, 3, 3, 3); // 뒤로 뻗은 꼬리
+  for (const sx of [-1, 1]) txLeg(c, sx * 28, sx < 0 ? Math.max(0, st) : Math.max(0, -st), true);
+  cel(c, cc => ell(cc, 0, -76, 42, 34), TX.s, TX.sS, 6, 5, 3); // 몸
+  cel(c, cc => ell(cc, 0, -68, 24, 24), TX.belly, TX.bellyS, 2, 3, 2.2);
+  for (const sx of [-1, 1]) { cel(c, cc => { cc.moveTo(sx * 18, -76); cc.lineTo(sx * 26, -64); cc.lineTo(sx * 22, -60); cc.lineTo(sx * 14, -70); cc.closePath(); }, TX.sS, TX.d, 1, 1, 2.2); line(c, [sx * 23, -60, sx * 22, -55], 1.8, '#efe6d2'); }
+  for (const sx of [-1, 1]) cel(c, cc => ell(cc, sx * 22, -36, 15, 22), TX.s, TX.sS, 2, 2, 2.6); // 허벅지
+  // 큰 머리(정면): 넓은 머리뼈 + 크게 벌린 입
+  cel(c, cc => { cc.moveTo(-26, -112); cc.lineTo(26, -112); cc.lineTo(20, -94 + jaw); cc.lineTo(-20, -94 + jaw); cc.closePath(); }, TX.mouth, '#30060c', 0, 0, 2.2);
+  dzFangs(c, -20, 20, -94 + jaw, -1, 6);
+  cel(c, cc => { cc.moveTo(-30, -134); cc.bezierCurveTo(-30, -146, 30, -146, 30, -134); cc.lineTo(26, -112); cc.lineTo(-26, -112); cc.closePath(); }, TX.s, TX.sS, 2, 3, 3);
+  dzFangs(c, -24, 24, -112, 1, 8);
+  for (const sx of [-1, 1]) dzEye(c, sx * 18, -130, .95, t, TX.eye, -sx);
+  for (const sx of [-1, 1]) { c.beginPath(); ell(c, sx * 6, -118, 2.4, 1.8); c.fillStyle = INK; c.fill(); }
+  txStripes(c, [[-6, -144, 0], [6, -144, 0]]);
+}
+function txBack(c, t, st){
+  cel(c, cc => { cc.moveTo(-26, -136); cc.bezierCurveTo(-26, -150, 26, -150, 26, -136); cc.lineTo(20, -112); cc.lineTo(-20, -112); cc.closePath(); }, TX.s, TX.sS, 2, 3, 3); // 뒤통수
+  for (const sx of [-1, 1]) txLeg(c, sx * 30, sx < 0 ? Math.max(0, st) : Math.max(0, -st), true);
+  cel(c, cc => ell(cc, 0, -78, 44, 36), TX.s, TX.sS, 6, 5, 3);
+  txPlates(c, [[0, -112, 12], [0, -98, 14], [0, -84, 14], [0, -70, 12]]);
+  txStripes(c, [[-24, -96, -4], [24, -96, 4], [-30, -80, -4], [30, -80, 4]]);
+  for (const sx of [-1, 1]) cel(c, cc => ell(cc, sx * 24, -38, 16, 22), TX.s, TX.sS, 2, 2, 2.6);
+  // 꼬리가 이쪽으로
+  cel(c, cc => { cc.moveTo(-18, -54); cc.bezierCurveTo(-20, -20, -12, 6, 12, 24); cc.lineTo(20, 18); cc.bezierCurveTo(10, 0, 16, -24, 18, -54); cc.closePath(); }, TX.s, TX.sS, 3, 3, 3);
+  txPlates(c, [[0, -40, 8], [2, -20, 7], [8, 2, 6]]);
+}
+function txDiagF(c, t, st, jaw){
+  cel(c, cc => { cc.moveTo(-30, -92); cc.bezierCurveTo(-70, -100, -100, -108, -132, -116); cc.lineTo(-130, -108); cc.bezierCurveTo(-100, -92, -70, -76, -30, -60); cc.closePath(); }, TX.s, TX.sS, 4, 3, 3);
+  txLeg(c, 10, -st, true);
+  cel(c, cc => { cc.moveTo(-40, -70); cc.bezierCurveTo(-36, -102, 10, -110, 40, -98); cc.bezierCurveTo(58, -86, 58, -64, 44, -52); cc.bezierCurveTo(20, -40, -16, -42, -40, -70); cc.closePath(); }, TX.s, TX.sS, 6, 5, 3);
+  cel(c, cc => ell(cc, 26, -66, 20, 18), TX.belly, TX.bellyS, 2, 2, 2);
+  txStripes(c, [[-6, -100, -3], [10, -102, -3], [-22, -94, -4], [-60, -96, -3], [-90, -102, -3]]);
+  txPlates(c, [[20, -106, 10], [2, -106, 12], [-16, -100, 10], [-40, -96, 9], [-70, -100, 8], [-100, -106, 7]]);
+  cel(c, cc => { cc.moveTo(40, -72); cc.lineTo(54, -60); cc.lineTo(50, -56); cc.lineTo(38, -64); cc.closePath(); }, TX.sS, TX.d, 1, 1, 2.2);
+  txLeg(c, -16, st, false);
+  // 비스듬히 앞을 보는 머리
+  c.save(); c.translate(52, 4);
+  cel(c, cc => { cc.moveTo(-6, -104); cc.lineTo(40, -104); cc.lineTo(34, -92 + jaw); cc.lineTo(0, -94 + jaw * .6); cc.closePath(); }, TX.mouth, '#30060c', 0, 0, 2.2);
+  dzFangs(c, 2, 36, -94 + jaw * .8, -1, 5);
+  cel(c, cc => { cc.moveTo(-20, -124); cc.bezierCurveTo(-16, -142, 30, -142, 40, -126); cc.lineTo(44, -104); cc.lineTo(-8, -104); cc.closePath(); }, TX.s, TX.sS, 2, 3, 3);
+  dzFangs(c, -4, 42, -104, 1, 7);
+  dzEye(c, -6, -126, .75, t, TX.eye, 1); dzEye(c, 18, -126, 1, t, TX.eye, -1);
+  c.beginPath(); ell(c, 36, -116, 2.4, 1.8); c.fillStyle = INK; c.fill();
+  c.restore();
+}
+function txDiagB(c, t, st){
+  txLeg(c, 18, -st, true);
+  cel(c, cc => { cc.moveTo(28, -112); cc.bezierCurveTo(30, -134, 70, -136, 80, -122); cc.lineTo(76, -104); cc.lineTo(36, -100); cc.closePath(); }, TX.s, TX.sS, 2, 3, 3); // 머리 뒤쪽
+  cel(c, cc => { cc.moveTo(-40, -66); cc.bezierCurveTo(-40, -100, 10, -108, 40, -96); cc.bezierCurveTo(56, -86, 56, -64, 42, -52); cc.bezierCurveTo(16, -40, -20, -42, -40, -66); cc.closePath(); }, TX.s, TX.sS, 6, 5, 3);
+  txPlates(c, [[34, -102, 10], [18, -104, 12], [0, -102, 13], [-18, -96, 11], [-34, -84, 9]]);
+  txStripes(c, [[-4, -98, -3], [12, -100, -3], [-22, -90, -4], [26, -96, -2]]);
+  cel(c, cc => { cc.moveTo(-36, -76); cc.bezierCurveTo(-70, -56, -96, -30, -120, -6); cc.lineTo(-112, 0); cc.bezierCurveTo(-86, -22, -60, -44, -30, -56); cc.closePath(); }, TX.s, TX.sS, 3, 3, 3); // 꼬리가 앞쪽 왼편으로
+  txPlates(c, [[-60, -62, 7], [-84, -40, 6], [-104, -20, 5]]);
+  txLeg(c, -10, st, false);
+}
+
+// ===== 트리케라톱스 =====
+function drawTrike8(c, d8, t, V){
+  dzAura(c, t, '#ff4a2a', 112, 0);
+  d8 = dzMirror(c, d8);
+  const st = Math.sin(t * 6) * 5, bob = Math.abs(Math.sin(t * 6)) * 1.6;
+  c.save(); c.translate(0, -bob);
+  if (d8 === 0) tkSide(c, t, st);
+  else if (d8 === 2) tkFront(c, t, st);
+  else if (d8 === 6) tkBack(c, t, st);
+  else if (d8 === 1) tkDiagF(c, t, st);
+  else tkDiagB(c, t, st);
+  c.restore();
+}
+function tkFrill(c, cx, cy, rx, ry){ // 뼈 가시가 돋은 큰 프릴
+  const n = 11;
+  cel(c, cc => { for (let i = 0; i <= n; i++) { const a = Math.PI + i / n * Math.PI, x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry; if (!i) cc.moveTo(x, y); else cc.lineTo(x, y); const a2 = a + Math.PI / n / 2; if (i < n) cc.lineTo(cx + Math.cos(a2) * (rx + 10), cy + Math.sin(a2) * (ry + 10)); } cc.closePath(); }, TK.bone, TK.boneS, 1, 1, 2.6);
+  cel(c, cc => ell(cc, cx, cy, rx * .86, ry * .86), TK.frill, TK.frillS, 3, 3, 2.6);
+  cel(c, cc => ell(cc, cx, cy, rx * .5, ry * .5), TK.s, TK.sS, 2, 2, 2);
+  for (let i = 1; i < 6; i++) { const a = Math.PI + i / 6 * Math.PI; line(c, [cx + Math.cos(a) * rx * .52, cy + Math.sin(a) * ry * .52, cx + Math.cos(a) * rx * .82, cy + Math.sin(a) * ry * .82], 2.2, TK.frillS); }
+}
+function tkHorn(c, x, y, tx, ty, w, near){ cel(c, cc => { cc.moveTo(x - w, y); cc.quadraticCurveTo((x + tx) / 2 - w * .3, (y + ty) / 2 - w, tx, ty); cc.quadraticCurveTo((x + tx) / 2 + w * .6, (y + ty) / 2 + w * .2, x + w, y + 2); cc.closePath(); }, near ? TK.bone : TK.boneS, TK.boneS, 1, 1, 2.4); }
+function tkLeg(c, x, top, w, o, far){ dzLeg(c, x, top, w, o, far, TK, TK.bone, 3); }
+function tkBody(c, path){ cel(c, path, TK.s, TK.sS, 6, 5, 3); }
+function tkSide(c, t, st){
+  tkLeg(c, -46, -36, 20, -st * .6, true); tkLeg(c, 26, -38, 20, st * .6, true);
+  cel(c, cc => { cc.moveTo(-64, -54); cc.bezierCurveTo(-90, -50, -110, -40, -124, -30); cc.lineTo(-120, -24); cc.bezierCurveTo(-100, -30, -80, -34, -62, -36); cc.closePath(); }, TK.s, TK.sS, 3, 3, 3); // 꼬리
+  tkBody(c, cc => { cc.moveTo(-70, -40); cc.bezierCurveTo(-72, -82, -10, -94, 30, -80); cc.bezierCurveTo(50, -72, 54, -46, 40, -32); cc.bezierCurveTo(0, -22, -50, -22, -70, -40); cc.closePath(); });
+  cel(c, cc => { cc.moveTo(-56, -30); cc.bezierCurveTo(-20, -22, 20, -24, 42, -36); cc.lineTo(42, -42); cc.bezierCurveTo(20, -32, -20, -32, -54, -36); cc.closePath(); }, TK.belly, TK.bellyS, 0, 1, 1.8);
+  for (const [x, y] of [[-40, -70], [-16, -78], [8, -76], [-28, -56], [0, -60], [20, -56], [-52, -54]]) { c.beginPath(); c.arc(x, y, 5, Math.PI * .1, Math.PI * .9); c.lineWidth = 1.8; c.strokeStyle = TK.d; c.stroke(); }
+  for (const [x, y] of [[-30, -84], [-8, -88], [14, -84]]) cel(c, cc => ell(cc, x, y, 5, 3), TK.bone, TK.boneS, 0, 0, 1.6); // 등의 뼈돌기
+  tkLeg(c, -54, -36, 24, st * .6, false); tkLeg(c, 20, -38, 24, -st * .6, false);
+  // 머리: 프릴 + 뿔 셋 + 부리 (눈 하나)
+  c.save(); c.translate(6, 0);
+  tkFrill(c, 46, -78, 30, 40);
+  tkHorn(c, 64, -84, 102, -112, 5, false); // 먼 쪽 이마 뿔
+  cel(c, cc => { cc.moveTo(44, -70); cc.bezierCurveTo(56, -90, 84, -86, 94, -70); cc.lineTo(108, -54); cc.lineTo(96, -42); cc.bezierCurveTo(78, -38, 56, -44, 44, -56); cc.closePath(); }, TK.s, TK.sS, 3, 3, 3);
+  cel(c, cc => { cc.moveTo(96, -60); cc.lineTo(110, -54); cc.lineTo(100, -42); cc.closePath(); }, TK.beak, '#1e140e', 0, 0, 2.2); // 부리
+  tkHorn(c, 92, -66, 100, -80, 3.5, true); // 코뿔
+  tkHorn(c, 70, -84, 112, -116, 6, true); // 이마 뿔
+  dzEye(c, 74, -72, .95, t, TK.eye, 1);
+  for (const k of [0, 1, 2]) line(c, [58 + k * 3, -62 + k * 2, 64 + k * 3, -58 + k * 2], 1.6, '#c88a6a');
+  dzBreath(c, 106, -46, t, 1, .3, 'rgba(240,230,210,1)', 3);
+  c.restore();
+}
+function tkFront(c, t, st){
+  tkFrill(c, 0, -80, 52, 46);
+  tkLeg(c, -34, -36, 22, 0, true); tkLeg(c, 34, -36, 22, 0, true);
+  tkBody(c, cc => ell(cc, 0, -50, 46, 30));
+  const ph = Math.max(0, st) * .8, ph2 = Math.max(0, -st) * .8;
+  tkLeg(c, -24, -40, 24, -ph, false); tkLeg(c, 24, -40, 24, -ph2, false);
+  cel(c, cc => { cc.moveTo(-24, -84); cc.bezierCurveTo(-24, -98, 24, -98, 24, -84); cc.lineTo(14, -48); cc.lineTo(-14, -48); cc.closePath(); }, TK.s, TK.sS, 3, 3, 3); // 얼굴
+  cel(c, cc => { cc.moveTo(-10, -56); cc.lineTo(10, -56); cc.lineTo(0, -40); cc.closePath(); }, TK.beak, '#1e140e', 0, 0, 2.2);
+  for (const sx of [-1, 1]) tkHorn(c, sx * 13, -88, sx * 34, -124, 6, true);
+  tkHorn(c, 0, -64, 0, -78, 4, true);
+  for (const sx of [-1, 1]) dzEye(c, sx * 14, -76, .9, t, TK.eye, -sx);
+}
+function tkBack(c, t, st){
+  tkFrill(c, 0, -84, 50, 42);
+  tkLeg(c, -34, -36, 22, st * .5, true); tkLeg(c, 34, -36, 22, -st * .5, true);
+  tkBody(c, cc => ell(cc, 0, -52, 50, 34));
+  for (const [x, y] of [[0, -78], [0, -62], [-14, -70], [14, -70]]) cel(c, cc => ell(cc, x, y, 5, 3), TK.bone, TK.boneS, 0, 0, 1.6);
+  cel(c, cc => { cc.moveTo(-12, -34); cc.bezierCurveTo(-14, -10, -6, 6, 6, 16); cc.lineTo(14, 10); cc.bezierCurveTo(6, -4, 10, -20, 12, -34); cc.closePath(); }, TK.s, TK.sS, 3, 3, 3);
+  const ph = Math.max(0, st) * .8, ph2 = Math.max(0, -st) * .8;
+  tkLeg(c, -28, -34, 26, -ph, false); tkLeg(c, 28, -34, 26, -ph2, false);
+}
+function tkDiagF(c, t, st){
+  tkLeg(c, -40, -36, 20, -st * .5, true); tkLeg(c, 24, -38, 20, st * .5, true);
+  cel(c, cc => { cc.moveTo(-60, -56); cc.bezierCurveTo(-84, -60, -100, -66, -114, -74); cc.lineTo(-110, -66); cc.bezierCurveTo(-96, -52, -80, -44, -60, -38); cc.closePath(); }, TK.s, TK.sS, 3, 3, 3);
+  tkBody(c, cc => { cc.moveTo(-64, -40); cc.bezierCurveTo(-66, -80, -10, -92, 26, -80); cc.bezierCurveTo(46, -70, 50, -46, 36, -32); cc.bezierCurveTo(0, -22, -46, -22, -64, -40); cc.closePath(); });
+  for (const [x, y] of [[-30, -84], [-8, -88]]) cel(c, cc => ell(cc, x, y, 5, 3), TK.bone, TK.boneS, 0, 0, 1.6);
+  tkLeg(c, -46, -36, 24, st * .6, false); tkLeg(c, 18, -38, 24, -st * .6, false);
+  c.save(); c.translate(40, 2);
+  tkFrill(c, 0, -80, 42, 42);
+  cel(c, cc => { cc.moveTo(-16, -84); cc.bezierCurveTo(-12, -98, 30, -98, 34, -84); cc.lineTo(30, -50); cc.lineTo(4, -46); cc.closePath(); }, TK.s, TK.sS, 3, 3, 3);
+  cel(c, cc => { cc.moveTo(10, -56); cc.lineTo(32, -56); cc.lineTo(22, -40); cc.closePath(); }, TK.beak, '#1e140e', 0, 0, 2.2);
+  tkHorn(c, -2, -88, 4, -122, 5, false); tkHorn(c, 22, -88, 40, -124, 6, true); tkHorn(c, 20, -64, 24, -78, 3.5, true);
+  dzEye(c, 0, -76, .72, t, TK.eye, 1); dzEye(c, 22, -76, .95, t, TK.eye, -1);
+  c.restore();
+}
+function tkDiagB(c, t, st){
+  tkLeg(c, -20, -36, 20, st * .5, true); tkLeg(c, 34, -38, 20, -st * .5, true);
+  c.save(); c.translate(34, -4); tkHorn(c, 4, -96, 24, -126, 5, true); tkFrill(c, 0, -84, 40, 40); c.restore(); // 프릴 뒷면이 보여요
+  tkBody(c, cc => { cc.moveTo(-64, -38); cc.bezierCurveTo(-66, -80, -6, -92, 28, -78); cc.bezierCurveTo(48, -68, 50, -46, 36, -32); cc.bezierCurveTo(0, -20, -46, -22, -64, -38); cc.closePath(); });
+  for (const [x, y] of [[-30, -80], [-8, -84], [12, -80]]) cel(c, cc => ell(cc, x, y, 5, 3), TK.bone, TK.boneS, 0, 0, 1.6);
+  cel(c, cc => { cc.moveTo(-58, -40); cc.bezierCurveTo(-80, -26, -96, -12, -108, 2); cc.lineTo(-100, 6); cc.bezierCurveTo(-86, -6, -70, -18, -52, -28); cc.closePath(); }, TK.s, TK.sS, 3, 3, 3);
+  tkLeg(c, -46, -34, 24, -Math.max(0, st) * .8, false); tkLeg(c, 16, -34, 24, -Math.max(0, -st) * .8, false);
+}
+
+// ===== 서리용 둥지: 네모난 얼음 성벽 + 얼음 바닥 + 가운데 거대한 얼음 둥지 (2026-10-17) =====
+// 성벽은 얼음 덩어리를 쌓은 네모 고리예요. 북쪽 가운데만 문이 열려 있어요(숲 오솔길이 들어와요)
+function iceWallAt(D, x, y){
+  const W = D.rx + 40, ax = Math.abs(x - D.x), ay = Math.abs(y - D.y);
+  if (Math.abs(Math.max(ax, ay) - W) > 50) return false;
+  return !(y < D.y && ay >= ax && ax < D.gw);
+}
+function drawIceNestGround(c, D){
+  const W = D.rx, R = srand(7171);
+  c.save();
+  c.beginPath(); rr(c, D.x - W - 150, D.y - W - 150, (W + 150) * 2, (W + 150) * 2, 120); c.fillStyle = '#c4d6e4'; c.fill();
+  c.beginPath(); rr(c, D.x - W, D.y - W, W * 2, W * 2, 40); c.fillStyle = '#a9c2d6'; c.fill();
+  // 얼음 판(네모 타일) + 금
+  const S = 230;
+  for (let i = -5; i < 5; i++) for (let j = -5; j < 5; j++) {
+    const x = D.x + i * S + 6, y = D.y + j * S + 6; if (x < D.x - W || y < D.y - W || x + S - 12 > D.x + W + 2 || y + S - 12 > D.y + W + 2) continue;
+    c.beginPath(); rr(c, x, y, S - 12, S - 12, 18); c.fillStyle = R() < .5 ? '#d2e6f2' : '#c6dcec'; c.fill();
+    c.beginPath(); c.ellipse(x + 50, y + 40, 40, 12, -.5, 0, 7); c.fillStyle = 'rgba(255,255,255,.55)'; c.fill();
+  }
+  c.strokeStyle = '#7f9ab0'; c.lineWidth = 3; c.lineCap = 'round';
+  for (let k = 0; k < 30; k++) { let x = D.x + (R() - .5) * W * 1.8, y = D.y + (R() - .5) * W * 1.8; c.beginPath(); c.moveTo(x, y); for (let j = 0; j < 4; j++) { x += (R() - .5) * 90; y += (R() - .5) * 60; c.lineTo(x, y); } c.stroke(); }
+  // 가운데 둥지 오목한 자리
+  const nx = D.x, ny = D.y - 120, g = c.createRadialGradient(nx, ny, 40, nx, ny, 460);
+  g.addColorStop(0, '#2c4a78'); g.addColorStop(.7, '#5a82aa'); g.addColorStop(1, 'rgba(120,160,200,0)');
+  c.beginPath(); ell(c, nx, ny, 470, 300); c.fillStyle = g; c.fill();
+  c.beginPath(); ell(c, nx, ny, 330, 200); c.fillStyle = 'rgba(20,40,80,.35)'; c.fill();
+  // 큰 발자국(공룡·용)
+  c.fillStyle = 'rgba(60,80,110,.4)';
+  for (let k = 0; k < 6; k++) { const x = D.x - 520 + k * 90, y = D.y + 420 + (k % 2) * 50; c.beginPath(); ell(c, x, y, 20, 13); c.fill(); for (let j = -1; j <= 1; j++) { c.beginPath(); ell(c, x + j * 14, y - 20, 5, 9); c.fill(); } }
+  c.restore();
+}
+function drawIceBlock(c, x, y, w, h, s){ // 바닥 가운데가 (x, y)
+  c.save(); c.translate(x, y);
+  cel(c, cc => rr(cc, -w / 2, -h, w, h, 10), '#bfe6fa', '#7ab6dc', 6, 6, 3);
+  cel(c, cc => rr(cc, -w / 2 + 4, -h - 26, w - 8, 30, 10), '#eef9ff', '#b6dcf0', 3, 3, 2.6);
+  c.beginPath(); c.moveTo(-w / 2 + 12, -h + 14); c.lineTo(-w / 2 + 30, -h + 14); c.lineTo(-w / 2 + 14, -14); c.closePath(); c.fillStyle = 'rgba(255,255,255,.55)'; c.fill();
+  c.strokeStyle = 'rgba(70,130,180,.6)'; c.lineWidth = 2; c.beginPath(); c.moveTo(w * .1 * s, -h + 6); c.lineTo(w * .2 * s, -h * .55); c.lineTo(w * .05, -h * .3); c.stroke();
+  c.restore();
+}
+function drawIceCrystal(c, x, y, h, lean, T){
+  c.save(); c.translate(x, y);
+  const glow = .5 + Math.sin(T * 2 + x) * .25;
+  c.save(); c.globalAlpha = glow * .5; const g = c.createRadialGradient(0, -h * .5, 4, 0, -h * .5, h * .7); g.addColorStop(0, '#9ae8ff'); g.addColorStop(1, 'rgba(120,200,255,0)'); c.fillStyle = g; c.fillRect(-h, -h * 1.2, h * 2, h * 1.4); c.restore();
+  for (const [dx, k, a] of [[-h * .22, .6, -.35], [h * .24, .7, .3], [0, 1, 0]]) {
+    c.save(); c.translate(dx, 0); c.rotate(a + lean); const hh = h * k, w = hh * .2;
+    cel(c, cc => { cc.moveTo(-w, 0); cc.lineTo(-w, -hh * .78); cc.lineTo(0, -hh); cc.lineTo(w, -hh * .78); cc.lineTo(w, 0); cc.closePath(); }, '#e2f7ff', '#6fc0ea', -w * .4, 0, 2.6);
+    line(c, [-w * .3, -hh * .15, -w * .3, -hh * .7], 2, 'rgba(255,255,255,.8)');
+    c.restore();
+  }
+  c.restore();
+}
+function iceNestEntities(ctx, D, add, vis, T){
+  const W = D.rx + 40, B = 128;
+  // 얼음 성벽(위쪽 벽은 문 자리를 비워요)
+  for (let side = 0; side < 4; side++) for (let k = -W; k <= W; k += B) {
+    const x = side < 2 ? D.x + k : D.x + (side === 2 ? -W : W), y = side < 2 ? D.y + (side === 0 ? -W : W) : D.y + k;
+    if (side >= 2 && Math.abs(k) > W - B / 2) continue; // 모서리는 위·아래 벽이 그려요
+    if (side === 0 && Math.abs(k) < D.gw) continue;
+    const h = 100 + ((k / B) & 1) * 26 + (side === 1 ? 10 : 0);
+    if (vis(x, y, 200)) add(y + 30, x, () => drawIceBlock(ctx, x, y + 30, B + 4, h, (k / B) & 1 ? 1 : -1));
+  }
+  // 네 모서리 큰 얼음 탑 + 문 양쪽 얼음 기둥
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const x = D.x + sx * W, y = D.y + sy * W + 40; if (vis(x, y, 300)) add(y + 1, x, () => drawIceCrystal(ctx, x, y, 230, 0, T)); }
+  for (const sx of [-1, 1]) { const x = D.x + sx * (D.gw + 40), y = D.y - W + 40; if (vis(x, y, 300)) add(y + 2, x, () => drawIceCrystal(ctx, x, y, 190, -sx * .08, T + sx)); }
+  // 가운데 거대한 얼음 둥지: 바깥으로 뻗은 얼음 가시 고리
+  const nx = D.x, ny = D.y - 120;
+  for (let k = 0; k < 26; k++) {
+    const a = k / 26 * 6.283, x = nx + Math.cos(a) * 400, y = ny + Math.sin(a) * 250, h = 110 + (k * 37 % 5) * 22;
+    if (vis(x, y, 250)) add(y, x, () => drawIceCrystal(ctx, x, y, h, Math.cos(a) * .35, T + k));
+  }
+  // 성벽 안 빛나는 얼음 결정(횃불 대신)
+  for (const [px, py] of [[-.72, -.6], [.72, -.6], [-.8, .2], [.8, .2], [-.6, .78], [.6, .78]]) { const x = D.x + px * D.rx, y = D.y + py * D.ry; if (vis(x, y, 200)) add(y, x, () => drawIceCrystal(ctx, x, y, 90, 0, T + px * 3)); }
+  const gx = D.x + 380, gy = D.y - W - 160;
+  if (vis(gx, gy)) add(gy, gx, () => drawSign(ctx, gx, gy, D.sign));
+}
 
 // ===== 2026-10-13 기상 이벤트 화면 연출 (태풍·우박·늦서리) =====
 let WXFX = null;
@@ -7528,7 +8103,7 @@ const HQ_PW = [0, 30, 95, 125, 165, 195, 260];
 const HQ_MONEY = [150000, 300000, 600000, 1000000, 1600000, 2400000, 3500000];
 const HQ_XP = [80, 150, 250, 400, 600, 850, 1200];
 const HQ_LV = {easy:{name:'쉬움', d:-1, n:5, mul:.7, col:'#5cc46c'}, fit:{name:'알맞음', d:0, n:4, mul:1, col:'#ffb13b'}, hard:{name:'도전', d:1, n:3, mul:1.4, col:'#ff6b57'}};
-const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'확장 부지 2 남쪽 호랑이 굴 (지도 x 133 · y 133)'}, pbear:{min:5, money:8000000, xp:900, stones:4, rep:6, where:'북쪽 숲 흰곰 굴 (지도 x 100 · y 20)'}, bwolf:{min:1, money:1500000, xp:250, stones:1, rep:2, where:'서쪽 숲 늑대 굴 (지도 x 50 · y 90)'}}; // 2026-10-16 흰곰 삭제
+const HQ_BOSS = {tiger:{min:3, money:5000000, xp:600, stones:3, rep:5, where:'확장 부지 2 남쪽 호랑이 굴 (지도 x 133 · y 133)'}, pbear:{min:5, money:8000000, xp:900, stones:4, rep:6, where:'북쪽 숲 흰곰 굴 (지도 x 100 · y 20)'}, bwolf:{min:1, money:1500000, xp:250, stones:1, rep:2, where:'서쪽 숲 늑대 굴 (지도 x 50 · y 90)'}, dragon:{min:6, money:20000000, xp:4000, stones:8, rep:10, where:'동쪽 깊은 숲 서리용 둥지 (지도 x 160 · y 70)'}}; // 2026-10-16 흰곰 삭제
 const HUNTER_NAME = '윤산들 사냥꾼';
 // 2026-10-14 달 요청: 난이도마다 한 번 끝내면 한 달(28일, 4주) 뒤에 다시 받을 수 있어요 (처음엔 1년이었어요)
 const HQ_REST = 28;
@@ -7563,7 +8138,7 @@ function hqOffers(){
   }
   return G.hqOff.list;
 }
-const hqName = q => HQ_BOSS[q.kind] ? ({tiger:'전설의 호랑이', pbear:'전설의 흰곰', bwolf:'검은 늑대'}[q.kind]) : `Lv${monLv(q.kind, q.tier)} ${BEAST_NOUN[q.kind]}`;
+const hqName = q => HQ_BOSS[q.kind] ? ({tiger:'전설의 호랑이', pbear:'전설의 흰곰', bwolf:'검은 늑대', dragon:'전설의 서리용'}[q.kind]) : `Lv${monLv(q.kind, q.tier)} ${BEAST_NOUN[q.kind]}`;
 const hqWhere = q => HQ_BOSS[q.kind] ? HQ_BOSS[q.kind].where : `${ZONES[q.tier].name}(${zoneLv(q.tier)}) 근처`;
 function hqReward(q){ return `💰 ${won(q.money)} · ⭐ 경험치 ${q.xp}${q.stones ? ` · 💎 강화석 ${q.stones}` : ''} · 평판 +${q.rep}`; }
 // 2026-10-16 달 제보 'undefined' 오류: 흰곰을 없애기 전에 받아 둔 흰곰 의뢰가 남아 'Lv25 undefined'로 보였어요. 없는 짐승 의뢰는 지워요
@@ -8843,26 +9418,30 @@ const GEAR = {
     {id:'bamboo', name:'대나무 장대', base:10, rep:8, price:300000, desc:'길어서 조금 더 멀리 닿아요.', reach:1.2},
     {id:'rake', name:'튼튼 쇠스랑', base:15, rep:25, price:900000, desc:'묵직해서 한 번에 세게 밀어내요.', reach:1.1},
     {id:'golden', name:'황금 꽹과리채', base:22, rep:50, price:2500000, desc:'휘두를 때마다 쩌렁! 산짐승이 더 오래 놀라요.', reach:1.25},
-    {id:'tclaw', name:'호랑이 발톱 갈퀴', base:30, rep:60, price:3000000, unique:1, desc:'전설의 호랑이만 떨어뜨리는 단 하나뿐인 도구. 길고 날카로워 멀리까지 닿아요.', reach:1.35}]},
+    {id:'tclaw', name:'호랑이 발톱 갈퀴', base:30, rep:60, price:3000000, unique:1, desc:'전설의 호랑이만 떨어뜨리는 단 하나뿐인 도구. 길고 날카로워 멀리까지 닿아요.', reach:1.35},
+    {id:'dspear', name:'서리용 이빨 창', base:40, rep:80, price:6000000, unique:'🐉 서리용을 이기면 얻어요', desc:'전설의 서리용 송곳니로 만든 단 하나뿐인 창. 차갑게 빛나고 아주 멀리까지 닿아요.', reach:1.45}]},
   armor:{name:'작업복', ic:'👕', stat:'def', unit:'방어', per:1, items:[
     {id:'cloth', name:'면 작업복', base:0, rep:0, price:0, desc:'가볍고 편한 기본 작업복.'},
     {id:'denim', name:'두꺼운 멜빵 작업복', base:3, rep:5, price:250000, desc:'질긴 천이라 덜 아파요.'},
     {id:'leather', name:'가죽 조끼', base:6, rep:20, price:800000, desc:'멧돼지 박치기도 버텨요.'},
     {id:'guard', name:'든든 보호복', base:10, rep:45, price:2000000, desc:'든든철물 특제 보호복.'},
     {id:'tarmor', name:'호랑이 가죽 갑옷', base:16, rep:60, price:500000, craft:{tskin:2}, desc:'호랑이 가죽 2장으로 만든 갑옷. 아주 튼튼해요.'},
-    {id:'pcoat', name:'흰곰 털 외투', base:22, rep:70, price:4000000, unique:'🐻‍❄️ 흰곰을 이기면 얻어요', desc:'설산의 전설의 흰곰만 떨어뜨리는 단 하나뿐인 외투. 가장 튼튼하고 따뜻해요.'}]},
+    {id:'pcoat', name:'흰곰 털 외투', base:22, rep:70, price:4000000, unique:'🐻‍❄️ 흰곰을 이기면 얻어요', desc:'설산의 전설의 흰곰만 떨어뜨리는 단 하나뿐인 외투. 가장 튼튼하고 따뜻해요.'},
+    {id:'darmor', name:'서리용 비늘 갑옷', base:30, rep:80, price:6000000, unique:'🐉 서리용을 이기면 얻어요', desc:'전설의 서리용 비늘을 엮은 단 하나뿐인 갑옷. 어떤 발톱도 잘 안 들어가요.'}]},
   boots:{name:'신발', ic:'👢', stat:'spd', unit:'% 빠르게', per:2, items:[
     {id:'rubber', name:'고무신', base:0, rep:0, price:0, desc:'할아버지가 물려주신 고무신.'},
     {id:'rainboot', name:'장화', base:6, rep:5, price:150000, desc:'진흙길도 척척.'},
     {id:'sneaker', name:'튼튼 운동화', base:12, rep:20, price:600000, desc:'과수원을 뛰어다니기 좋아요.'},
     {id:'wind', name:'바람 운동화', base:18, rep:40, price:1500000, desc:'바람처럼 빨라져요.'},
-    {id:'tboots', name:'호랑이 가죽 장화', base:22, rep:60, price:300000, craft:{tskin:1}, desc:'호랑이 가죽 1장으로 만든 장화. 호랑이처럼 날쌔요.'}]},
+    {id:'tboots', name:'호랑이 가죽 장화', base:22, rep:60, price:300000, craft:{tskin:1}, desc:'호랑이 가죽 1장으로 만든 장화. 호랑이처럼 날쌔요.'},
+    {id:'dboots', name:'용비늘 장화', base:28, rep:70, price:1000000, craft:{dscale:3, rtooth:1}, desc:'서리용 비늘 3장과 티라노 이빨로 만든 장화. 얼음 위도 바람처럼 달려요.'}]},
   hat:{name:'모자', ic:'👒', stat:'hp', unit:'체력', per:4, items:[
     {id:'straw', name:'밀짚모자', base:0, rep:0, price:0, desc:'햇볕을 가려 주는 기본 모자.'},
     {id:'wide', name:'챙 넓은 밀짚모자', base:10, rep:8, price:200000, desc:'오래 일해도 덜 지쳐요.'},
     {id:'helmet', name:'안전모', base:20, rep:30, price:700000, desc:'머리를 단단히 지켜요.'},
     {id:'apple', name:'사과 장식 모자', base:30, rep:60, price:1800000, desc:'사과골 명예 농부만 쓰는 모자.'},
-    {id:'that', name:'호랑이 가죽 모자', base:40, rep:60, price:300000, craft:{tskin:1}, desc:'호랑이 가죽 1장으로 만든 털모자. 체력이 많이 늘어요.'}]}
+    {id:'that', name:'호랑이 가죽 모자', base:40, rep:60, price:300000, craft:{tskin:1}, desc:'호랑이 가죽 1장으로 만든 털모자. 체력이 많이 늘어요.'},
+    {id:'dhelm', name:'용뿔 투구', base:55, rep:70, price:1000000, craft:{dhorn:1, khorn:1, dscale:1}, desc:'서리용 뿔·트리케라톱스 뿔·서리용 비늘로 만든 투구. 체력이 아주 많이 늘어요.'}]}
 };
 const SLOTS = ['weapon', 'armor', 'boots', 'hat'];
 const MAX_UP = 10; // 2026-10-12: 모든 장비 +10까지
@@ -8877,6 +9456,7 @@ const gearItem = (slot, id) => GEAR[slot].items.find(x => x.id === id);
 function itemStat(slot, id, lv){ const it = gearItem(slot, id), S = GEAR[slot];
   if (slot === 'weapon') return Math.round(it.base + lv * Math.max(.3, it.base * .045));
   return it.base + lv * Math.max(S.per, Math.round(it.base * .15)); }
+const canCraft = it => Object.entries(it.craft).every(([k, n]) => (G.bag[k] || 0) >= n);
 function weaponDmg(){ return slotStat('weapon'); }
 function slotStat(slot){ const g = ensureGear(), id = g[slot]; return itemStat(slot, id, g.own[id] || 0); }
 // 막기 피해 감소(%): 무기 등급 30/40/50/60 + 강화마다 4, 최대 80
@@ -8934,8 +9514,10 @@ function haruLook(){
   if (g.armor === 'leather') { L.outfit = 'vest'; L.o2 = '#8a5a3a'; L.top = '#fffaf0'; L.pants = '#3f5f8a'; }
   if (g.armor === 'guard') { L.outfit = 'jacket'; L.o2 = '#f08a2a'; L.top = '#fff4c8'; L.pants = '#4a4f5a'; }
   if (g.armor === 'tarmor') { L.outfit = 'jacket'; L.o2 = '#f2922c'; L.top = '#fff8ec'; L.pants = '#3a2a20'; L.tstripe = 1; }
+  if (g.armor === 'darmor') { L.outfit = 'jacket'; L.o2 = '#3a4878'; L.top = '#cfe6f2'; L.pants = '#252e54'; }
   if (g.armor === 'pcoat') { L.outfit = 'jacket'; L.o2 = '#f4f7fa'; L.top = '#dfe9f2'; L.pants = '#4a5a6a'; }
-  L.shoe = {rubber:'#8a5232', rainboot:'#f2c230', sneaker:'#ffffff', wind:'#4ac8e8', tboots:'#f2922c'}[g.boots];
+  L.shoe = {rubber:'#8a5232', rainboot:'#f2c230', sneaker:'#ffffff', wind:'#4ac8e8', tboots:'#f2922c', dboots:'#5a6aa8'}[g.boots];
+  if (g.hat === 'dhelm') { L.hat = 'cap'; L.capCol = '#3a4878'; }
   if (g.hat === 'that') { L.hat = 'cap'; L.capCol = '#f2922c'; L.tstripe = 1; }
   if (g.hat === 'helmet') { L.hat = 'cap'; L.capCol = '#ffd23a'; }
   if (g.hat === 'apple') { L.hat = 'straw'; L.appleHat = 1; }
@@ -8956,6 +9538,12 @@ function drawWeapon(c, id, ang){
     cel(c, cc => ell(cc, 0, -56, 14, 10), '#f2922c', '#c4661a', 2, 2, 2.6);
     for (const x of [-7, 0, 7]) line(c, [x - 1, -64, x + 1, -58], 2.4, INK);
     c.beginPath(); ell(c, 0, -52, 5, 3.5); c.fillStyle = '#ffb3a8'; c.fill(); }
+  if (id === 'dspear') { // 2026-10-17 서리용 이빨 창: 남빛 자루 + 얼음빛으로 빛나는 커다란 송곳니 날
+    inkLine(c, [0, 6, 0, -54], 5.5, '#3a4878'); for (const y of [-10, -24, -38]) line(c, [-3, y, 3, y - 2], 2, '#cfe6f2');
+    c.save(); c.shadowColor = '#7af0ff'; c.shadowBlur = 12;
+    cel(c, cc => { cc.moveTo(-6, -54); cc.quadraticCurveTo(-8, -76, 2, -92); cc.quadraticCurveTo(8, -74, 6, -54); cc.closePath(); }, '#f4fbff', '#9ad7ef', 1, 1, 2.4);
+    c.restore();
+    cel(c, cc => rr(cc, -8, -58, 16, 6, 2), '#efe6d2', '#b4a486', 1, 1, 2); }
   if (id === 'golden') { inkLine(c, [0, 0, 0, -40], 5, '#c08a3a'); for (const dx of [-4, 0, 4]) inkLine(c, [0, 2, dx, 12], 2, '#e8423a'); cel(c, cc => ell(cc, 0, -50, 12, 12), '#ffd23a', '#d4a020', 2, 2, 2.4); c.beginPath(); c.arc(0, -50, 7, 0, 7); c.lineWidth = 1.5; c.strokeStyle = '#b8860b'; c.stroke(); }
   c.restore();
 }
@@ -8975,7 +9563,7 @@ function uiGear(){
           else if (on) btn = lv >= MAX_UP ? `<button class="btn" disabled>최고 강화</button>` : moneyBtn();
           else if (own) btn = `<button class="btn" data-eq="${slot}|${it.id}">끼기</button>`;
           else if (it.unique) btn = `<button class="btn" disabled>${it.unique === 1 ? '🐯 호랑이를 이기면 얻어요' : it.unique}</button>`;
-          else if (it.craft) { const need = it.craft.tskin, have = G.bag.tskin || 0; btn = `<button class="btn" data-craft="${slot}|${it.id}" ${have < need || G.money < it.price || lock ? 'disabled' : ''}>🐯 가죽 ${need}장(${have}) + ${won(it.price)}로 만들기</button>`; }
+          else if (it.craft) { const need = Object.entries(it.craft); btn = `<button class="btn" data-craft="${slot}|${it.id}" ${!canCraft(it) || G.money < it.price || lock ? 'disabled' : ''}>${need.map(([k, n]) => `${LOOT[k].ic} ${LOOT[k].name} ${n}(${G.bag[k] || 0})`).join(' · ')} + ${won(it.price)}으로 만들기</button>`; } // 2026-10-17 재료 여러 가지
           else btn = `<button class="btn" data-buy="${slot}|${it.id}" ${lock || G.money < it.price ? 'disabled' : ''}>${lock ? `⭐ 평판 ${it.rep}` : `사기 ${won(it.price)}`}</button>`;
           return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}">${gearImg(it.id, 56)}<div class="gtx"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 전방 180° 베기' : '+5부터 전방 베기'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span>${own ? gearSellBtns(slot, it) : ''}</div><div class="gact">${btn}</div></div>`;
         }).join('')}</div>`;
@@ -8986,9 +9574,9 @@ function uiGear(){
       <div class="ggrid">${SLOTS.map(card).join('')}</div>
       <div class="gnote" style="margin-top:12px"><b>🧺 가방</b> ${LOOT_KEYS.filter(k => G.bag[k] > 0).map(k => `${LOOT[k].ic} ${LOOT[k].name} ×${G.bag[k]}`).join(' · ') || '비어 있어요. 사냥터에서 버섯·산삼을 찾아봐요!'}${bagCount() ? ' → 금비상회 황금비 사장님한테 팔아요.' : ''}</div>`;
     bindSellBtns(o.body, o);
-    o.body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.craft.split('|'), it = gearItem(s, id), need = it.craft.tskin;
-      if ((G.bag.tskin || 0) < need || G.money < it.price || G.rep < it.rep) return; G.bag.tskin -= need; if (!G.bag.tskin) delete G.bag.tskin; G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id;
-      sfx('fanfare'); toast(`🐯 ${jo(it.name, '을', '를')} 만들었어요!`, 'gold'); updateHUD(true); o.render(o); });
+    o.body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.craft.split('|'), it = gearItem(s, id);
+      if (!canCraft(it) || G.money < it.price || G.rep < it.rep) return; for (const [k, n] of Object.entries(it.craft)) { G.bag[k] -= n; if (!G.bag[k]) delete G.bag[k]; } G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id;
+      sfx('fanfare'); toast(`🔨 ${jo(it.name, '을', '를')} 만들었어요!`, 'gold'); updateHUD(true); o.render(o); });
     o.body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.buy.split('|'), it = gearItem(s, id); if (G.money < it.price || G.rep < it.rep) return; G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id; toast(`🎒 ${jo(it.name, '을', '를')} 샀어요!`, 'good'); updateHUD(true); o.render(o); });
     o.body.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.eq.split('|'); G.gear[s] = id; o.render(o); });
     o.body.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.st.split('|'), it = gearItem(s, id); if (!(G.gear.stones > 0) || G.gear.own[id] >= MAX_UP) return; G.gear.stones--; G.gear.own[id]++; toast(`💎 ${it.name} +${G.gear.own[id]} 강화!`, 'good'); o.render(o); });
@@ -9208,6 +9796,36 @@ function drawGearIcon(c, id){
       cel(c, cc => { cc.moveTo(18, 66); cc.quadraticCurveTo(18, 22, 50, 22); cc.quadraticCurveTo(82, 22, 82, 66); cc.closePath(); }, '#ffd23a', '#e0a818', 6, 4, lw);
       cel(c, cc => rr(cc, 44, 20, 12, 46, 5), '#ffe066', '#e8b820', 2, 1, 2.5);
       shine([28, 50, 30, 36], 3);
+      break;
+    case 'dspear': // 2026-10-17 서리용 이빨 창
+      c.save(); c.globalAlpha = .35; c.beginPath(); ell(c, 66, 32, 30, 30); c.fillStyle = '#7af0ff'; c.fill(); c.restore();
+      inkLine(c, [14, 94, 58, 44], 8, '#3a4878');
+      for (const t of [.2, .45, .7]) { const x = 14 + 44 * t, y = 94 - 50 * t; line(c, [x - 4, y - 3, x + 4, y + 3], 2.5, '#cfe6f2'); }
+      cel(c, cc => { cc.moveTo(52, 46); cc.quadraticCurveTo(58, 18, 90, 8); cc.quadraticCurveTo(76, 30, 64, 54); cc.closePath(); }, '#f4fbff', '#9ad7ef', 3, 3, lw);
+      cel(c, cc => rr(cc, 48, 42, 18, 10, 3), '#efe6d2', '#b4a486', 1, 1, 2.4);
+      shine([66, 28, 80, 16], 2);
+      break;
+    case 'darmor': // 2026-10-17 서리용 비늘 갑옷
+      c.save(); c.globalAlpha = .3; c.beginPath(); ell(c, 50, 50, 46, 46); c.fillStyle = '#7a9cff'; c.fill(); c.restore();
+      cel(c, P([30, 14, 42, 10, 50, 18, 58, 10, 70, 14, 92, 36, 82, 50, 74, 44, 76, 94, 24, 94, 26, 44, 18, 50, 8, 36]), '#3a4878', '#252e54', 5, 4, lw);
+      for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) { const x = 32 + k * 12 + (r % 2) * 6, y = 34 + r * 14; c.beginPath(); c.arc(x, y, 6, Math.PI * .1, Math.PI * .9); c.lineWidth = 2.4; c.strokeStyle = '#8db4cc'; c.stroke(); }
+      for (const [x, y] of [[26, 14], [74, 14]]) cel(c, cc => { cc.moveTo(x - 6, y + 4); cc.lineTo(x, y - 10); cc.lineTo(x + 6, y + 4); cc.closePath(); }, '#e2f7ff', '#6fc0ea', 1, 1, 2);
+      line(c, [50, 22, 50, 94], 2.5, I);
+      shine([34, 30, 32, 52]);
+      break;
+    case 'dboots': // 2026-10-17 용비늘 장화
+      cel(c, cc => { cc.moveTo(22, 80); cc.lineTo(24, 22); cc.lineTo(50, 22); cc.lineTo(52, 58); cc.quadraticCurveTo(84, 60, 88, 74); cc.lineTo(88, 82); cc.closePath(); }, '#5a6aa8', '#3a4878', 4, 4, lw);
+      for (let r = 0; r < 3; r++) for (const x of [30, 42]) { c.beginPath(); c.arc(x + (r % 2) * 5, 34 + r * 12, 5, Math.PI * .1, Math.PI * .9); c.lineWidth = 2.2; c.strokeStyle = '#cfe6f2'; c.stroke(); }
+      cel(c, cc => { cc.moveTo(84, 70); cc.lineTo(96, 66); cc.lineTo(90, 78); cc.closePath(); }, '#fffaf1', '#d8d0c4', 0, 0, 2); // 티라노 이빨
+      cel(c, cc => rr(cc, 20, 78, 70, 10, 4), '#cfe6f2', '#8db4cc', 1, 2, lw);
+      cel(c, cc => rr(cc, 20, 16, 34, 10, 4), '#e2f7ff', '#6fc0ea', 1, 1, 2.4);
+      break;
+    case 'dhelm': // 2026-10-17 용뿔 투구
+      for (const sx of [-1, 1]) cel(c, cc => { cc.moveTo(50 + sx * 22, 40); cc.quadraticCurveTo(50 + sx * 44, 30, 50 + sx * 46, 6); cc.quadraticCurveTo(50 + sx * 36, 26, 50 + sx * 16, 30); cc.closePath(); }, '#efe6d2', '#b4a486', 2, 2, lw);
+      cel(c, cc => { cc.moveTo(16, 76); cc.quadraticCurveTo(14, 28, 50, 26); cc.quadraticCurveTo(86, 28, 84, 76); cc.closePath(); }, '#3a4878', '#252e54', 5, 4, lw);
+      cel(c, cc => { cc.moveTo(44, 30); cc.lineTo(50, 12); cc.lineTo(56, 30); cc.closePath(); }, '#f2ead6', '#b8a688', 1, 1, 2.4); // 트리케라톱스 뿔
+      for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(30 + k * 13, 52, 6, Math.PI * .1, Math.PI * .9); c.lineWidth = 2.2; c.strokeStyle = '#8db4cc'; c.stroke(); }
+      cel(c, cc => rr(cc, 12, 68, 76, 12, 6), '#cfe6f2', '#8db4cc', 1, 2, lw);
       break;
     case 'that':
       cel(c, cc => { cc.moveTo(16, 74); cc.quadraticCurveTo(14, 26, 50, 24); cc.quadraticCurveTo(86, 26, 84, 74); cc.closePath(); }, '#f2922c', '#c4661a', 5, 4, lw);
