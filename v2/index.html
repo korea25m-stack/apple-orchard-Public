@@ -1649,11 +1649,12 @@ const HEROES = [
 ];
 const heroSpec = () => HEROES.find(h => h.id === (G && G.hero && G.hero.look)) || HEROES[0];
 const HN = () => (G && G.hero && G.hero.name) || '우주';
-function wjTrim(){ return {cloth:null, denim:null, leather:'#5a3a22', guard:'#e8f0f4', tarmor:'#3a2a20', pcoat:'#b4c4d2'}[ensureGear().armor] || null; }
+function wjTrim(){ return {cloth:null, denim:null, leather:'#5a3a22', guard:'#e8f0f4', tarmor:'#3a2a20', pcoat:'#b4c4d2', darmor:'#8db4cc'}[ensureGear().armor] || null; }
 // 2026-10-13 장비마다 주인공 모습(스킨)이 바뀌어요: 작업복=겉옷, 신발=신발 색, 모자=머리에 쓰는 것
 const ARMOR_SKIN = {denim:{outer:'overall', oc:'#2c5596', top:'#fbfaf6'}, leather:{outer:'vest', oc:'#8a5a3a'}, guard:{outer:'jacket', oc:'#f08a2a', top:'#fff4c8', bc:'#4a4f5a'},
-  tarmor:{outer:'coat', oc:'#f2922c', top:'#fff8ec', bc:'#3a2a20', tstripe:1}, pcoat:{outer:'coat', oc:'#f4f7fa', top:'#dfe9f2', bc:'#4a5a6a'}};
-const BOOT_SKIN = {rainboot:'#f2c230', sneaker:'#ffffff', wind:'#4ac8e8', tboots:'#f2922c'};
+  tarmor:{outer:'coat', oc:'#f2922c', top:'#fff8ec', bc:'#3a2a20', tstripe:1}, pcoat:{outer:'coat', oc:'#f4f7fa', top:'#dfe9f2', bc:'#4a5a6a'},
+  darmor:{outer:'coat', oc:'#3a4878', top:'#cfe6f2', bc:'#252e54', dscale:1}}; // 2026-10-17 서리용 비늘 갑옷
+const BOOT_SKIN = {rainboot:'#f2c230', sneaker:'#ffffff', wind:'#4ac8e8', tboots:'#f2922c', dboots:'#5a6aa8'};
 function heroGearSpec(){
   const g = ensureGear(), S = {...heroSpec(), ...(ARMOR_SKIN[g.armor] || {})};
   if (BOOT_SKIN[g.boots]) S.shoe = BOOT_SKIN[g.boots];
@@ -1776,6 +1777,12 @@ function drawHumanOld(c, x, y, S, dir, walk, act, hero){
     if (outer === 'apron') cel(c, cc => { cc.moveTo(-6.5, -84); cc.lineTo(6.5, -84); cc.lineTo(waistW + 2, -38); cc.lineTo(-waistW - 2, -38); cc.closePath(); }, oc, shd(oc, .18), 2, 2, 1.6);
     if (outer === 'dress') skirtDraw();
     if (!skirt && outer !== 'coat' && outer !== 'dress' && outer !== 'apron' && outer !== 'overall') { cel(c, cc => rr(cc, -waistW - .5, -62, waistW * 2 + 1, 4.5, 2), shd(S.bc, .15), shd(S.bc, .35), 0, 1, 1.4); }
+  }
+  if (S.dscale) { // 서리용 비늘 무늬
+    c.save(); c.lineCap = 'round'; c.strokeStyle = '#8db4cc'; c.lineWidth = 1.3;
+    const xs = side ? [-4, 2] : back ? [-9, -3, 3, 9] : [-11, -8, 8, 11];
+    for (const y0 of [-84, -74, -64, -54]) for (const x0 of xs) { c.beginPath(); c.arc(x0 + (y0 / 10 & 1) * 1.5, y0, 2.4, .3, 2.8); c.stroke(); }
+    c.restore();
   }
   if (S.tstripe) { // 호랑이 가죽 줄무늬
     c.save(); c.lineCap = 'round'; c.strokeStyle = INK; c.lineWidth = 1.8;
@@ -1921,7 +1928,14 @@ function hairShine(c, side, hy, H){
 // 모자: 주인공은 장비에 따라(기본 밀짚모자는 머리가 보이게 안 그려요), 주민은 모습대로
 function headwear(c, S, side, back, hy, hero){
   let hat = S.hat, capCol = S.capCol || '#e8423a', wide = S.wide, apple = false;
-  if (hero) { const h = ensureGear().hat; hat = h === 'helmet' ? 'cap' : h === 'wide' || h === 'apple' ? 'straw' : h === 'that' ? 'tiger' : null; capCol = '#ffd23a'; wide = h === 'wide'; apple = h === 'apple'; }
+  if (hero) { const h = ensureGear().hat; hat = h === 'helmet' ? 'cap' : h === 'wide' || h === 'apple' ? 'straw' : h === 'that' ? 'tiger' : h === 'dhelm' ? 'dhelm' : null; capCol = '#ffd23a'; wide = h === 'wide'; apple = h === 'apple'; }
+  if (hat === 'dhelm') { // 2026-10-17 용뿔 투구: 남빛 투구 + 뒤로 휜 뼈 뿔 둘 + 가운데 작은 뿔 + 얼음빛 테
+    for (const s of [-1, 1]) cel(c, cc => { const x = side ? s * 3 - 2 : s * 7; cc.moveTo(x, hy - 15); cc.quadraticCurveTo(x + s * 6 - (side ? 4 : 0), hy - 20, x + s * 7 - (side ? 7 : 0), hy - 27); cc.quadraticCurveTo(x + s * 2, hy - 20, x - s * 2, hy - 13); cc.closePath(); }, '#efe6d2', '#b4a486', .8, .8, 1.3);
+    cel(c, cc => { cc.moveTo(-9.5, hy - 5); cc.quadraticCurveTo(-10, hy - 19, 0, hy - 19); cc.quadraticCurveTo(10, hy - 19, 9.5, hy - 5); cc.closePath(); }, '#3a4878', '#252e54', 1.5, 1.5, 1.6);
+    if (!back) cel(c, cc => { const x = side ? 6 : 0; cc.moveTo(x - 1.6, hy - 17); cc.lineTo(x + (side ? 2 : 0), hy - 23); cc.lineTo(x + 1.6, hy - 17); cc.closePath(); }, '#f2ead6', '#b8a688', 0, 0, 1);
+    cel(c, cc => rr(cc, -10, hy - 7.5, 20, 3.4, 1.4), '#cfe6f2', '#8db4cc', 0, 1, 1.2);
+    return;
+  }
   if (hat === 'tiger') { // 호랑이 털모자: 주황 + 줄무늬 + 귀
     for (const ex of [-7, 7]) { cel(c, cc => ell(cc, side ? ex * .6 : ex, hy - 17, 3.6, 3.6), '#f2922c', '#c4661a', 1, 1, 1.4); c.beginPath(); ell(c, side ? ex * .6 : ex, hy - 16.6, 1.6, 1.6); c.fillStyle = '#fff8ec'; c.fill(); }
     cel(c, cc => { cc.moveTo(-9.5, hy - 5); cc.quadraticCurveTo(-10, hy - 19, 0, hy - 19); cc.quadraticCurveTo(10, hy - 19, 9.5, hy - 5); cc.closePath(); }, '#f2922c', '#c4661a', 1.5, 1.5, 1.6);
@@ -1945,7 +1959,7 @@ function wjPortraitLook(){
   const S = heroSpec(), h = ensureGear().hat;
   const hsP = {swept:'swept', parted:'swept', spiky:'spiky', wavy:'short', short:'short', long:'long', wave:'long', pony:'pony', bob:'bob', bun:'bun'}[S.hs];
   const A = ARMOR_SKIN[ensureGear().armor] || {};
-  return {skin:S.skin, hair:S.hair, hs:hsP, eye:S.eye, girl:S.fem, outfit:'jacket', o2:A.oc || S.oc, top:A.top || S.top, hat:h === 'wide' || h === 'apple' ? 'straw' : h === 'helmet' ? 'cap' : h === 'that' ? 'cap' : null, capCol:h === 'that' ? '#f2922c' : '#ffd23a'};
+  return {skin:S.skin, hair:S.hair, hs:hsP, eye:S.eye, girl:S.fem, outfit:'jacket', o2:A.oc || S.oc, top:A.top || S.top, hat:h === 'wide' || h === 'apple' ? 'straw' : h === 'helmet' ? 'cap' : h === 'that' || h === 'dhelm' ? 'cap' : null, capCol:h === 'that' ? '#f2922c' : h === 'dhelm' ? '#3a4878' : '#ffd23a'};
 }
 
 // ===== 2026-10-13 새 캐릭터 그림체: 3등신, 굵고 선명한 한 겹 외곽선, 둥근 얼굴·큰 눈·발그레한 볼 =====
@@ -2087,6 +2101,7 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
     if (!back) pc(c, cc => rr(cc, side ? 4 : -3.5, -37.2, 7, 8, 1.6), '#f2cc5a', '#c49a30', 1, 1, 1.8);
   }
   c.restore();
+  if (S.dscale) { const xs = side ? [-4, 3] : back ? [-9, -3, 3, 9] : [-12, -9, 9, 12]; c.save(); c.strokeStyle = '#8db4cc'; c.lineWidth = 1.8; c.lineCap = 'round'; for (const y0 of [-60, -50, -40, -28]) for (const x0 of xs) { c.beginPath(); c.arc(x0 + (y0 / 10 & 1) * 2, y0, 3.2, .3, 2.8); c.stroke(); } c.restore(); } // 2026-10-17 서리용 비늘 무늬
   if (S.tstripe) { const xs = side ? [-4, 3] : back ? [-9, -3, 3, 9] : [-12, -9, 9, 12]; for (const y0 of [-62, -52, -42, -26]) for (const x0 of xs) pl(c, [x0 - 1.5, y0, x0 + 1.5, y0 + 3, x0 - .5, y0 + 6], 2.2); }
   if (side) arm(2, swing, false);
   else if (fq) arm(tw + 2, -.2 - swing, false);
@@ -2200,9 +2215,15 @@ function sideHair(cc, hs){
 // 모자: 주인공은 장비에 따라(기본 밀짚모자는 머리가 보이게 안 그려요), 주민은 모습대로
 function chibiHat(c, S, side, back, hero){
   let hat = S.hat, capCol = S.capCol || '#e8423a', wide = S.wide, apple = false;
-  if (hero) { const h = ensureGear().hat; hat = h === 'helmet' ? 'cap' : h === 'wide' || h === 'apple' ? 'straw' : h === 'that' ? 'tiger' : null; capCol = '#ffd23a'; wide = h === 'wide'; apple = h === 'apple'; }
+  if (hero) { const h = ensureGear().hat; hat = h === 'helmet' ? 'cap' : h === 'wide' || h === 'apple' ? 'straw' : h === 'that' ? 'tiger' : h === 'dhelm' ? 'dhelm' : null; capCol = '#ffd23a'; wide = h === 'wide'; apple = h === 'apple'; }
   const y = HC;
-  if (hat === 'tiger') {
+  if (hat === 'dhelm') { // 2026-10-17 용뿔 투구: 남빛 투구 + 뒤로 휜 뼈 뿔 둘 + 가운데 작은 뿔 + 얼음빛 테
+    [-1, 1].forEach(s => pc(c, cc => { const x = side ? s * 6 - 4 : s * 16; cc.moveTo(x, y - 24); qq(cc, x + s * 12 - (side ? 8 : 0), y - 30, x + s * 14 - (side ? 14 : 0), y - 46); qq(cc, x + s * 3, y - 34, x - s * 5, y - 20); cc.closePath(); }, '#efe6d2', '#b4a486', 1, 1));
+    pc(c, cc => { cc.moveTo(-24, y - 4); cc.bezierCurveTo(-26, y - 33, 26, y - 33, 24, y - 4); cc.closePath(); }, '#3a4878', '#252e54', 2, 2);
+    if (!back) pc(c, cc => { const x = side ? 14 : 0; cc.moveTo(x - 3.5, y - 27); cc.lineTo(x + (side ? 4 : 0), y - 39); cc.lineTo(x + 3.5, y - 27); cc.closePath(); }, '#f2ead6', '#b8a688', 0, 0);
+    [-10, 0, 10].forEach(x0 => { c.beginPath(); c.arc(x0, y - 18, 4, .3, 2.8); c.lineWidth = 1.8; c.strokeStyle = '#8db4cc'; c.stroke(); });
+    pc(c, cc => rr(cc, -25, y - 9, 50, 7, 3), '#cfe6f2', '#8db4cc', 0, 1.5);
+  } else if (hat === 'tiger') {
     [-15, 15].forEach(ex => { pc(c, cc => ell(cc, side ? ex * .7 - 3 : ex, y - 25, 6, 6), '#f2922c', '#c4661a', 1, 1); c.beginPath(); ell(c, side ? ex * .7 - 3 : ex, y - 24.5, 2.8, 2.8); c.fillStyle = '#fff4e0'; c.fill(); });
     pc(c, cc => { cc.moveTo(-24, y - 4); cc.bezierCurveTo(-26, y - 33, 26, y - 33, 24, y - 4); cc.closePath(); }, '#f2922c', '#c4661a', 2, 2);
     [-9, 0, 9].forEach(x0 => pl(c, [x0 - 2, y - 26, x0 + 2, y - 18, x0, y - 13], 2.4));
