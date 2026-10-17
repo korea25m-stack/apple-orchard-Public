@@ -8367,7 +8367,7 @@ function rankScore(r){ return Math.floor(r.avg * 10 + r.rep * 20 + r.lv * 30 + r
 function rankNameOk(n){
   n = String(n || '').trim();
   if (n.length < 1 || n.length > 10) return '이름은 1~10글자로 해 주세요.';
-  if (!/^[가-힣a-zA-Z0-9 ]+$/.test(n)) return '이름은 한글·영어·숫자만 쓸 수 있어요.';
+  if (!/^[가-힣a-zA-Z0-9 _.\-]+$/.test(n)) return '이름은 한글·영어·숫자와 - _ . 만 쓸 수 있어요.'; // 2026-10-17 달 요청: 'kr-TEST'처럼 - 도 돼요
   const low = n.toLowerCase().replace(/\s/g, '');
   if (RANK_BAD.some(w => low.includes(w))) return '랭킹에는 고운 이름만 올릴 수 있어요.';
   return '';
