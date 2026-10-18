@@ -154,7 +154,8 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 .gslot{border:2.5px solid var(--ink);border-radius:16px;background:#fff;padding:10px 12px}
 .gh{font-family:var(--display);font-size:22px;margin-bottom:6px}.gh small{font-size:16px;color:var(--muted)}
 .gi{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 4px;border-top:1.5px dashed #e3d8c4;font-size:15px}
-.gi .gimg{flex:none;background:#fffaf1;border:2px solid #e3d8c4;border-radius:12px}.gi .gtx{flex:1;min-width:0}
+.gi .gimg{flex:none;background:#fffaf1;border:2px solid #e3d8c4;border-radius:12px}
+.gimg.g10{border-color:#ffd23a!important;animation:g10 1.4s ease-in-out infinite alternate}@keyframes g10{from{box-shadow:0 0 4px 1px rgba(255,210,58,.6);filter:brightness(1)}to{box-shadow:0 0 14px 5px rgba(255,220,90,.95);filter:brightness(1.15)}}.gi .gtx{flex:1;min-width:0}
 .gsb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.btn.sm{font-size:14px!important;padding:4px 9px!important;border-width:2px}.btn.warn{background:#ff6b57;color:#fff}
 .ivc .gsb{justify-content:center}
 .gi.on{background:#fff3c4;border-radius:10px}.gi.lock{opacity:.55}.gi .btn{font-size:16px;padding:6px 10px;white-space:nowrap}
@@ -1999,6 +2000,7 @@ function drawHuman(c, x, y, S, dir, walk, act, hero){
   const acc = S.o3 || '#e8423a'; // 고름·깃 색
   c.save(); c.translate(x, y);
   if (!sit) shadow(c, 0, 0, 20 * sc, 6 * sc);
+  if (hero) heroGlow(c, sc);
   c.scale(sc, sc);
   if (dir === 2 || mir) c.scale(-1, 1);
   // ── 다리 + 장화
@@ -2256,6 +2258,19 @@ function drawPortrait(cv, who){
   c.translate(120, 240 + 52 * F); c.scale(s, s);
   drawHuman(c, 0, 0, S, 0, 0, 0, hero);
   c.restore();
+}
+
+// 2026-10-18 달 요청: +10 장비를 낀 주인공은 발밑이 금빛으로 빛나고 반짝이가 맴돌아요(+10 장비가 많을수록 더 환하게)
+function heroGlow(c, sc){
+  const g = ensureGear(), n = ['armor', 'boots', 'hat'].filter(s => (g.own[g[s]] || 0) >= MAX_UP).length; if (!n) return;
+  const t = performance.now() / 1000, k = .5 + n * .2;
+  c.save(); c.globalAlpha = (.55 + .2 * Math.sin(t * 3)) * Math.min(1, k);
+  const gr = c.createRadialGradient(0, -40 * sc, 4, 0, -40 * sc, 70 * sc); gr.addColorStop(0, 'rgba(255,230,120,.9)'); gr.addColorStop(1, 'rgba(255,210,60,0)');
+  c.fillStyle = gr; c.beginPath(); c.ellipse(0, -40 * sc, 46 * sc, 70 * sc, 0, 0, 7); c.fill(); c.restore();
+  c.save(); c.globalAlpha = .8; c.beginPath(); c.ellipse(0, 0, 32 * sc, 10 * sc, 0, 0, 7); c.strokeStyle = '#ffd23a'; c.lineWidth = 4; c.stroke(); c.restore();
+  for (let i = 0; i < 2 + n * 2; i++) { const a = t * 1.6 + i * 6.283 / (2 + n * 2), y = -((t * 30 + i * 23) % 90) * sc;
+    c.save(); c.translate(Math.cos(a) * 30 * sc, y + Math.sin(a) * 6 * sc); c.globalAlpha = .9 - (-y / (90 * sc)) * .7; c.fillStyle = '#fff6b0';
+    c.beginPath(); for (let j = 0; j < 8; j++) { const r = j % 2 ? 1.8 : 6.5; c.lineTo(Math.cos(j * .785) * r, Math.sin(j * .785) * r); } c.fill(); c.restore(); }
 }
 
 // ===== 과수원 세상 =====
@@ -9465,6 +9480,10 @@ const GEAR = {
     {id:'dhelm', name:'용뿔 투구', base:55, rep:70, price:1000000, craft:{dhorn:1, khorn:1, dscale:1}, desc:'서리용 뿔·트리케라톱스 뿔·서리용 비늘로 만든 투구. 체력이 아주 많이 늘어요.'}]}
 };
 const SLOTS = ['weapon', 'armor', 'boots', 'hat'];
+// 2026-10-18 달 요청: 강화석 강화는 늘 100% 성공, 단계가 오를수록 강화석이 더 들어요(인덱스 = 올라갈 단계).
+// +1~+4 1개, +5 4개 → +10 100개 (+6~+9는 10·20·35·60개로 정했어요). 돈 강화는 예전 그대로
+const STONE_UP = [null, {n:1, p:1}, {n:1, p:1}, {n:1, p:1}, {n:1, p:1}, {n:4, p:1}, {n:10, p:1}, {n:20, p:1}, {n:35, p:1}, {n:60, p:1}, {n:100, p:1}];
+const gearMax = id => (ensureGear().own[id] || 0) >= MAX_UP; // +10이면 반짝반짝
 const MAX_UP = 10; // 2026-10-12: 모든 장비 +10까지
 function ensureGear(){
   if (!G.gear) G.gear = {weapon:'stick', armor:'cloth', boots:'rubber', hat:'straw', own:{stick:0, cloth:0, rubber:0, straw:0}};
@@ -9548,6 +9567,8 @@ function haruLook(){
 // 손에 든 도구 그리기 (전투용)
 function drawWeapon(c, id, ang){
   c.save(); c.rotate(ang);
+  if (gearMax(id)) { const t = performance.now() / 1000; c.shadowColor = '#ffd23a'; c.shadowBlur = 14 + Math.sin(t * 5) * 5; // 2026-10-18 +10 장비는 금빛으로 빛나요
+    for (let k = 0; k < 3; k++) { const a = t * 3 + k * 2.1, r = 8 + k * 3; c.save(); c.translate(Math.cos(a) * r, -40 - k * 12 + Math.sin(a) * 4); c.rotate(t * 2); c.globalAlpha = .6 + .4 * Math.sin(t * 6 + k); c.fillStyle = '#fff6b0'; c.beginPath(); for (let i = 0; i < 8; i++) { const rr0 = i % 2 ? 1.2 : 4; c.lineTo(Math.cos(i * .785) * rr0, Math.sin(i * .785) * rr0); } c.fill(); c.restore(); } }
   if (id === 'stick') { inkLine(c, [0, 0, 1, -16, -1, -30, 1, -46], 5, '#a8704a'); inkLine(c, [-1, -30, -9, -38], 2.5, '#a8704a'); }
   if (id === 'bamboo') { inkLine(c, [0, 0, 0, -62], 5, '#9ccc5a'); for (const y of [-16, -32, -48]) line(c, [-3, y, 3, y], 2, '#4f7f22'); cel(c, cc => { cc.moveTo(0, -62); cc.quadraticCurveTo(10, -70, 14, -62); cc.quadraticCurveTo(6, -60, 0, -62); }, '#7ccf5e', '#4a9a3a', 1, 1, 2); }
   if (id === 'rake') { inkLine(c, [0, 0, 0, -50], 5, '#a8704a'); cel(c, cc => rr(cc, -14, -55, 28, 7, 2), '#b5bec8', '#7c8792', 1, 1, 2); for (const x of [-10, -3.5, 3.5, 10]) { c.beginPath(); c.moveTo(x, -55); c.quadraticCurveTo(x + 1, -63, x - 2, -68); c.lineWidth = 5; c.strokeStyle = INK; c.lineCap = 'round'; c.stroke(); c.lineWidth = 2.5; c.strokeStyle = '#c8d0d8'; c.stroke(); } }
@@ -9580,7 +9601,7 @@ function uiGear(){
           const own = it.id in g.own, lv = g.own[it.id] || 0, on = g[slot] === it.id, lock = G.rep < it.rep;
           let btn;
           const moneyBtn = () => `<button class="btn pri" data-up="${slot}|${it.id}" ${G.rep < upRep(it, lv) || G.money < upCost(it, lv) ? 'disabled' : ''}>💰 강화 ${won(upCost(it, lv))}${G.rep < upRep(it, lv) ? ` · ⭐${upRep(it, lv)}` : ''}</button>`;
-          if (on && lv < MAX_UP && g.stones > 0) btn = `<button class="btn pri" data-st="${slot}|${it.id}">💎 강화석으로 (${g.stones}개)</button> ${moneyBtn()}`; // 2026-10-13 강화석/돈 중 골라요
+          if (on && lv < MAX_UP && g.stones > 0) { const U = STONE_UP[lv + 1]; btn = `<button class="btn pri" data-st="${slot}|${it.id}" ${g.stones < U.n ? 'disabled' : ''}>💎 강화석 ${U.n}개로 (${g.stones}개)</button> ${moneyBtn()}`; } // 2026-10-13 강화석/돈 중 골라요
           else if (on) btn = lv >= MAX_UP ? `<button class="btn" disabled>최고 강화</button>` : moneyBtn();
           else if (own) btn = `<button class="btn" data-eq="${slot}|${it.id}">끼기</button>`;
           else if (it.unique) btn = `<button class="btn" disabled>${it.unique === 1 ? '🐯 호랑이를 이기면 얻어요' : it.unique}</button>`;
@@ -9600,7 +9621,9 @@ function uiGear(){
       sfx('fanfare'); toast(`🔨 ${jo(it.name, '을', '를')} 만들었어요!`, 'gold'); updateHUD(true); o.render(o); });
     o.body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.buy.split('|'), it = gearItem(s, id); if (G.money < it.price || G.rep < it.rep) return; G.money -= it.price; G.gear.own[id] = 0; G.gear[s] = id; toast(`🎒 ${jo(it.name, '을', '를')} 샀어요!`, 'good'); updateHUD(true); o.render(o); });
     o.body.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.eq.split('|'); G.gear[s] = id; o.render(o); });
-    o.body.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.st.split('|'), it = gearItem(s, id); if (!(G.gear.stones > 0) || G.gear.own[id] >= MAX_UP) return; G.gear.stones--; G.gear.own[id]++; toast(`💎 ${it.name} +${G.gear.own[id]} 강화!`, 'good'); o.render(o); });
+    o.body.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { const [s, id] = b.dataset.st.split('|'), it = gearItem(s, id), U = STONE_UP[(G.gear.own[id] || 0) + 1]; if (G.gear.own[id] >= MAX_UP || !((G.gear.stones || 0) >= U.n)) return; G.gear.stones -= U.n;
+      if (Math.random() >= U.p) { sfx('block'); toast(`💥 ${it.name} +${G.gear.own[id] + 1} 강화 실패… 강화석 ${U.n}개가 사라졌어요(단계는 그대로).`, 'bad'); o.render(o); return; }
+      G.gear.own[id]++; if (G.gear.own[id] >= MAX_UP) { sfx('fanfare'); toast(`🌟 ${it.name} +10! 장비가 반짝반짝 빛나요!`, 'gold'); o.render(o); return; } toast(`💎 ${it.name} +${G.gear.own[id]} 강화!`, 'good'); o.render(o); });
     o.body.querySelectorAll('[data-up]').forEach(b => b.onclick = () => {
       const [s, id] = b.dataset.up.split('|'), it = gearItem(s, id), lv = G.gear.own[id];
       if (lv >= MAX_UP || G.money < upCost(it, lv) || G.rep < upRep(it, lv)) return;
@@ -9868,7 +9891,7 @@ function drawGearIcon(c, id){
 const _gearImg = {};
 function gearImg(id, px = 64){
   if (!_gearImg[id]) { const cv = mk(200, 200), c = cv.getContext('2d'); c.scale(2, 2); drawGearIcon(c, id); _gearImg[id] = cv.toDataURL(); }
-  return `<img class="gimg" src="${_gearImg[id]}" width="${px}" height="${px}" alt="">`;
+  return `<img class="gimg${gearMax(id) ? ' g10' : ''}" src="${_gearImg[id]}" width="${px}" height="${px}" alt="">`;
 }
 
 // ===== 시작할 때 주인공 고르기 + 이름 정하기 =====
