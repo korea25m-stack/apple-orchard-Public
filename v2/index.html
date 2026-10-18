@@ -78,6 +78,7 @@ button:focus-visible{outline:4px solid var(--sun);outline-offset:2px}
 #todo li .n{margin-left:auto;font-family:var(--display);font-size:17px;white-space:nowrap}
 #todo li.hot{border-color:#ff8a7a;background:#fff0ec}
 #todo li.done{opacity:.55}
+#todoTabs{display:flex;gap:4px;margin-top:8px}#todoTabs[hidden]{display:none}#todoTabs button{flex:1;font:inherit;font-size:13px;padding:4px 2px;border:2px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;white-space:nowrap}#todoTabs button.on{background:#ffe9a8;border-color:#e5b84a}#todo.fold #todoTabs{display:none}
 #todo li .ic{font-size:22px}
 #todo.fold ul{display:none}
 
@@ -714,7 +715,7 @@ function newGame(){
 }
 const absDay = () => ((G.year - 1) * 52 + (G.week - 1)) * 7 + G.day;
 const area = () => G.rows * PYEONG_PER_ROW;
-const sprayCost = () => SPRAY_UNIT * Math.max(1, Math.round(area() / 300));
+const sprayCost = () => SPRAY_UNIT * Math.max(1, Math.round((area() + lotArea()) / 300)); // 2026-10-18 확장 부지 나무도 같이 뿌려요
 const workerPay = () => G.b.sarang ? 100000 : WORKER_PAY;
 const hives = () => G.b.beehive || 0;
 // 2026-10-13 수익 장부: 과수원(경매·주문·소매·가공·심부름) vs 사냥(전리품·포상금). 사냥은 과수원의 1/3까지(최소 150만원/년)
@@ -924,7 +925,7 @@ function endDay(){
     let hit = 0;
     if (x.dis >= RISK_HIGH && !protectedFor('dis')) hit += 1.6;
     if (x.pest >= RISK_HIGH && !protectedFor('pest')) hit += 1.6;
-    if (hit) G.trees.forEach(t => { if (t && t.age >= 1) t.dmg += hit; });
+    if (hit) { G.trees.forEach(t => { if (t && t.age >= 1) t.dmg += hit; }); lotsDamage(hit); }
   }
   G.workerWorked = 0;
   ageStock(); // 2026-10-15 창고 사과 신선도
@@ -936,6 +937,7 @@ function endDay(){
   if (G.week >= 14 && G.week <= 46 && G.trees.some(t => t)) {
     if (!G.b.fence && Math.random() < .04) emit('raid', {kind: Math.random() < .5 ? 'boar' : 'deer'});
   }
+  lotsDaily(); // 2026-10-18 확장 부지: 체험 손님·산짐승 무리·개간
   emit('day');
 }
 
@@ -948,7 +950,7 @@ function newWeek(){
   G.week++;
   if (G.week > 52) {
     G.week = 1; G.year++;
-    G.trees.forEach(t => { if (t) t.age++; });
+    G.trees.forEach(t => { if (t) t.age++; }); lotsNewYear();
     G.nutri = 0; G.stats.yearBoxes = 0; G.stats.bestQ = 0;
     rollYearEvents();
     emit('newYear');
@@ -992,6 +994,7 @@ function newWeek(){
     G.trees.forEach(t => { if (t && t.fr && Math.random() < p) { t.bx--; drop++; if (t.bx <= 0) resetCycle(t); } });
     emit('pop', {ic:'🌀', t:'태풍이 지나갔어요', m:`센 바람에 사과가 떨어져서 ${drop}상자쯤 줄었어요.${G.b.hailnet ? ' 우박망 덕분에 피해가 절반이었어요.' : ''}`});
   }
+  lotsWeekly(w); // 2026-10-18 확장 부지
   // 주문
   G.orders = G.orders.filter(o => {
     if (o.due < w && o.year === G.year || o.year < G.year) { G.rep = Math.max(0, G.rep - 2); toast(`${o.name} 주문 날짜를 놓쳤어요. 평판 -2`, 'bad'); return false; }
@@ -2744,18 +2747,19 @@ function findTarget(){
   for (let i = 0; i < G.trees.length; i++) { const p = treePos(i); cands.push({kind:'tree', i, x:p.x, y:p.y + 10}); }
   cands.push({kind:'grandma', x:SPOT.grandma.x, y:SPOT.grandma.y}, {kind:'chief', x:SPOT.chief.x, y:SPOT.chief.y}, {kind:'hunter', x:SPOT.hunter.x, y:SPOT.hunter.y},
              {kind:'shed', x:SPOT.shed.x, y:SPOT.shed.y + 10}, {kind:'hanok', x:SPOT.hanok.x, y:SPOT.hanok.y + 10}, {kind:'nongmak', x:SPOT.nongmak.x, y:SPOT.nongmak.y + 10});
-  huntTargets(cands); busTargets(cands);
+  huntTargets(cands); busTargets(cands); lotTargets(cands); // 2026-10-18 확장 부지
   for (const n of NPCS) cands.push({kind:'npc', n:n.i, x:n.x, y:n.y});
   if (SPITZ.init) cands.push({kind:'spitz', x:SPITZ.x, y:SPITZ.y}); // 2026-10-16 달이 쓰다듬기
   for (const c of cands) {
     const d = (c.x - P.x) ** 2 + ((c.y - P.y) * 1.3) ** 2;
-    const lim = c.kind === 'hanok' || c.kind === 'nongmak' || c.kind === 'rest' || c.kind === 'taxi' || c.kind === 'bus' ? 150 * 150 : c.kind === 'tree' ? 70 * 70 : bd;
+    const lim = c.kind === 'hanok' || c.kind === 'nongmak' || c.kind === 'rest' || c.kind === 'taxi' || c.kind === 'bus' ? 150 * 150 : c.kind === 'tree' || c.kind === 'lottree' ? 70 * 70 : bd;
     if (d < lim && d < (best ? best.d : 1e9)) best = {...c, d};
   }
   return best;
 }
 function targetLabel(t){
   if (!t) return '';
+  { const ll = lotLabel(t); if (ll) return ll; } // 2026-10-18 확장 부지
   if (t.kind === 'tree') { const k = taskFor(t.i); if (k) return TASKS[k].verb; return G.trees[t.i] ? '살펴보기' : ''; }
   if (t.kind === 'npc') return NPCS[t.n].name;
   if (t.kind === 'spitz') return '🐶 달 쓰다듬기';
@@ -2867,7 +2871,7 @@ function render(ctx, dt, T){
     ctx.beginPath(); ctx.arc(p.x, by, 15, 0, 7); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
     ctx.font = '17px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(TASKS[k].ic, p.x, by + 1); ctx.textBaseline = 'alphabetic';
   }
-  drawVillageTags(ctx);
+  drawVillageTags(ctx); drawLotTags(ctx);
   // 대상 표시
   const tg = ssAnim || !UI.free() ? null : findTarget();
   curTarget = tg;
@@ -2956,6 +2960,7 @@ function collectEntities(ctx, vis, T, w){
   villageEntities(ctx, add, vis);
   huntEntities(ctx, add, vis, T);
   busEntities(ctx, add, vis);
+  lotEntities(ctx, add, vis); // 2026-10-18 확장 부지
   const R3 = srand(55);
   for (let k = 0; k < 110; k++) {
     const x = HOME.x0 + R3() * (HOME.x1 - HOME.x0), y = HOME.y0 + 120 + R3() * (HOME.y1 - HOME.y0 - 160), s = .7 + R3() * .5;
@@ -3276,7 +3281,7 @@ function render3D(ctx, dt, T){
     ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(p.x, by, 15, 0, 7); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
     ctx.font = '17px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(TASKS[k2].ic, p.x, by + 1); ctx.textBaseline = 'alphabetic';
   }
-  drawVillageTags(ctx);
+  drawVillageTags(ctx); drawLotTags(ctx);
   const tg = ssAnim || !UI.free() ? null : findTarget();
   curTarget = tg;
   if (tg) {
@@ -3616,12 +3621,7 @@ function villageEntities(ctx, add, vis){
   const EZ = vxy(675, 2352);
   if (vis(EZ[0], EZ[1])) add(EZ[1], EZ[0], () => { ctx.save(); ctx.translate(EZ[0], EZ[1]); line(ctx, [-12, 0, 0, -58, 12, 0], 3, '#8a5432'); cel(ctx, cc => rr(cc, -16, -64, 32, 26, 2), '#ffffff', '#e0e0e0', 1, 1, 2.2); ctx.beginPath(); ctx.arc(-4, -52, 6, 0, 7); ctx.fillStyle = '#e8423a'; ctx.fill(); ctx.beginPath(); ctx.arc(6, -46, 4, 0, 7); ctx.fillStyle = '#5cb85c'; ctx.fill(); ctx.restore(); });
   for (const n of NPCS) if (vis(n.x, n.y)) add(n.y, n.x, () => drawPerson(ctx, n.x, n.y, n.look, n.dir, n.walk, 0));
-  // 2026-10-16 확장 부지 두 곳: 가운데 표지판 + 과수원 크기만큼 측량 말뚝(빨간 리본)
-  for (const A of [F2, F3]) {
-    if (vis(A.cx, A.cy, 500)) add(A.cy, A.cx, () => drawSign(ctx, A.cx, A.cy, `🌱 ${A.name} · 과수원을 넓힐 자리`));
-    const x0 = A.cx - ORCH_W / 2 - 120, x1 = A.cx + ORCH_W / 2 + 120, y0 = A.cy - 1500, y1 = A.cy + 1500;
-    for (const [x, y] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1], [A.cx, y0], [A.cx, y1], [x0, A.cy], [x1, A.cy]]) if (vis(x, y)) add(y, x, () => drawStake(ctx, x, y));
-  }
+  // 2026-10-18 확장 부지 표지판·말뚝은 05l_lots.js(lotEntities)에서 그려요
 }
 function drawStake(c, x, y){
   shadow(c, x, y, 8, 3);
@@ -4196,7 +4196,7 @@ function updateMon(m, dt){
   m.cc -= dt * (P.hp < P.max * .3 ? .5 : 1); // 우주가 힘들면 덜 덤벼요
   const ox = m.x, oy = m.y;
   const moveTo = (tx, ty, s) => { const dx = tx - m.x, dy = ty - m.y, d = Math.hypot(dx, dy) || 1; const st = Math.min(d, s * dt); m.x += dx / d * st; m.y += dy / d * st; if (Math.abs(dx) > 4) m.flip = dx < 0; return d; };
-  if (m.raid && G.b.fence && m.st !== 'leave') { m.st = 'leave'; m.eng = false; } // 2026-10-13 전기 울타리가 있으면 습격 산짐승은 돌아가요
+  if (m.raid && !m.lot && G.b.fence && m.st !== 'leave') { m.st = 'leave'; m.eng = false; } // 2026-10-13 전기 울타리가 있으면 습격 산짐승은 돌아가요
   const canSee = tig ? inDenOf(D, P.x, P.y, 60) : (m.raid || inHunt(P.x, P.y));
   // 2026-10-13 ★1·★2(tier 0·1)는 비선공: 먼저 때려야(m.eng) 덤벼요
   if ((m.st === 'wander' || m.st === 'raid' || m.st === 'eat') && canSee && (m.raid || tig || m.tier >= 2 || m.eng) && (tig || pd < (m.raid ? 430 : 360))) { m.st = 'chase'; m.eng = true; m.eat = 0; }
@@ -4205,17 +4205,18 @@ function updateMon(m, dt){
     else if (moveTo(m.tx, m.ty, 60 * sp) < 6) { m.wait = rnd(1, 4); m.tx = m.hx + rnd(-260, 260); m.ty = m.hy + rnd(-160, 160); }
     if (m.hp < m.max) m.hp = Math.min(m.max, m.hp + dt * (tig ? m.max * .04 : 4)); // 호랑이는 굴로 돌아가면 빨리 회복
   } else if (m.st === 'raid') {
-    const p = treePos(m.tgt);
+    const p = m.lot ? m.lt : treePos(m.tgt); // 2026-10-18 확장 부지 2 산짐승 무리는 그 과원 나무로
     if (moveTo(p.x + (m.from.x < p.x ? -64 : 64), p.y + 46, 170 * sp) < 8) { m.st = 'eat'; m.eat = 0; m.flip = m.x > p.x; }
   } else if (m.st === 'eat') {
     m.eat += dt;
     if (m.eat > 2.5) {
       m.bites++; m.eat = 0; floats.push({x:m.x, y:m.y - 120, s:`🍎 아삭! (${m.bites}/3)`, t:1.2, c:'#d6372c'});
-      if (m.bites >= 3) { m.st = 'leave'; raidRowPenalty(m); }
+      if (m.bites >= 3) { m.st = 'leave'; if (m.lot) lotRaidBite(m); else raidRowPenalty(m); }
     }
   } else if (m.st === 'leave') {
-    moveTo(m.from.x < OX ? HOME.x0 - 600 : HOME.x1 + 600, m.from.y, 260 * sp);
-    if (Math.hypot(m.x - m.from.x, m.y - m.from.y) > 1300) { m.dead = true; m.deadT = 2; }
+    if (m.lot) { if (moveTo(m.from.x, m.from.y + 600, 260 * sp) < 20) { m.dead = true; m.deadT = 2; } } // 숲으로 돌아가 사라져요
+    else { moveTo(m.from.x < OX ? HOME.x0 - 600 : HOME.x1 + 600, m.from.y, 260 * sp);
+    if (Math.hypot(m.x - m.from.x, m.y - m.from.y) > 1300) { m.dead = true; m.deadT = 2; } }
   } else if (m.st === 'chase') {
     const far = tig ? !inDenOf(D, P.x, P.y, 60) : m.raid ? pd > 900 : (pd > 750 || Math.hypot(m.x - m.hx, m.y - m.hy) > 1500 || !inHunt(P.x, P.y));
     if (far) { m.eng = false; m.st = m.raid ? (m.bites >= 3 ? 'leave' : 'raid') : 'wander'; m.tx = m.hx; m.ty = m.hy; }
@@ -7003,12 +7004,21 @@ function renderTodo(needSpray){
   blemTodo(items);
   hqTodo(items);
   huntTodo(items);
+  lotTodo(items); // 2026-10-18 확장 부지
   if (G.worker > 0) items.push({ic:'👷', t:workerS.sit ? '인부 아저씨 벤치에서 쉬는 중 ☕' : '인부 아저씨 일하는 중', n:`남은 ${workerLeftTxt()}`, done:true});
-  if (!items.filter(i => !i.done).length) items.push({ic:'☕', t:'급한 일은 없어요. 농막에서 자면 다음 할 일까지 시간이 가요.', n:'', done:true});
-  const sig = JSON.stringify(items);
+  // 2026-10-18 달 요청: 확장 부지를 계약하면 할 일 창에 탭(전체 · 우리 과수원 · 확장 부지)
+  const hasLot = G.xlots && Object.values(G.xlots).some(L => L.st >= 1), tab = hasLot ? store.get('haru-todotab', 'all') : 'all';
+  const shown = tab === 'lot' ? items.filter(i => i.lot) : tab === 'home' ? items.filter(i => !i.lot) : items;
+  if (!shown.filter(i => !i.done).length) shown.push({ic:'☕', t:tab === 'lot' ? '확장 부지에 급한 일은 없어요.' : '급한 일은 없어요. 농막에서 자면 다음 할 일까지 시간이 가요.', n:'', done:true});
+  const sig = JSON.stringify([tab, hasLot, shown]);
   if (sig === todoSig) return; todoSig = sig;
+  let tb = $('#todoTabs');
+  if (!tb) { tb = document.createElement('div'); tb.id = 'todoTabs'; $('#todoL').before(tb); }
+  tb.hidden = !hasLot;
+  tb.innerHTML = [['all', '전체'], ['home', '🏡 우리 과수원'], ['lot', '🌱 확장 부지']].map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-tt="${k}">${n}</button>`).join('');
+  tb.querySelectorAll('[data-tt]').forEach(b => b.onclick = e => { e.stopPropagation(); store.set('haru-todotab', b.dataset.tt); todoSig = ''; renderTodo(needSpray); });
   const ul = $('#todoL'); ul.innerHTML = '';
-  items.forEach(it => {
+  shown.forEach(it => {
     const li = document.createElement('li'); li.className = (it.hot ? 'hot ' : '') + (it.done ? 'done' : '');
     li.innerHTML = `<span class="ic">${it.ic}</span><span>${esc(it.t)}</span><span class="n">${esc(it.n)}</span>`;
     li.onclick = () => { if (it.ui) openUI(it.ui); else if (it.go) goTo(it.go); };
@@ -7016,6 +7026,7 @@ function renderTodo(needSpray){
   });
 }
 function goTo(what){
+  if (what.startsWith && what.startsWith('lot')) return lotGoTo(what); // 2026-10-18 확장 부지
   if (what === 'raid') { const m = MONS.find(m => m.raid && !m.dead); if (m) { P.tgt = {x:m.x, y:m.y}; P.pendMon = m; } return; }
   if (what === 'shop') { const n = NPCS.find(n => n.buyer); if (n) { P.tgt = {x:n.x + 55, y:n.y + 20}; P.pend = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20}; } return; }
   if (what.startsWith && what.startsWith('npc:')) { const n = NPCS[+what.slice(4)]; if (n) { P.tgt = {x:n.x + 55, y:n.y + 20}; P.pend = {kind:'npc', n:n.i, x:n.x + 55, y:n.y + 20}; } return; }
@@ -8290,6 +8301,455 @@ function drawHunterSpot(c, t){
   }
 }
 
+// ===== 2026-10-18 달 요청: 확장 부지 두 곳 (아이디어 1·2·3·5번) =====
+// 1) 4단계로 열려요: 계약 → 개간(그루터기·돌·덤불 치우기) → 기반 공사 → 개원식
+// 2) 부지 1 '체험 과수원': M9 같은 왜성 대목에 접붙인 키 작은 사과나무를 촘촘히(밀식). 일찍 열리지만 뿌리가 약해 지주·철선이 꼭 필요해요.
+//    주말 수확철엔 체험 손님 가족이 와서 입장료를 내고 사과를 따 가요. 손님한테 F를 누르면 사과 퀴즈(팩트체크한 문제만)
+// 3) 부지 2 '숲가 고지대 과원': 선선한 밤·맑은 낮이라 사과 색이 잘 들어요(품질 +8). 대신 수확철에 한 번 산짐승 무리가 내려와서 지켜야 해요
+// 5) 부지마다 반장님이 있어요(심기·수확 맡기기·점검). 할 일 창에 '확장 부지' 탭, 화물차 목적지에도 부지가 생겨요(순간이동 없음)
+// 팩트체크 출처(2026-10-18): M.9 = 표준 나무의 45~50% 크기, 아주 일찍 열림, 뿌리가 약해 지지대 필요(apples.extension.org),
+// 빨간색 = 안토시아닌, 선선한 밤 + 따뜻하고 맑은 낮에 색이 잘 듦, 나무 밑 반사 매트로 빛을 보탬(Penn State Extension),
+// 사과는 대부분 제 꽃가루로는 안 열려 다른 품종·꽃사과가 필요(Fruit tree pollination), 꽃가루 옮기는 곤충 = 꿀벌·뒤영벌·뿔가위벌(농촌진흥청)
+const LOT_DEF = [
+  {id:'l1', A:F2, title:'체험 과수원', ic:'🧒', boss:'한결 반장', rep:60, price:20000000, build:8000000, dwarf:1,
+    rows:8, half:10, dx:70, rowH:150, lane:360, oy:-1100, sc:.72, hp:[1, 2], q:0, seed:11,
+    look:{skin:'#efc49c', hair:'#2b2320', hs:'short', eye:'#3a2a20', top:'#8fd18a', outfit:'tee', pants:'#5a6a4a', shoe:'#3b3b3b', hat:'cap', capCol:'#e8603a'}},
+  {id:'l2', A:F3, title:'숲가 고지대 과원', ic:'⛰️', boss:'도담 반장', rep:80, price:30000000, build:12000000, high:1,
+    rows:8, half:6, dx:120, rowH:160, lane:320, oy:1150, sc:1, hp:[1, 3], q:8, seed:23,
+    look:{skin:'#d9a57a', hair:'#3a2a20', hs:'short', eye:'#3a2a20', top:'#7a8fd0', outfit:'tee', pants:'#4a4a5a', shoe:'#2a2a2a', hat:'band', beard:'#3a2a20'}}
+];
+const LOT_CLEAR_PAY = 500000;   // 개간을 인부에게 맡기면
+const LOT_HARVEST_FEE = 5000;   // 반장에게 수확을 맡기면 상자당
+const LOT_FEE = 30000;          // 체험 손님 한 가족 입장료
+const LOT_PROP_COST = 200000;   // 지주·철선 점검 자재비
+const LOT_OBS = 12;
+// 길 위에는 나무를 안 심어요
+function lotRoadDist(x, y){
+  let best = 1e9;
+  for (const L of MAP_ROADS) for (let i = 1; i < L.length; i++) {
+    const [ax, ay] = L[i - 1], [bx, by] = L[i], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1, k = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1);
+    best = Math.min(best, Math.hypot(x - ax - dx * k, y - ay - dy * k));
+  }
+  return best;
+}
+// 부지마다 나무 자리(반쪽 밭 두 개 + 가운데 농로), 반장님 자리, 밭 테두리
+for (const D of LOT_DEF) {
+  const w = (D.half - 1) * D.dx * 2 + D.lane, h = (D.rows - 1) * D.rowH;
+  D.bx0 = D.A.cx - w / 2; D.bx1 = D.A.cx + w / 2; D.by0 = D.A.cy + D.oy - h / 2; D.by1 = D.A.cy + D.oy + h / 2;
+  D.slots = [];
+  for (let r = 0; r < D.rows; r++) for (let c = 0; c < D.half * 2; c++) {
+    const x = D.bx0 + c * D.dx + (c >= D.half ? D.lane - D.dx : 0), y = D.by0 + r * D.rowH;
+    if (lotRoadDist(x, y) < 260) continue;
+    D.slots.push({x, y, r, c});
+  }
+  D.bossX = D.A.cx + 190; D.bossY = D.A.cy + (D.high ? 330 : 60);
+}
+const lotDef = id => LOT_DEF.find(D => D.id === id);
+const LOTV = []; // 오늘 온 체험 손님(저장 안 함)
+const LOTFX = {t:0, x:0, y:0, k:0};
+function ensureLots(){
+  if (!G.xlots) G.xlots = {};
+  for (const D of LOT_DEF) if (!G.xlots[D.id]) G.xlots[D.id] = {st:0, trees:[], obs:[]};
+  for (const D of LOT_DEF) { const L = G.xlots[D.id]; while (L.trees.length < D.slots.length) L.trees.push(null); }
+  return G.xlots;
+}
+const lotOpen = id => ensureLots()[id].st >= 3;
+function lotArea(){ // 방제비: 나무 한 그루 몫 땅(왜성은 촘촘해서 절반)
+  if (!G || !G.xlots) return 0; let a = 0;
+  for (const D of LOT_DEF) for (const t of G.xlots[D.id].trees) if (t) a += PYEONG_PER_ROW / PER_ROW * (D.dwarf ? .5 : 1);
+  return a;
+}
+const lotRipe = t => t && t.fr && t.bx > 0 && G.week >= VARS[t.v].hv[0] && G.week <= VARS[t.v].hv[1];
+// 왜성(부지 1): 2년차부터 열리고 4년차에 다 자라요(한 그루 1~2상자). 고지대(부지 2): 우리 과수원 나무와 같아요
+function lotBoxes(D, t){
+  const yr = t.age + 1, f = D.dwarf ? clamp(.4 + .6 * (yr - 2) / 2, .4, 1) : yieldFactor(t);
+  const e = rnd(D.hp[0], D.hp[1]) * (D.dwarf ? 1 : 2) * f;
+  return Math.max(1, Math.floor(e) + (Math.random() < e % 1 ? 1 : 0));
+}
+function lotQuality(D, t, me){
+  return Math.round(clamp(50 + Math.min(3, G.nutri) * 4 + D.q + t.bon - t.dmg + (t.age >= 3 ? 3 : 0) + (me ? farmer().skill : Math.floor(farmer().skill / 2)) + rnd(-4, 4), 5, 99));
+}
+
+// ----- 시간 흐름 (02_sim.js에서 불러요) -----
+function lotsDamage(hit){ ensureLots(); for (const D of LOT_DEF) for (const t of G.xlots[D.id].trees) if (t && t.age >= 1) t.dmg += hit; }
+function lotsNewYear(){ ensureLots(); for (const D of LOT_DEF) for (const t of G.xlots[D.id].trees) if (t) t.age++; }
+function lotsWeekly(w){
+  const lots = ensureLots();
+  for (const D of LOT_DEF) {
+    const L = lots[D.id]; if (L.st < 3) continue;
+    const ts = L.trees.filter(t => t);
+    if (w === 18) { // 꽃이 지고 열매가 달려요(열매솎기는 반장님이 해 줘요)
+      for (const t of ts) if (t.age >= 1 && !t.fr) { t.fr = 1; t.th = true; t.bx = lotBoxes(D, t); t.bon += (2 + hiveLv()) * hives(); }
+      if (D.high && ts.some(t => t.fr)) { // 산짐승 무리가 내려올 날: 수확 시작 주 ~ 그 다음 주 중 하루
+        const hv0 = Math.min(...ts.filter(t => t.fr).map(t => VARS[t.v].hv[0])), gw = Math.min(52, hv0 + rint(0, 1));
+        L.guard = {day:((G.year - 1) * 52 + (gw - 1)) * 7 + rint(0, 6), st:0, eaten:0};
+      }
+    }
+    let lost = 0;
+    for (const t of ts) if (t.fr && w === VARS[t.v].hv[1] + 1) { resetCycle(t); lost++; }
+    if (lost) toast(`😢 ${D.A.name} 사과 ${lost}그루를 수확 시기를 놓쳐서 떨어졌어요.`, 'bad');
+    if (G.ev.frost === w && !G.b.frostfan) for (const t of ts) if (t.age >= 1) t.bon -= VARS[t.v].tough ? 4 : 8;
+    if (G.ev.hail === w && !G.b.hailnet) for (const t of ts) if (t.fr && Math.random() < .5) t.bon -= VARS[t.v].tough ? 5 : 10;
+    if (G.ev.typhoon === w && ts.some(t => t.fr)) { // 지주 점검을 안 한 왜성 나무는 바람에 기울어 더 많이 떨어져요
+      const weak = D.dwarf && L.prop !== G.year, p = weak ? .65 : G.b.hailnet ? .25 : .5; let drop = 0;
+      for (const t of ts) if (t.fr && Math.random() < p) { t.bx--; drop++; if (weak) t.dmg += 6; if (t.bx <= 0) resetCycle(t); }
+      if (drop) toast(`🌀 태풍에 ${D.A.name} 사과가 ${drop}상자쯤 떨어졌어요.${weak ? ' 지주·철선을 점검 안 해서 나무가 기울었어요.' : ''}`, 'bad');
+    }
+  }
+}
+function lotsDaily(){
+  const lots = ensureLots(), today = absDay();
+  if (!G.lotTold && G.rep >= LOT_DEF[0].rep) { G.lotTold = 1; emit('pop', {ic:'👴', t:'이장님 소식', m:`땅 주인이 확장 부지 1을 팔겠대요! 부지 가운데 표지판 앞에서 F를 눌러 보세요. (확장 부지 2는 평판 ${LOT_DEF[1].rep}부터)`}); }
+  for (const D of LOT_DEF) {
+    const L = lots[D.id];
+    if (L.st === 1 && L.hire && L.hire < today) { L.obs = []; L.st = 2; delete L.hire; toast(`🚜 인부 아저씨들이 ${D.A.name} 개간을 끝냈어요! 이제 기반 공사를 해요.`, 'good'); }
+    if (L.st < 3) continue;
+    // 부지 1: 주말 수확철엔 체험 손님
+    if (D.dwarf && G.day >= 5 && L.vis?.day !== today) {
+      const ripe = L.trees.filter(lotRipe);
+      if (ripe.length) {
+        const n = Math.min(3, rint(1, 3), ripe.length), fee = LOT_FEE * n;
+        for (let k = 0; k < n; k++) { const t = pick(L.trees.filter(lotRipe)); if (!t) break; t.bx--; if (t.bx <= 0) resetCycle(t); }
+        G.money += fee; addInc('apple', fee); G.rep += 1;
+        L.vis = {day:today, n, quiz:[]};
+        toast(`🧒 ${D.A.name}에 체험 손님 ${n}가족이 왔어요! 입장료 +${won(fee)} · 평판 +1 (손님이 사과 ${n}상자를 따 가요)`, 'gold');
+      }
+    }
+    // 부지 2: 산짐승 무리
+    const gd = L.guard;
+    if (gd && gd.st === 0) {
+      if (gd.day === today) emit('pop', {ic:'⚠️', t:'산짐승 무리가 내려와요!', m:`오늘 해 질 무렵(17시) 산짐승 무리가 ${D.A.name} 사과를 노리고 내려와요. ${D.boss}님과 함께 과원을 지켜요! (전기 울타리로도 큰 무리는 못 막아요)`});
+      else if (gd.day < today) { // 자거나 멀리 있어서 못 지켰어요
+        let n = 0; for (const t of L.trees) if (t && t.fr && Math.random() < .5) { t.bx--; n++; if (t.bx <= 0) resetCycle(t); }
+        gd.st = 2; emit('pop', {ic:'🐗', t:'과원을 못 지켰어요', m:`밤사이 산짐승 무리가 ${D.A.name}를 헤집고 갔어요. 사과가 ${n}상자쯤 줄었어요. 내년엔 그날 17시에 꼭 지켜요!`});
+      }
+    }
+  }
+}
+
+// ----- 매 프레임: 손님·산짐승 무리·개원식 불꽃 -----
+function updateLots(dt){
+  if (!G) return; const lots = ensureLots(), today = absDay();
+  if (LOTFX.t > 0) { LOTFX.t -= dt; if ((LOTFX.k -= dt) <= 0) { LOTFX.k = .28; burst(LOTFX.x + rnd(-500, 500), LOTFX.y - rnd(250, 520), 24, ['#ff6b8a', '#ffd23a', '#5ab8ff', '#7fcf5a', '#fffaf1'], 520, 1); sfx('pop'); } }
+  // 체험 손님: 그날 9~18시에만 밭 안을 돌아다녀요
+  const D1 = LOT_DEF[0], L1 = lots.l1, vis = L1.vis;
+  const want = vis && vis.day === today && G.hour >= 9 && G.hour < 18 ? vis.n : 0;
+  if (!want && LOTV.length) LOTV.length = 0;
+  if (want && !LOTV.length) {
+    const R = srand(today * 7 + 3);
+    for (let f = 0; f < want; f++) for (const kid of [0, 1]) {
+      const s = D1.slots[Math.floor(R() * D1.slots.length)], x = s.x + 35, y = s.y + D1.rowH / 2;
+      LOTV.push({fam:f, kid, x, y, tx:x, ty:y, dir:0, walk:0, wait:R() * 2, look:lotVisLook(R, kid)});
+    }
+  }
+  if (UI.free()) for (const v of LOTV) {
+    const pd = Math.hypot(P.x - v.x, P.y - v.y);
+    if (pd < 90) { v.walk = 0; v.dir = hDir8(P.x - v.x, P.y - v.y); continue; }
+    if (v.wait > 0) { v.wait -= dt; v.walk = 0; continue; }
+    const dx = v.tx - v.x, dy = v.ty - v.y, d = Math.hypot(dx, dy);
+    if (d < 5) { // 다음 나무 줄 사이로(줄 사이 길에서만 다녀요)
+      const s = pick(D1.slots); v.tx = s.x + rnd(-20, 20); v.ty = s.y + D1.rowH / 2; v.wait = rnd(1.5, 4); continue;
+    }
+    const sp = v.kid ? 75 : 60, s = Math.min(d, sp * dt);
+    v.x += dx / d * s; v.y += dy / d * s; v.walk += dt * sp / 22; v.dir = hDir8(dx, dy);
+  }
+  // 산짐승 무리(부지 2)
+  const D2 = LOT_DEF[1], gd = lots.l2.guard;
+  if (gd && gd.st === 0 && gd.day === today && G.hour >= 17) lotPackSpawn(D2, gd);
+  if (gd && gd.st === 1 && !MONS.some(m => m.lot && !m.dead)) lotPackDone(D2, gd);
+}
+function lotVisLook(R, kid){
+  const P2 = a => a[Math.floor(R() * a.length)];
+  const girl = R() < .5;
+  return {skin:P2(['#ffe0c4', '#f6d3b6', '#efc49c', '#e2b48a']), hair:P2(['#2a2020', '#3a2a20', '#5a3a2a']), hs:girl ? P2(['bob', 'pony']) : P2(['short', 'spiky']), eye:'#3a2a20',
+    top:P2(['#ffb3c7', '#9fd4ff', '#ffe36a', '#b8e68a', '#d8b8ff', '#ffffff']), outfit:'tee', pants:P2(['#4a5a8a', '#6a5a4a', '#3a3a3a', '#8a6a9a']), shoe:P2(['#ffffff', '#e8423a', '#2a2a2a']),
+    hat:kid && R() < .5 ? 'cap' : undefined, capCol:P2(['#ffcf3d', '#4aa8e8', '#ff6b8a']), kid:kid ? 1 : undefined, girl:girl ? 1 : undefined};
+}
+function lotPackSpawn(D, gd){
+  gd.st = 1; gd.eaten = 0;
+  const fr = []; G.xlots[D.id].trees.forEach((t, i) => { if (t && t.fr) fr.push(D.slots[i]); });
+  if (!fr.length) { gd.st = 2; return; }
+  const kinds = ['boar', 'wdog', 'wolf', 'boar'], tier = Math.min(3, raidTier() + 1);
+  kinds.forEach((k, i) => {
+    const x = D.bx0 + (D.bx1 - D.bx0) * (i + .5) / kinds.length, y = D.A.y1 + 260;
+    const m = makeMon(k, tier, x, y, true), s = pick(fr);
+    m.lot = D.id; m.lt = {x:s.x + 50, y:s.y + 40}; m.from = {x, y}; m.V.pay = 150000; m.V.rep = 1;
+    MONS.push(m);
+  });
+  sfx('grunt'); todoSig = '';
+  toast(`🐗 산짐승 ${kinds.length}마리가 ${D.A.name}로 내려왔어요! 사과를 먹기 전에 쫓아내요`, 'bad');
+}
+// 무리 한 마리가 사과를 세 번 먹으면: 근처 나무 사과 한 상자가 줄어요
+function lotRaidBite(m){
+  const D = lotDef(m.lot), L = G.xlots[m.lot]; let bi = -1, bd = 1e9;
+  L.trees.forEach((t, i) => { if (t && t.fr) { const s = D.slots[i], d = Math.hypot(s.x - m.lt.x, s.y - m.lt.y); if (d < bd) { bd = d; bi = i; } } });
+  if (bi >= 0) { const t = L.trees[bi]; t.bx--; if (t.bx <= 0) resetCycle(t); }
+  if (L.guard) L.guard.eaten++;
+  toast(`😢 ${m.V.name}가 ${D.A.name} 사과를 먹고 달아났어요.`, 'bad'); todoSig = '';
+}
+function lotPackDone(D, gd){
+  gd.st = 2; todoSig = '';
+  if (!gd.eaten) {
+    ensureGear(); G.gear.stones = (G.gear.stones || 0) + 1; G.rep += 3; G.money += 300000; addInc('hunt', 300000);
+    popup('🏆', '과원을 지켰어요!', `${D.boss}: "${HN()} 덕분에 사과가 하나도 안 다쳤어요!" 💎 강화석 1개 · 평판 +3 · 30만원을 받았어요.`);
+  } else toast(`🐗 산짐승 무리가 돌아갔어요. ${gd.eaten}마리가 사과를 먹고 갔어요.`, 'bad');
+}
+
+// ----- 4단계 -----
+function lotContract(D){
+  const L = ensureLots()[D.id]; if (L.st !== 0 || G.rep < D.rep || G.money < D.price) return false;
+  G.money -= D.price; L.st = 1;
+  const R = srand(D.seed * 97);
+  L.obs = [];
+  for (let k = 0; L.obs.length < LOT_OBS && k < 400; k++) {
+    const x = D.bx0 + R() * (D.bx1 - D.bx0), y = D.by0 + R() * (D.by1 - D.by0);
+    if (lotRoadDist(x, y) < 300 || L.obs.some(o => Math.hypot(o.x - x, o.y - y) < 180)) continue;
+    L.obs.push({x:Math.round(x), y:Math.round(y), k:['stump', 'rock', 'bush'][L.obs.length % 3], hp:3});
+  }
+  sfx('fanfare'); todoSig = '';
+  return true;
+}
+function lotHitObs(D, o){
+  const L = G.xlots[D.id]; if (L.st !== 1) return;
+  o.hp--; sfx(o.k === 'rock' ? 'hit' : 'snip'); FX.shake = Math.max(FX.shake, .2);
+  burst(o.x, o.y - 30, 8, o.k === 'rock' ? ['#a8a092', '#d4cec4'] : o.k === 'bush' ? ['#7fcf5a', '#3f9a4a'] : ['#9a6440', '#c9935a'], 320, .5);
+  floats.push({x:o.x, y:o.y - 110, s:o.hp > 0 ? `${['🪵', '🪨', '🌿'][['stump', 'rock', 'bush'].indexOf(o.k)]} 쿵! (${3 - o.hp}/3)` : '✨ 치웠다!', t:1, c:INK});
+  if (o.hp <= 0) { L.obs = L.obs.filter(q => q !== o); gainXp(3); todoSig = ''; }
+  if (!L.obs.length) { L.st = 2; delete L.hire; toast(`🎉 ${D.A.name} 개간 끝! ${D.boss}님한테 가서 기반 공사를 해요.`, 'good'); }
+}
+function lotBuild(D){
+  const L = ensureLots()[D.id]; if (L.st !== 2 || G.money < D.build) return false;
+  G.money -= D.build; L.st = 3; L.opened = absDay();
+  Object.assign(LOTFX, {t:4.5, x:D.A.cx, y:D.A.cy + D.oy, k:0}); sfx('fanfare'); unlock('land'); todoSig = '';
+  return true;
+}
+function lotPlant(D, v){
+  const L = G.xlots[D.id], empty = L.trees.map((t, i) => t ? -1 : i).filter(i => i >= 0);
+  const n = Math.min(empty.length, Math.floor(G.money / SAPLING)); if (!n) return 0;
+  for (let k = 0; k < n; k++) { L.trees[empty[k]] = newTree(v); }
+  G.money -= SAPLING * n; G.planted[v] = 1; treeCache.clear(); todoSig = '';
+  return n;
+}
+// 반장님께 수확 맡기기: 상자당 5천원, 사과는 창고(분류 전)로
+function lotBossHarvest(D){
+  const L = G.xlots[D.id]; let bx = 0;
+  const ripe = L.trees.filter(lotRipe); if (!ripe.length) return 0;
+  const need = ripe.reduce((a, t) => a + t.bx, 0) * LOT_HARVEST_FEE; if (G.money < need) return -1;
+  G.raw = G.raw || {};
+  for (const t of ripe) { const q = lotQuality(D, t, false); for (let b = 0; b < t.bx; b++) { const key = t.v + '|' + rollGrade(q); G.raw[key] = (G.raw[key] || 0) + 1; } bx += t.bx; G.stats.boxes += t.bx; G.stats.yearBoxes += t.bx; if (q > G.stats.bestQ) G.stats.bestQ = q; resetCycle(t); }
+  G.money -= bx * LOT_HARVEST_FEE; todoSig = '';
+  return bx;
+}
+// 내가 직접 한 그루 따기(노란 박스에 담아 창고로)
+function lotPickTree(D, i){
+  const t = G.xlots[D.id].trees[i], s = D.slots[i];
+  if (!lotRipe(t)) {
+    if (!t) return;
+    const msg = t.age < 1 ? '올해 심은 나무예요. 내년부터 열려요.' : t.fr ? `${VARS[t.v].name}는 ${VARS[t.v].hv[0]}주부터 따요.` : '지금은 열매가 없어요. 5월 중순에 열매가 달려요.';
+    floats.push({x:s.x, y:s.y - 170, s:msg, t:1.6, c:INK}); return;
+  }
+  const q = lotQuality(D, t, true), bin = (G.carry = G.carry || {}), bx = t.bx;
+  for (let b = 0; b < bx; b++) { const key = t.v + '|' + rollGrade(q); bin[key] = (bin[key] || 0) + 1; }
+  G.stats.boxes += bx; G.stats.yearBoxes += bx; if (q > G.stats.bestQ) G.stats.bestQ = q;
+  resetCycle(t); sfx('pick'); gainXp(4); unlock('harvest1');
+  floats.push({x:s.x, y:s.y - 170, s:`🍎 ${gradeOf(q).name} ${bx}상자!`, t:1.4, c:gradeOf(q).col}); todoSig = '';
+}
+
+// ----- 상호작용 -----
+function lotTargets(cands){
+  if (!G) return; const lots = ensureLots();
+  for (const D of LOT_DEF) {
+    if (Math.abs(P.x - D.A.cx) > 2600 || Math.abs(P.y - D.A.cy) > 2600) continue;
+    const L = lots[D.id];
+    if (L.st === 0) cands.push({kind:'lotsign', D, x:D.A.cx, y:D.A.cy});
+    else cands.push({kind:'lotboss', D, x:D.bossX, y:D.bossY});
+    if (L.st === 1) for (const o of L.obs) cands.push({kind:'lotobs', D, o, x:o.x, y:o.y});
+    if (L.st >= 3) L.trees.forEach((t, i) => { if (t) cands.push({kind:'lottree', D, i, x:D.slots[i].x, y:D.slots[i].y + 10}); });
+  }
+  LOTV.forEach(v => cands.push({kind:'lotvis', v, x:v.x, y:v.y}));
+}
+function lotLabel(t){
+  if (t.kind === 'lotsign') return `🌱 ${t.D.A.name} 살펴보기`;
+  if (t.kind === 'lotboss') return `👷 ${t.D.boss}`;
+  if (t.kind === 'lotobs') return `${{stump:'🪵 그루터기', rock:'🪨 돌', bush:'🌿 덤불'}[t.o.k]} 치우기`;
+  if (t.kind === 'lottree') { const T = G.xlots[t.D.id].trees[t.i]; return lotRipe(T) ? '따기' : '살펴보기'; }
+  if (t.kind === 'lotvis') return '🧒 체험 손님';
+  return null;
+}
+function lotAct(t){
+  if (t.kind === 'lotsign' || t.kind === 'lotboss') { uiLot(t.D); return true; }
+  if (t.kind === 'lotobs') { lotHitObs(t.D, t.o); return true; }
+  if (t.kind === 'lottree') { lotPickTree(t.D, t.i); return true; }
+  if (t.kind === 'lotvis') { lotVisTalk(t.v); return true; }
+  return false;
+}
+function lotGoTo(what){
+  const [k, id] = what.split(':'), D = lotDef(id); if (!D) return;
+  let tx = D.bossX - 60, ty = D.bossY + 30;
+  if (k === 'lotobs') { const o = G.xlots[id].obs.slice().sort((a, b) => Math.hypot(a.x - P.x, a.y - P.y) - Math.hypot(b.x - P.x, b.y - P.y))[0]; if (o) { tx = o.x; ty = o.y + 50; } }
+  if (k === 'lottree') { let b = null, bd = 1e18; G.xlots[id].trees.forEach((t, i) => { if (lotRipe(t)) { const s = D.slots[i], d = (s.x - P.x) ** 2 + (s.y - P.y) ** 2; if (d < bd) { bd = d; b = s; } } }); if (b) { tx = b.x; ty = b.y + 50; } }
+  if (k === 'lotvis' && LOTV.length) { tx = LOTV[0].x + 50; ty = LOTV[0].y + 20; }
+  if (Math.hypot(tx - P.x, ty - P.y) > 3500) { toast(`🛻 ${D.A.name}는 멀어요. 승차장 화물차를 타고 '${D.A.name}'를 골라요.`); return; }
+  P.tgt = {x:tx, y:ty};
+}
+// 화물차 목적지: 계약한 부지
+function lotDests(){
+  if (!G || !G.xlots) return [];
+  return LOT_DEF.filter(D => G.xlots[D.id].st >= 1).map(D => { if (!D.drop) D.drop = txRoadside(D.A.cx, D.A.cy + 120, 130); return {id:'lot_' + D.id, ic:'🌱', name:D.A.name, x:D.drop[0], y:D.drop[1]}; });
+}
+
+// ----- 반장님 창 -----
+function uiLot(D){
+  const L = ensureLots()[D.id];
+  UI.open({ic:D.ic, title:`${D.A.name} · ${D.title}`, w:860, render(o){
+    const info = D.dwarf
+      ? '키 작은 사과나무(<b>왜성 사과나무</b>)를 촘촘히 심는 과수원이에요. M9 같은 왜성 대목에 접을 붙인 나무는 보통 나무의 절반쯤 크기라 따기 쉽고 일찍 열려요. 대신 뿌리가 약해서 <b>지주와 철선</b>으로 꼭 받쳐 줘야 해요. 주말 수확철엔 <b>체험 손님</b>이 와요.'
+      : '숲 가까운 높은 땅이에요. 밤엔 선선하고 낮엔 맑아서 <b>사과 색이 잘 들어요(품질 +8)</b>. 대신 숲이 가까워 수확철에 <b>산짐승 무리</b>가 한 번 내려와요. 그날 17시에 꼭 지켜요!';
+    let body = `<div class="fact" style="margin-top:0">${info}</div>`, foot = '';
+    const steps = ['계약', '개간', '기반 공사', '개원'], cur = Math.min(L.st, 3);
+    body += `<p style="font-size:19px">${steps.map((s, i) => `${i < cur ? '✅' : i === cur ? '👉' : '⬜'} ${s}`).join(' &nbsp;')}</p>`;
+    if (L.st === 0) {
+      const okRep = G.rep >= D.rep, okMoney = G.money >= D.price;
+      body += `<p>땅 주인이 이 땅을 팔겠대요. 계약금은 <b>${won(D.price)}</b>, 평판 <b>⭐${D.rep}</b>부터 살 수 있어요. ${okRep ? '' : `(지금 평판 ${G.rep})`}</p>`;
+      foot = `<button class="btn" id="lotX">나중에요</button><button class="btn go" id="lotGo" ${okRep && okMoney ? '' : 'disabled'}>✍️ 계약하기 (${won(D.price)})</button>`;
+    } else if (L.st === 1) {
+      body += `<p>${D.boss}: "땅에 <b>그루터기·돌·덤불이 ${L.obs.length}개</b> 남았어요. 하나에 F를 3번씩 눌러 치워 주세요. 바쁘면 인부 아저씨들한테 맡겨도 돼요(다음 날 아침 끝)."</p>`;
+      foot = `<button class="btn" id="lotX">직접 치울게요</button><button class="btn" id="lotHire" ${L.hire || G.money < LOT_CLEAR_PAY ? 'disabled' : ''}>${L.hire ? '🚜 인부들이 치우는 중' : `🚜 인부에게 맡기기 (${won(LOT_CLEAR_PAY)})`}</button>`;
+    } else if (L.st === 2) {
+      body += `<p>${D.boss}: "땅이 깨끗해졌어요! 이제 <b>물 주는 관수 시설 · 농기계 길 · ${D.high ? '전기 울타리' : '나무 울타리'}</b>를 놓으면 개원식을 해요."</p>`;
+      foot = `<button class="btn" id="lotX">나중에요</button><button class="btn go" id="lotBld" ${G.money >= D.build ? '' : 'disabled'}>🚧 기반 공사 (${won(D.build)})</button>`;
+    } else {
+      const ts = L.trees.filter(t => t), empty = L.trees.length - ts.length, ripe = L.trees.filter(lotRipe), rb = ripe.reduce((a, t) => a + t.bx, 0);
+      const cnt = {}; ts.forEach(t => cnt[t.v] = (cnt[t.v] || 0) + 1);
+      const canPlant = TASKS.plant.ok(G.week) && empty > 0, v = unlocked(G.selVar) ? G.selVar : 'fuji';
+      body += `<p>나무 <b>${ts.length}/${L.trees.length}그루</b>${ts.length ? ' · ' + Object.keys(cnt).map(k => `<span class="dot" style="background:${VARS[k].col}"></span>${VARS[k].name} ${cnt[k]}`).join(' · ') : ''}</p>`;
+      body += `<p>${D.boss}: "${ripe.length ? `지금 딸 사과가 <b>${ripe.length}그루 · ${rb}상자</b> 있어요. 직접 따면 노란 박스로, 저한테 맡기면 상자당 ${won(LOT_HARVEST_FEE)}에 창고로 보내 드려요.` : ts.length ? '가지치기·열매솎기는 제가 해 둘게요. 방제는 우리 과수원이랑 같이 돼요.' : `빈 땅이에요. 봄(10~16주)에 묘목을 심어요. 🌱 묘목 창에서 고른 품종(지금 <b>${VARS[v].name}</b>)으로 심어 드려요.`}"</p>`;
+      if (D.dwarf && ts.length) body += `<p>🔧 지주·철선 점검: ${L.prop === G.year ? '✅ 올해 점검 끝' : `<b>아직이에요.</b> 태풍 오기 전에 해 두면 나무가 안 기울어요(${won(LOT_PROP_COST)})`}</p>`;
+      if (D.dwarf && L.vis && L.vis.day === absDay()) body += `<p>🧒 오늘 체험 손님 ${L.vis.n}가족이 와 있어요. 손님한테 F를 누르면 사과 퀴즈를 내요!</p>`;
+      if (D.high && L.guard && L.guard.st < 2 && L.guard.day >= absDay()) body += `<p>⚠️ 산짐승 무리가 <b>${L.guard.day === absDay() ? '오늘' : `${L.guard.day - absDay()}일 뒤`} 17시</b>에 내려와요.</p>`;
+      foot = `<button class="btn" id="lotX">고마워요</button>`;
+      if (D.dwarf && ts.length && L.prop !== G.year) foot += `<button class="btn" id="lotProp" ${G.money >= LOT_PROP_COST ? '' : 'disabled'}>🔧 지주·철선 점검</button>`;
+      if (ripe.length) foot += `<button class="btn" id="lotHv" ${G.money >= rb * LOT_HARVEST_FEE ? '' : 'disabled'}>🍎 수확 맡기기 (${won(rb * LOT_HARVEST_FEE)})</button>`;
+      if (canPlant) foot += `<button class="btn go" id="lotPl" ${G.money >= SAPLING ? '' : 'disabled'}>🌱 ${VARS[v].name} 심기 (${Math.min(empty, Math.floor(G.money / SAPLING))}그루 · 한 그루 ${won(SAPLING)})</button>`;
+    }
+    o.body.innerHTML = body; o.footEl.innerHTML = foot;
+    const on = (id, f) => { const b = $('#' + id); if (b) b.onclick = f; };
+    on('lotX', () => UI.close());
+    on('lotGo', () => { if (lotContract(D)) { UI.close(); popup('✍️', `${D.A.name} 계약!`, `이제 ${D.A.name}는 ${HN()}네 땅이에요. ${D.boss}님이 일을 도와줘요. 먼저 땅에 있는 그루터기·돌·덤불 ${LOT_OBS}개를 치워요(F를 3번씩).`); updateHUD(true); } });
+    on('lotHire', () => { if (G.money < LOT_CLEAR_PAY) return; G.money -= LOT_CLEAR_PAY; L.hire = absDay(); toast('🚜 인부 아저씨들이 내일 아침까지 다 치워 줄 거예요.', 'good'); updateHUD(true); o.render(o); });
+    on('lotBld', () => { if (lotBuild(D)) { UI.close(); popup('🎉', `${D.A.name} 개원식!`, `마을 사람들이 모였어요. 고만수 이장님: "${HN()}, 축하하네! 이 땅에서도 맛있는 사과가 주렁주렁 열리길 바라네." 이제 봄(10~16주)에 ${D.boss}님한테 묘목을 심어 달라고 해요.`); updateHUD(true); } });
+    on('lotProp', () => { if (G.money < LOT_PROP_COST) return; G.money -= LOT_PROP_COST; L.prop = G.year; sfx('snip'); toast('🔧 지주를 단단히 박고 철선을 팽팽하게 당겼어요. 올해 태풍에도 끄떡없어요!', 'good'); updateHUD(true); o.render(o); });
+    on('lotHv', () => { const n = lotBossHarvest(D); if (n > 0) toast(`🍎 ${D.boss}님이 ${n}상자를 따서 창고로 보냈어요. 창고에서 등급을 나눠요.`, 'good'); updateHUD(true); o.render(o); });
+    on('lotPl', () => { const n = lotPlant(D, unlocked(G.selVar) ? G.selVar : 'fuji'); if (n) { sfx('plant'); toast(`🌱 ${D.boss}님이랑 ${n}그루를 심었어요! 내년부터 열려요.`, 'good'); unlock('plant1'); } updateHUD(true); o.render(o); });
+  }});
+}
+
+// ----- 체험 손님 퀴즈 (2026-10-18 팩트체크: 맨 위 출처) -----
+const LOT_QUIZ = [
+  {q:'사과나무를 키 작게 키우려고 뿌리 쪽에 붙이는 나무(대목)는?', a:['M9 같은 왜성 대목', '소나무', '은행나무'], c:0, e:'M9 같은 왜성 대목에 접을 붙이면 보통 나무의 절반쯤 크기로 자라요.'},
+  {q:'키 작은 사과나무를 지주와 철선으로 받쳐 주는 까닭은?', a:['뿌리가 약해서 쓰러지기 쉬워서', '새가 앉으라고', '사과 색을 내려고'], c:0, e:'왜성 대목은 뿌리가 잘 부러지고 땅을 꽉 붙잡지 못해서 받쳐 줘야 해요.'},
+  {q:'키 작은(왜성) 사과나무의 좋은 점은?', a:['일찍 열리고 따기 쉬워요', '물을 안 줘도 돼요', '열매가 수박만 해요'], c:0, e:'왜성 나무는 아주 일찍 열매를 맺고, 키가 작아 사다리 없이도 일하기 쉬워요.'},
+  {q:'사과 껍질을 빨갛게 만드는 색소는?', a:['안토시아닌', '엽록소', '카로틴'], c:0, e:'안토시아닌은 빨강·파랑·보라색을 내는 색소예요. 껍질 세포에 많을수록 빨개요.'},
+  {q:'사과 색이 잘 드는 날씨는?', a:['선선한 밤과 따뜻하고 맑은 낮', '덥고 습한 밤', '하루 종일 흐린 날'], c:0, e:'선선한 밤이 며칠 이어진 뒤 맑고 따뜻한 낮이 오면 색이 잘 들어요. 너무 더운 날은 오히려 방해돼요.'},
+  {q:'수확 몇 주 전 나무 밑에 은빛 반사 매트를 까는 까닭은?', a:['빛을 반사해 사과 아래쪽까지 색이 들게', '잡초를 키우려고', '비를 막으려고'], c:0, e:'반사 매트가 햇빛을 위로 튕겨 줘서 그늘진 사과에도 빛이 닿아요.'},
+  {q:'과수원에 꽃사과나무나 다른 품종을 섞어 심는 까닭은?', a:['다른 품종 꽃가루가 있어야 열매가 잘 열려서', '그늘을 만들려고', '울타리 대신 쓰려고'], c:0, e:'사과는 대부분 제 꽃가루로는 열매를 잘 못 맺어서, 다른 품종 꽃가루가 필요해요.'},
+  {q:'사과꽃의 꽃가루를 옮겨 주는 고마운 곤충이 아닌 것은?', a:['모기', '꿀벌', '뿔가위벌'], c:0, e:'꿀벌·뒤영벌·뿔가위벌 같은 곤충이 꽃가루를 옮겨 줘요.'}
+];
+function lotVisTalk(v){
+  const L = G.xlots.l1, vis = L.vis; if (!vis) return;
+  const who = {name:v.kid ? '체험 온 어린이' : '체험 손님', role:'확장 부지 1 체험 과수원', look:v.look};
+  if (vis.quiz.includes(v.fam)) { talk(who, pick(['사과 따기 정말 재밌어요!', '여기 사과는 키가 작아서 저도 딸 수 있어요!', '다음 주말에 또 올게요!'])); return; }
+  vis.quiz.push(v.fam);
+  if (!G.lotQSeen) G.lotQSeen = [];
+  let pool = LOT_QUIZ.map((q, i) => i).filter(i => !G.lotQSeen.includes(i)); if (!pool.length) { G.lotQSeen = []; pool = LOT_QUIZ.map((q, i) => i); }
+  const qi = pick(pool); G.lotQSeen.push(qi);
+  const Q = LOT_QUIZ[qi], ord = [0, 1, 2].sort(() => Math.random() - .5), c = ord.indexOf(Q.c);
+  const o = talk(who, `농부님, 궁금한 게 있어요!<br><b style="font-family:var(--display);font-weight:400;font-size:24px">Q. ${esc(Q.q)}</b>`, '');
+  $('#talkX').innerHTML = `<div class="quiz">${ord.map((k, i) => `<button class="btn" data-a="${i}">${'①②③'[i]} ${esc(Q.a[k])}</button>`).join('')}</div>`;
+  $('#talkX').querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+    const right = +b.dataset.a === c;
+    if (right) { G.money += 50000; G.rep += 1; G.stats.quiz++; updateHUD(true); }
+    o.body.querySelector('.bubble').innerHTML = `<div class="who">${who.name}</div>${right ? '우와, 맞아요! 농부님 최고! (+5만원 · 평판 +1)' : `아, 정답은 <b>${esc(Q.a[Q.c])}</b>래요!`}<div class="fact" style="margin-top:10px">💡 ${esc(Q.e)}</div>`;
+    $('#talkX').innerHTML = ''; o.footEl.innerHTML = `<button class="btn pri" id="tOk">또 와요</button>`; $('#tOk').onclick = () => UI.close();
+  });
+}
+
+// ----- 할 일 -----
+function lotTodo(items){
+  if (!G) return; const lots = ensureLots(), today = absDay();
+  for (const D of LOT_DEF) {
+    const L = lots[D.id], nm = D.A.name, go = 'lot:' + D.id;
+    if (L.st === 0) { if (G.rep >= D.rep) items.push({ic:'🌱', t:`${nm} 계약할 수 있어요`, n:won(D.price), go, lot:1}); continue; }
+    if (L.st === 1) { items.push({ic:'🪨', t:`${nm} 개간: 그루터기·돌 치우기`, n:L.hire ? '인부 작업 중' : `${L.obs.length}개 남음`, go:'lotobs:' + D.id, lot:1, done:!!L.hire}); continue; }
+    if (L.st === 2) { items.push({ic:'🚧', t:`${nm} 기반 공사`, n:won(D.build), go, lot:1, hot:true}); continue; }
+    const ts = L.trees.filter(t => t), empty = L.trees.length - ts.length;
+    if (TASKS.plant.ok(G.week) && empty) items.push({ic:'🌱', t:`${nm} 묘목 심기 (${D.boss})`, n:`${empty}자리`, go, lot:1});
+    const ripe = L.trees.filter(lotRipe); if (ripe.length) items.push({ic:'🍎', t:`${nm} 사과 따기`, n:`${ripe.length}그루`, hot:true, go:'lottree:' + D.id, lot:1});
+    if (D.dwarf && ts.length && L.prop !== G.year && G.week <= 36) items.push({ic:'🔧', t:`${nm} 지주·철선 점검`, n:'태풍 전에', go, lot:1});
+    if (D.dwarf && L.vis && L.vis.day === today && LOTV.length) items.push({ic:'🧒', t:`${nm} 체험 손님 퀴즈`, n:L.vis.quiz.length >= L.vis.n ? '다 풀었어요' : `${L.vis.n - L.vis.quiz.length}가족`, go:'lotvis:' + D.id, lot:1, done:L.vis.quiz.length >= L.vis.n});
+    if (D.high && L.guard && L.guard.st < 2 && L.guard.day === today) items.push({ic:'⚠️', t:`${nm} 지키기 (17시 산짐승 무리)`, n:G.hour >= 17 ? '지금!' : '오늘', hot:true, go, lot:1});
+  }
+}
+
+// ----- 그림 -----
+function lotEntities(ctx, add, vis){
+  if (!G) return; const lots = ensureLots();
+  for (const D of LOT_DEF) {
+    const L = lots[D.id], A = D.A;
+    if (!vis(A.cx, A.cy, 3200)) continue;
+    if (L.st === 0) {
+      if (vis(A.cx, A.cy, 500)) add(A.cy, A.cx, () => drawSign(ctx, A.cx, A.cy, `🌱 ${A.name} · 팔아요`));
+      const x0 = D.bx0 - 200, x1 = D.bx1 + 200, y0 = D.by0 - 200, y1 = D.by1 + 200;
+      for (const [x, y] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1], [A.cx, y0], [A.cx, y1], [x0, (y0 + y1) / 2], [x1, (y0 + y1) / 2]]) if (vis(x, y)) add(y, x, () => drawStake(ctx, x, y));
+      continue;
+    }
+    if (vis(A.cx, A.cy, 500)) add(A.cy, A.cx, () => drawSign(ctx, A.cx, A.cy, `${D.ic} ${D.title}`));
+    if (vis(D.bossX, D.bossY)) add(D.bossY, D.bossX, () => drawPerson(ctx, D.bossX, D.bossY, D.look, hDir8(P.x - D.bossX, P.y - D.bossY), 0, 0));
+    for (const o of L.obs) if (vis(o.x, o.y)) add(o.y, o.x, () => lotDrawObs(ctx, o));
+    if (L.st < 3) continue;
+    // 울타리(가운데 아래는 들어가는 문)
+    const fx0 = D.bx0 - 150, fx1 = D.bx1 + 150, fy0 = D.by0 - 160, fy1 = D.by1 + 140, gx = A.cx;
+    for (let x = fx0; x < fx1; x += 100) {
+      const x2 = Math.min(x + 100, fx1);
+      if (vis(x, fy0)) add(fy0, x, () => { drawFenceRun(ctx, x, fy0, x2, fy0, D.high); drawPost(ctx, x, fy0); });
+      if (!(x2 > gx - 160 && x < gx + 160) && vis(x, fy1)) add(fy1, x, () => { drawFenceRun(ctx, x, fy1, x2, fy1, D.high); drawPost(ctx, x, fy1); });
+    }
+    for (let y = fy0; y < fy1; y += 100) { const y2 = Math.min(y + 100, fy1); for (const x of [fx0, fx1]) if (vis(x, y)) add(y2, x, () => { drawFenceRun(ctx, x, y, x, y2, D.high); drawPost(ctx, x, y); }); }
+    // 왜성 밭: 줄마다 철선(나무 뒤)
+    if (D.dwarf) for (let r = 0; r < D.rows; r++) { const y = D.by0 + r * D.rowH; if (!vis(A.cx, y, 1000)) continue;
+      add(y - 1, A.cx, () => { for (const [a, b] of [[D.bx0 - 20, D.bx0 + (D.half - 1) * D.dx + 20], [D.bx1 - (D.half - 1) * D.dx - 20, D.bx1 + 20]]) { line(ctx, [a, y - 70, b, y - 70], 1.6, '#8a8a8a'); line(ctx, [a, y - 115, b, y - 115], 1.6, '#8a8a8a'); for (const x of [a, b]) cel(ctx, cc => rr(cc, x - 5, y - 130, 10, 132, 3), '#d4cec4', '#a8a092', 3, 0, 2.2); } }); }
+    L.trees.forEach((t, i) => { if (!t) return; const s = D.slots[i]; if (!vis(s.x, s.y)) return;
+      const sp = treeSprite(t), k = D.sc; add(s.y, s.x, () => ctx.drawImage(sp, s.x - 85 * k, s.y - 222 * k, 170 * k, 240 * k)); });
+  }
+  for (const v of LOTV) if (vis(v.x, v.y)) add(v.y, v.x, () => drawPerson(ctx, v.x, v.y, v.look, v.dir, v.walk, 0));
+}
+function lotDrawObs(c, o){
+  const s = .7 + o.hp * .1;
+  if (o.k === 'rock') return drawRock(c, o.x, o.y, .85 * s);
+  if (o.k === 'bush') return drawBush(c, o.x, o.y, 1.1 * s);
+  c.save(); c.translate(o.x, o.y); c.scale(s, s); shadow(c, 0, 2, 30, 9);
+  cel(c, cc => { cc.moveTo(-26, 0); cc.lineTo(-22, -30); cc.quadraticCurveTo(0, -38, 22, -30); cc.lineTo(26, 0); cc.closePath(); }, '#9a6440', '#6d4128', 3, 0, 2.4);
+  cel(c, cc => ell(cc, 0, -31, 22, 7), '#e0b47a', '#b4844a', 1, 1, 2);
+  c.beginPath(); ell(c, 0, -31, 12, 3.6); c.strokeStyle = '#b4844a'; c.lineWidth = 1.4; c.stroke();
+  c.restore();
+}
+// 반장님 이름표
+function drawLotTags(ctx){
+  if (!G || !G.xlots) return;
+  ctx.font = '17px Jua'; ctx.textAlign = 'center';
+  for (const D of LOT_DEF) {
+    if (G.xlots[D.id].st < 1) continue;
+    const d = Math.hypot(D.bossX - P.x, D.bossY - P.y); if (d > 300) continue;
+    ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
+    const tw = ctx.measureText(D.boss).width + 18, ty = D.bossY - 136;
+    if (PV.on && !pvAt(ctx, D.bossX, D.bossY)) continue;
+    ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
+    ctx.beginPath(); rr(ctx, D.bossX - tw / 2, ty - 18, tw, 25, 10); ctx.fillStyle = 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.fillStyle = INK; ctx.fillText(D.boss, D.bossX, ty);
+  }
+  ctx.globalAlpha = 1; ctx.textAlign = 'left';
+}
+
 // ===== 호랑이 탈것 (2026-10-14 달 요청) =====
 // 호랑이 가죽 10장으로 만들어요(마을 장비 창). 숲(사냥터)에서만 탈 수 있고, 마을로 들어오면 저절로 내려요. 타면 이동 속도 +30%.
 const RIDE_TIGER = {name:'호랑이 탈것'}; // 보스 기운(붉은 빛) 없이 그려요
@@ -9321,7 +9781,7 @@ function txAt(P0, s){
   return {x:ax + (bx - ax) * t, y:ay + (by - ay) * t, dx:(bx - ax) / L, dy:(by - ay) / L};
 }
 // ----- 목적지: 승차장 다섯 곳 + 찾은 숲속 쉼터 -----
-const taxiDests = () => (txInit(), [...PORTALS.map(p => ({id:p.id, ic:'🛻', name:p.name, x:p.x, y:p.y})), ...restsFound().map(r => ({id:'r_' + r.id, ic:'⛺', name:r.name, x:REST_DROP[r.id][0], y:REST_DROP[r.id][1]}))]);
+const taxiDests = () => (txInit(), [...PORTALS.map(p => ({id:p.id, ic:'🛻', name:p.name, x:p.x, y:p.y})), ...restsFound().map(r => ({id:'r_' + r.id, ic:'⛺', name:r.name, x:REST_DROP[r.id][0], y:REST_DROP[r.id][1]})), ...lotDests()]); // 2026-10-18 계약한 확장 부지도
 const TAXIS = PORTALS.map(p => ({taxi:1, id:'tx_' + p.id, home:p, x:p.x, y:p.y, d8:0, st:'idle', col:'#e8603a', wait:1}));
 function taxiBoard(tx){
   if (riding && riding()) { toast('🐯 호랑이에서 내린 다음 타요.'); return; }
@@ -10403,6 +10863,7 @@ function pressF(){
   act(t);
 }
 function act(t){
+  if (t.kind.startsWith('lot') && lotAct(t)) return; // 2026-10-18 확장 부지
   if (t.kind === 'go') { P.tgt = {x:t.x, y:t.y}; P.pend = t.pend; return; }
   if (t.kind === 'tree') {
     const k = taskFor(t.i);
@@ -10495,7 +10956,7 @@ function update(dt){
       if (workerS.idle > 3) { workerS.tx = BENCH.x; workerS.ty = BENCH.y + 4; workerS.sit = d < 6; if (workerS.sit) workerS.dir = 0; }
     }
   }
-  updateCritters(dt); updateVillagers(dt); updateHunt(dt); updateBus(dt); updateTaxi(dt);
+  updateCritters(dt); updateVillagers(dt); updateHunt(dt); updateBus(dt); updateTaxi(dt); updateLots(dt);
   for (const f of flies) { f.t += dt; f.x += Math.cos(f.t * .7) * 40 * dt + 10 * dt; f.y += Math.sin(f.t * 1.3) * 30 * dt; if (f.x > WORLD_W) f.x = 0; }
   for (const f of floats) { f.t -= dt; f.y -= dt * 40; }
   for (let i = floats.length - 1; i >= 0; i--) if (floats[i].t <= 0) floats.splice(i, 1);
