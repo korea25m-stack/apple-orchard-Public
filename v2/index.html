@@ -9532,6 +9532,7 @@ const MAX_UP = 10; // 2026-10-12: 모든 장비 +10까지
 function ensureGear(){
   if (!G.gear) G.gear = {weapon:'stick', armor:'cloth', boots:'rubber', hat:'straw', own:{stick:0, cloth:0, rubber:0, straw:0}};
   if (!G.fm) G.fm = {lv:1, xp:0};
+  if (G.fm.lv > MAX_LV) { G.fm.lv = MAX_LV; G.fm.xp = 0; } // 예전 저장
   if (!G.bag) G.bag = {};
   return G.gear;
 }
@@ -9588,11 +9589,16 @@ function farmer(){
   return {lv, xp:G.fm.xp, need:xpNeed(lv), atk:slotStat('weapon') + (lv - 1) * 2, def:slotStat('armor'), spd:slotStat('boots') + (lv - 1) + rb.spd,
     hp:100 + slotStat('hat') + (lv - 1) * 6 + rb.hp, skill:Math.min(15, lv - 1), reach:gearItem('weapon', g.weapon).reach || 1};
 }
-const xpNeed = lv => 60 + lv * 40;
+// 2026-10-18 달 요청: 레벨도 장비와 같은 포화 곡선을 따라요. 레벨 = 1 + 49·(1 − e^(−누적 경험치 / 8000))에 가깝게,
+// 처음엔 금방 오르고 갈수록 느려져요. 최고 레벨은 지금은 50
+const MAX_LV = 50, LV_K = 8000;
+const xpTotal = lv => Math.round(-LV_K * Math.log(1 - (lv - 1) / MAX_LV)); // lv까지 모아야 하는 누적 경험치
+const xpNeed = lv => lv >= MAX_LV ? Infinity : xpTotal(lv + 1) - xpTotal(lv);
 function gainXp(n){
   ensureGear(); G.fm.xp += Math.round(n);
   let up = 0;
   while (G.fm.xp >= xpNeed(G.fm.lv)) { G.fm.xp -= xpNeed(G.fm.lv); G.fm.lv++; up++; }
+  if (G.fm.lv >= MAX_LV) G.fm.xp = 0; // 최고 레벨이면 경험치는 더 안 쌓여요
   if (up) { sfx('level'); toast(`⭐ ${HN()} 레벨 ${G.fm.lv}! 힘·체력·솜씨가 늘었어요.`, 'good'); floats.push({x:P.x, y:P.y - 130, s:`LEVEL UP!`, t:1.6, c:'#ff6b57'}); }
 }
 // 장비에 따라 우주 모습이 바뀜
@@ -9658,7 +9664,7 @@ function uiGear(){
           return `<div class="gi ${on ? 'on' : ''} ${lock && !own ? 'lock' : ''}">${gearImg(it.id, 56)}<div class="gtx"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <span class="gs">${S.unit} ${itemStat(slot, it.id, lv)}</span>${slot === 'weapon' ? ` <span class="gs">막기 ${Math.min(80, 30 + GEAR.weapon.items.indexOf(it) * 10 + lv * 4)}%</span> <span class="gs">${lv >= AOE_LV ? '🌀 전방 180° 베기' : '+5부터 전방 베기'}</span>` : ''}<br><span class="gd">${esc(it.desc)}</span>${own ? gearSellBtns(slot, it) : ''}</div><div class="gact">${btn}</div></div>`;
         }).join('')}</div>`;
     };
-    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${f.lv}</b><span class="xpb"><i style="width:${f.xp / f.need * 100}%"></i></span><span>${f.xp}/${f.need}</span>
+    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${f.lv}</b><span class="xpb"><i style="width:${f.lv >= MAX_LV ? 100 : f.xp / f.need * 100}%"></i></span><span>${f.lv >= MAX_LV ? '최고 레벨 MAX' : `${f.xp}/${f.need}`}</span>
       <span>💪 힘 ${f.atk}</span><span>🛡️ 방어 ${f.def}</span><span>❤️ 체력 ${f.hp}</span><span>👟 빠르기 +${f.spd}%</span><span>✋ 솜씨 +${f.skill}</span><span>🛡️ 막기 ${blockPct()}%</span><span>💎 강화석 ${g.stones || 0}</span></div>
       <p class="gnote">평판(⭐ ${G.rep})이 오르면 더 좋은 장비를 살 수 있고, 강화도 할 수 있어요. ${jo(HN(), '이', '가')} 강해지면 더 센 산짐승이 오지만 이기면 장비·강화석을 떨어뜨려요. 솜씨는 사과 품질을 올리고, 힘·방어·체력은 산짐승을 쫓을 때 써요. 경험치는 일하기·방제 운전·산짐승 쫓기·사냥터에서 얻어요.</p>
       <div class="ggrid">${SLOTS.map(card).join('')}</div>
