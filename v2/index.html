@@ -4113,7 +4113,7 @@ function heroHurt(m, base){
   }
   P.hp -= dmg; P.inv = .9; P.hurtT = 0;
   floats.push({x:P.x, y:P.y - 140, s:txt, t:1, c:col});
-  if (P.hp <= 0) heroFaint();
+  if (!daliRescue() && P.hp <= 0) heroFaint();
 }
 
 // ----- 산짐승 -----
@@ -4355,7 +4355,7 @@ function updateHunt(dt){
   ensureHero();
   if (!UI.free()) return;
   for (const k of ['inv', 'acd', 'asw', 'gong', 'spin']) if (P[k] > 0) P[k] -= dt;
-  P.hurtT += dt;
+  P.hurtT += dt; updateDali(dt);
   if (P.hurtT > 4 && P.hp < P.max) P.hp = Math.min(P.max, P.hp + dt * 8);
   // 막기: 최대 2초 유지, 끝나면 5초 쉬어야 다시 막을 수 있어요
   const wantBlk = !!((actDown('block') || P.touchBlock) && inCombat()); // 2026-10-13 기본: 오른쪽 클릭·F
@@ -4566,6 +4566,7 @@ function huntEntities(ctx, add, vis, T){
   for (const f of FORAGE) if (vis(f.x, f.y)) add(f.y - 1, f.x, () => drawForage(ctx, f));
   if (BFX.length) add(-1e9, 0, () => drawBossFx(ctx));
   for (const m of MONS) if (vis(m.x, m.y)) add(m.y, m.x, () => drawMon(ctx, m));
+  if (DALI.on) add(DALI.y, DALI.x, () => drawDali(ctx));
 }
 // 화면 위: 작은 지도, 습격 화살표, 구역 안내
 let miniBase = null;
@@ -5214,7 +5215,7 @@ function bossHit(m, base, txt){
   P.hp -= dmg; P.inv = .9; P.hurtT = 0; sfx(half ? 'block' : 'hurt');
   FX.hurt = half ? .3 : .7; FX.shake = Math.max(FX.shake, .6); FX.stop = Math.max(FX.stop, .07);
   floats.push({x:P.x, y:P.y - 140, s:`${half ? '🛡️ ' : ''}${txt} -${dmg}`, t:1.1, c:half ? '#2f6fb8' : '#d6372c'});
-  if (P.hp <= 0) heroFaint();
+  if (!daliRescue() && P.hp <= 0) heroFaint();
 }
 const inCircle = (z, x, y) => Math.hypot(x - z.x, (y - z.y) * 1.25) < z.r;
 function inLane(z, x, y){ const dx = x - z.x, dy = y - z.y, a = dx * z.ux + dy * z.uy, b = Math.abs(-dx * z.uy + dy * z.ux); return a > -40 && a < z.len + 40 && b < z.w / 2; }
@@ -6287,7 +6288,41 @@ function drawSpitzAt(ctx){ ctx.save(); ctx.translate(SPITZ.x, SPITZ.y); ctx.scal
   for (const h of SPITZ.hearts) { ctx.globalAlpha = Math.min(1, (1.1 - h.t) * 2.5); const pop = Math.min(1, h.t * 6); drawHeart(ctx, h.x, h.y, h.r * (.6 + pop * .4), '#ff6b8a'); }
   ctx.globalAlpha = 1; ctx.restore(); }
 // 2026-10-16 달 요청: F로 '달'을 쓰다듬어요
-function petSpitz(){ const S = SPITZ; S.st = 'pet'; S.pet = 2.2; S.hT = 0; sfx('pop'); floats.push({x:S.x, y:S.y - 160, s:'💕 달이가 좋아해요!', t:1.2, c:'#ff6b8a'}); P.face = S.x < P.x ? -1 : 1; }
+function petSpitz(){ const S = SPITZ; G.daliBuff = absDay() + DALI_DAYS; /* 숨겨진 버프: 화면엔 안 보여요 */ S.st = 'pet'; S.pet = 2.2; S.hT = 0; sfx('pop'); floats.push({x:S.x, y:S.y - 160, s:'💕 달이가 좋아해요!', t:1.2, c:'#ff6b8a'}); P.face = S.x < P.x ? -1 : 1; }
+
+// ===== 2026-10-18 달 요청: 숨겨진 스킬 '달이의 응원' =====
+// 달이를 쓰다듬으면 28일(한 달) 동안 몰래 버프가 생겨요(화면엔 안 보임, 다시 쓰다듬으면 처음부터).
+// 서리용과 싸우다 체력이 10% 이하가 되면 달이가 달려와 체력을 가득 채워 줘요. 버프 한 번에 한 번, 쓰면 사라져요.
+const DALI_DAYS = 28;
+const DALI = {on:0, x:0, y:0, d8:2, t:0, ph:'in', st:0, walk:false, hearts:[]};
+function daliRescue(){
+  if (!G.daliBuff || G.daliBuff < absDay() || P.hp > P.max * .1) return false;
+  if (!MONS.some(m => m.kind === 'dragon' && !m.dead && m.eng)) return false;
+  G.daliBuff = 0; P.hp = P.max; P.inv = 2.5; P.hurtT = 0;
+  const a = Math.atan2(P.y - DDEN.y, P.x - DDEN.x) + rnd(-.5, .5); // 둥지 바깥쪽에서 뛰어 들어와요
+  Object.assign(DALI, {on:1, x:P.x + Math.cos(a) * 520, y:P.y + Math.sin(a) * 420, t:0, ph:'in', st:0, hearts:[], hT:0});
+  sfx('fanfare'); FX.stop = Math.max(FX.stop, .12);
+  burst(P.x, P.y - 70, 26, ['#ff6b8a', '#ffd1dc', '#fffaf1'], 520, .7);
+  floats.push({x:P.x, y:P.y - 190, s:'🐶💖 달이가 나타났다! 체력 가득!', t:2.6, c:'#ff6b8a', sz:40, pop:.3});
+  return true;
+}
+function updateDali(dt){
+  const D = DALI; if (!D.on) return; D.t += dt;
+  for (let i = D.hearts.length - 1; i >= 0; i--) { const h = D.hearts[i]; h.t += dt; h.y -= dt * 46; h.x += Math.sin(h.t * 6 + h.ph) * dt * 16; if (h.t > 1.2) D.hearts.splice(i, 1); }
+  const go = (tx, ty, sp) => { const dx = tx - D.x, dy = ty - D.y, d = Math.hypot(dx, dy); if (d < 8) { D.walk = false; return true; } const s = Math.min(d, sp * dt); D.x += dx / d * s; D.y += dy / d * s; D.walk = true; critterDir(D, dx, dy, dt); return false; };
+  if (D.ph === 'in') { if (go(P.x - 90 * (P.face || 1), P.y + 10, 900)) { D.ph = 'cheer'; D.st = 2.4; } }
+  else if (D.ph === 'cheer') { D.st -= dt; D.walk = false; critterDir(D, P.x - D.x, P.y - D.y, dt);
+    if ((D.hT -= dt) <= 0) { D.hT = .14; D.hearts.push({x:rnd(-22, 22), y:-80, t:0, ph:rnd(0, 6), r:rnd(6, 9)}); }
+    if (D.st <= 0) { D.ph = 'out'; D.ox = D.x + (D.x - P.x) * 8; D.oy = D.y + 500; floats.push({x:D.x, y:D.y - 110, s:'🐶 멍! 힘내요!', t:1.2, c:'#ff6b8a'}); } }
+  else { D.a = Math.max(0, 1 - (D.t2 = (D.t2 || 0) + dt) / 1.2); if (go(D.ox, D.oy, 700) || D.a <= 0) { D.on = 0; D.t2 = 0; } }
+}
+function drawDali(ctx){
+  const D = DALI; ctx.save(); ctx.translate(D.x, D.y); if (D.ph === 'out') ctx.globalAlpha = D.a ?? 1;
+  const g = ctx.createRadialGradient(0, -40, 10, 0, -40, 110); g.addColorStop(0, 'rgba(255,190,210,.55)'); g.addColorStop(1, 'rgba(255,190,210,0)'); ctx.fillStyle = g; ctx.fillRect(-110, -150, 220, 220); // 달이 둘레 분홍빛
+  ctx.scale(1.15, 1.15); drawSpitz8(ctx, D.d8 ?? 2, D.t, D.walk, true);
+  for (const h of D.hearts) { ctx.globalAlpha = Math.min(1, (1.2 - h.t) * 2.5) * (D.ph === 'out' ? D.a ?? 1 : 1); drawHeart(ctx, h.x, h.y, h.r * (.6 + Math.min(1, h.t * 6) * .4), '#ff6b8a'); }
+  ctx.restore();
+}
 
 // ===== 2026-10-17 달 요청: 서리용 둥지의 전설 보스 '서리용' + 호위 공룡 '티라노사우루스'·'트리케라톱스' (모두 8방향) =====
 // 서리용: 남빛 비늘 + 얼음 가시 등줄기 + 뒤로 휜 뿔 + 박쥐 같은 큰 날개 + 꼬리 끝 얼음 칼날 + 시안빛으로 빛나는 눈 + 서리 입김
