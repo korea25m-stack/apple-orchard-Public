@@ -2754,6 +2754,7 @@ function findTarget(){
   huntTargets(cands); busTargets(cands); lotTargets(cands); // 2026-10-18 확장 부지
   for (const n of NPCS) cands.push({kind:'npc', n:n.i, x:n.x, y:n.y});
   if (SPITZ.init) cands.push({kind:'spitz', x:SPITZ.x, y:SPITZ.y}); // 2026-10-16 달이 쓰다듬기
+  spfamTargets(cands); // 2026-10-18 달이 가족
   for (const c of cands) {
     const d = (c.x - P.x) ** 2 + ((c.y - P.y) * 1.3) ** 2;
     const lim = c.kind === 'hanok' || c.kind === 'nongmak' || c.kind === 'rest' || c.kind === 'taxi' || c.kind === 'bus' ? 150 * 150 : c.kind === 'tree' || c.kind === 'lottree' ? 70 * 70 : bd;
@@ -2767,6 +2768,7 @@ function targetLabel(t){
   if (t.kind === 'tree') { const k = taskFor(t.i); if (k) return TASKS[k].verb; return G.trees[t.i] ? '살펴보기' : ''; }
   if (t.kind === 'npc') return NPCS[t.n].name;
   if (t.kind === 'spitz') return '🐶 달 쓰다듬기';
+  if (t.kind === 'spfam') return `🐶 ${SPFAM[t.i].name}(${SPFAM[t.i].role}) 쓰다듬기`;
   if (t.kind === 'forage') return '캐기: ' + LOOT[t.f.item].name;
   if (t.kind === 'rest') return '⛺ 쉬기';
   if (t.kind === 'bus' || t.kind === 'taxi') return busLabel(t);
@@ -3462,6 +3464,7 @@ function updateVillagers(dt){
     n.dir = hDir8(dx, dy);
   }
   updateSpitz(dt); // 2026-10-16 달이네 흰 스피츠
+  updateSpfam(dt); // 2026-10-18 달이 가족
 }
 function talkNpc(n){
   if (blemTalk(n)) return;
@@ -3615,6 +3618,7 @@ function drawBigTree(c, x, y){
 function villageEntities(ctx, add, vis){
   for (const b of VB) if (vis(b.x, b.y, 300)) add(b.y, b.x, () => drawVHouse(ctx, b));
   if (typeof SPITZ !== 'undefined' && SPITZ.init && vis(SPITZ.x, SPITZ.y, 200)) add(SPITZ.y, SPITZ.x, () => drawSpitzAt(ctx));
+  spfamEntities(ctx, add, vis); // 2026-10-18 달이 가족
   if (vis(JEONGJA.x, JEONGJA.y, 300)) add(JEONGJA.y, JEONGJA.x, () => drawJeongja(ctx, JEONGJA.x, JEONGJA.y));
   if (vis(BIGTREE.x, BIGTREE.y, 340)) add(BIGTREE.y, BIGTREE.x, () => drawBigTree(ctx, BIGTREE.x, BIGTREE.y));
   for (const t of VTREES) if (vis(t.x, t.y, 200)) add(t.y, t.x, () => drawOak(ctx, t.x, t.y, .62));
@@ -6821,6 +6825,67 @@ function iceNestEntities(ctx, D, add, vis, T){
   const gx = D.x + 380, gy = D.y - W - 160;
   if (vis(gx, gy)) add(gy, gx, () => drawSign(ctx, gx, gy, D.sign));
 }
+
+// ===== 2026-10-18 달 요청: 달이 가족 (아내 1마리 + 새끼 3마리) =====
+// 달이를 닮은 흰 스피츠. 달이네 집 근처만 돌아다녀요: 빛나네 집·복순 떡방앗간보다 멀리 가지 않아요(그 거리의 85% 안).
+// 새끼들은 엄마 곁을 졸졸 따라다녀요. F로 쓰다듬으면 하트가 나와요(숨은 버프는 달이만).
+const SPFAM = [
+  {name:'별', role:'달이 아내', sc:.98, bow:'#ff7aa2', sp:80},
+  {name:'콩', role:'달이 새끼', sc:.58, bow:'#5aa8f0', sp:120, pup:1},
+  {name:'보리', role:'달이 새끼', sc:.55, bow:'#ffd23a', sp:120, pup:1},
+  {name:'솜', role:'달이 새끼', sc:.52, bow:'#6fd6a8', sp:120, pup:1}
+].map(d => ({...d, x:0, y:0, tx:0, ty:0, d8:2, t:Math.random() * 9, walk:false, wait:Math.random() * 2, hearts:[], pet:0, stuck:0}));
+const SPFAM_BOW_X = {0:26, 1:15, 2:0, 6:0, 7:16}; // 귀 사이(머리 위) 리본 자리
+let spfamR = 0, spfamH = null;
+function spfamInit(){
+  if (spfamH) return;
+  const [hx, hy] = spitzHome(), H = VB.find(b => b.sign === '달이네 집'), lim = ['빛나네 집', '복순 떡방앗간'].map(s => { const B = VB.find(b => b.sign === s); return Math.hypot(B.x - H.x, B.y - H.y); });
+  spfamH = {x:hx, y:hy, cx:H.x, cy:H.y}; spfamR = Math.min(...lim) * .85;
+  SPFAM.forEach((d, i) => { d.x = d.tx = hx - 60 + i * 50; d.y = d.ty = hy + 40 + (i % 2) * 30; });
+}
+const spfamIn = (x, y) => Math.hypot(x - spfamH.cx, y - spfamH.cy) <= spfamR && y >= spfamH.y - 10; // 거리는 달이네 집에서 재요 // 집 앞마당 쪽(지붕 위로 안 올라가게)
+function spfamStep(d, tx, ty, sp, dt){
+  const dx = tx - d.x, dy = ty - d.y, dd = Math.hypot(dx, dy);
+  if (dd < 6) { d.walk = false; return true; }
+  const s = Math.min(dd, sp * dt); d.walk = true;
+  if (!spfamIn(d.x + dx / dd * s, d.y + dy / dd * s) || !moveBy(d, dx / dd * s, dy / dd * s)) { d.stuck += dt; d.walk = false; return false; }
+  d.stuck = 0; critterDir(d, dx, dy, dt); return false;
+}
+function spfamPick(d, cx, cy, r){
+  for (let k = 0; k < 10; k++) { const a = rnd(0, 6.28), q = rnd(20, r), x = cx + Math.cos(a) * q, y = cy + Math.sin(a) * q * .7; if (spfamIn(x, y) && !blocked(x, y)) { d.tx = x; d.ty = y; return; } }
+  d.tx = spfamH.x; d.ty = spfamH.y;
+}
+function updateSpfam(dt){
+  spfamInit(); const mom = SPFAM[0];
+  for (const d of SPFAM) {
+    d.t += dt;
+    for (let i = d.hearts.length - 1; i >= 0; i--) { const h = d.hearts[i]; h.t += dt; h.y -= dt * 38; h.x += Math.sin(h.t * 6 + h.ph) * dt * 14; if (h.t > 1.1) d.hearts.splice(i, 1); }
+    if (d.pet > 0) { d.pet -= dt; d.walk = false; critterDir(d, P.x - d.x, P.y - d.y, dt); if ((d.hT = (d.hT || 0) - dt) <= 0) { d.hT = .25; d.hearts.push({x:rnd(-14, 14), y:-80 * d.sc, t:0, ph:rnd(0, 6), r:rnd(4, 6)}); } continue; }
+    if (!spfamIn(d.x, d.y)) { spfamStep(d, spfamH.x, spfamH.y, d.sp, dt); continue; } // 혹시 밖이면 집으로
+    if (d.wait > 0) { d.wait -= dt; d.walk = false; if (Math.hypot(P.x - d.x, P.y - d.y) < 260) critterDir(d, P.x - d.x, P.y - d.y, dt); continue; }
+    if (spfamStep(d, d.tx, d.ty, d.sp, dt) || d.stuck > 1) {
+      d.stuck = 0; d.wait = d.pup ? rnd(.6, 2.2) : rnd(1.5, 4.5);
+      if (d.pup) spfamPick(d, mom.x, mom.y, 130); else spfamPick(d, spfamH.x, spfamH.y, spfamR);
+    }
+  }
+}
+function drawSpfamOne(ctx, d){
+  ctx.save(); ctx.translate(d.x, d.y); ctx.scale(d.sc, d.sc);
+  const happy = d.pet > 0 || (d.pup && d.walk);
+  drawSpitz8(ctx, d.d8 ?? 2, d.t, d.walk, happy);
+  // 리본(아내는 분홍, 새끼는 파랑·노랑·민트로 구별)
+  const flip = [3, 4, 5].includes(d.d8), k = flip ? ({3:1, 4:0, 5:7})[d.d8] : d.d8, bx = (SPFAM_BOW_X[k] ?? 0) * (flip ? -1 : 1), by = k === 6 ? -82 : -80;
+  {
+    for (const s of [-1, 1]) cel(ctx, cc => { cc.moveTo(bx, by); cc.lineTo(bx + s * 11, by - 6); cc.lineTo(bx + s * 11, by + 6); cc.closePath(); }, d.bow, mix(d.bow, '#000000', .25), 0, 1, 2);
+    cel(ctx, cc => ell(cc, bx, by, 3.6, 3.6), d.bow, mix(d.bow, '#000000', .25), 0, 0, 2);
+  }
+  for (const h of d.hearts) { ctx.globalAlpha = Math.min(1, (1.1 - h.t) * 2.5); const pop = Math.min(1, h.t * 6); drawHeart(ctx, h.x / d.sc, h.y / d.sc, h.r * (.6 + pop * .4) / d.sc, '#ff6b8a'); }
+  ctx.globalAlpha = 1; ctx.restore();
+  if (Math.hypot(P.x - d.x, P.y - d.y) < 280) { ctx.font = '700 15px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = '#fffaf1'; const ty = d.y - 100 * d.sc - 12; ctx.strokeText(d.name, d.x, ty); ctx.fillStyle = '#7a5af0'; ctx.fillText(d.name, d.x, ty); }
+}
+function spfamEntities(ctx, add, vis){ if (!spfamH) return; for (const d of SPFAM) if (vis(d.x, d.y, 200)) add(d.y, d.x, () => drawSpfamOne(ctx, d)); }
+function spfamTargets(cands){ if (!spfamH) return; SPFAM.forEach((d, i) => cands.push({kind:'spfam', i, x:d.x, y:d.y})); }
+function petSpfam(i){ const d = SPFAM[i]; d.pet = 2; d.hT = 0; sfx('pop'); floats.push({x:d.x, y:d.y - 110 * d.sc - 30, s:`💕 ${jo(d.name, '이', '가')} 좋아해요!`, t:1.2, c:'#ff6b8a'}); P.face = d.x < P.x ? -1 : 1; }
 
 // ===== 2026-10-13 기상 이벤트 화면 연출 (태풍·우박·늦서리) =====
 let WXFX = null;
@@ -10911,6 +10976,7 @@ function act(t){
   else if (t.kind === 'hunter') talkHunter();
   else if (t.kind === 'npc') talkNpc(NPCS[t.n]);
   else if (t.kind === 'spitz') petSpitz();
+  else if (t.kind === 'spfam') petSpfam(t.i);
   else if (t.kind === 'nongmak') uiNongmak();
   else if (t.kind === 'taxi') taxiBoard(t.tx);
   else if (t.kind === 'bus') busBoard(t.b);
