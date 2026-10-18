@@ -587,7 +587,7 @@ const ACH = {
   box100:  ['📦','100상자','사과 100상자를 땄어요'],
   box500:  ['🚚','500상자','사과 500상자를 땄어요'],
   bigbuyer:['💎','큰손 상인','경매에서 큰손 상인을 만났어요'],
-  raid:    ['🛡️','과수원 지킴이','멧돼지나 고라니를 쫓아냈어요'],
+  raid:    ['🛡️','과수원 지킴이','과수원에 내려온 멧돼지나 고라니를 잡았어요'],
   sprayS:  ['🚜','방제 달인','직접 방제에서 S등급을 받았어요'],
   quiz5:   ['🧠','사과 박사','퀴즈를 5개 맞혔어요'],
   allvar:  ['🎨','품종 수집가','다섯 품종을 모두 심었어요'],
@@ -4159,7 +4159,7 @@ function spawnRaid(kind){
   const left = Math.random() < .5, m = makeMon(kind, raidTier(), left ? OX - 300 : OX + ORCH_W + 300, p.y + 46, true);
   m.tgt = i; m.from = {x:m.x, y:m.y};
   MONS.push(m); sfx('grunt');
-  toast(`${kind === 'boar' ? '🐗' : '🦌'} ${jo(m.V.name, '이', '가')} 과수원에 내려왔어요! 사과를 먹기 전에 쫓아내요 (스페이스 공격, F 막기)`, 'bad');
+  toast(`${kind === 'boar' ? '🐗' : '🦌'} ${jo(m.V.name, '이', '가')} 과수원에 내려왔어요! 사과를 먹기 전에 잡아요 (스페이스 공격, F 막기)`, 'bad');
   todoSig = '';
 }
 function killMon(m){
@@ -4168,15 +4168,15 @@ function killMon(m){
   const f0 = farmer();
   if (m.raid) {
     G.money += m.V.pay; addInc('hunt', m.V.pay); G.rep += m.V.rep; G.stats.raids++; unlock('raid');
-    floats.push({x:m.x, y:m.y - 150, s:`🎉 쫓아냈다! +${won(m.V.pay)}`, t:2, c:'#ff6b57'});
-    toast(`🎉 ${m.V.name}를 쫓아냈어요! 이장님 포상금 ${won(m.V.pay)}, 평판 +${m.V.rep}`, 'good');
+    floats.push({x:m.x, y:m.y - 150, s:`🎉 잡았다! +${won(m.V.pay)}`, t:2, c:'#ff6b57'});
+    toast(`🎉 ${jo(m.V.name, '을', '를')} 잡았어요! 이장님 포상금 ${won(m.V.pay)}, 평판 +${m.V.rep}`, 'good');
     gainXp(m.V.xp); // 2026-10-18 달 요청: 습격 짐승은 아이템을 떨어뜨리지 않아요
   } else if (m.boss) { killTiger(m);
   } else {
     const z = Math.max(0, zoneAt(m.x, m.y)), n = Math.random() < lootDropP() ? 1 : 0, got = [];
     for (let k = 0; k < n; k++) { const id = rollLoot(LOOT_TABLE[Math.max(z, m.tier)]); addLoot(id); got.push(LOOT[id].ic + ' ' + LOOT[id].name); }
-    if (got.length) { floats.push({x:m.x, y:m.y - 150, s:got.join(' · '), t:2.2, c:'#2f8a3e'}); toast(`🧺 ${m.V.name}가 도망가면서 떨어뜨렸어요: ${got.join(', ')}`, 'good'); }
-    else floats.push({x:m.x, y:m.y - 150, s:'도망갔다!', t:1.6, c:'#2f8a3e'});
+    if (got.length) { floats.push({x:m.x, y:m.y - 150, s:got.join(' · '), t:2.2, c:'#2f8a3e'}); toast(`🧺 ${jo(m.V.name, '을', '를')} 잡았어요! 떨어뜨린 것: ${got.join(', ')}`, 'good'); }
+    else floats.push({x:m.x, y:m.y - 150, s:'잡았다!', t:1.6, c:'#2f8a3e'}); // 2026-10-18 달 제보: 잡았는데 '도망갔다'로 나오던 옛 문구(쫓아내기 시절) 수정
     gainXp(Math.round(m.V.xp * .6));
     if (Math.random() < [.006, .01, .016, .024, .03, .036, .042][m.tier]) { const dr = huntDrop(m.tier); if (dr) setTimeout(() => toast(`🎁 ${dr}`, 'good'), 700); }
     const gd = fieldGearDrop(m); if (gd) setTimeout(() => { sfx('fanfare'); toast(`🎁 ${gd}`, 'gold'); }, 1000);
@@ -4666,7 +4666,7 @@ function drawHuntOverlay(ctx, T){
   drawBusHint(ctx); drawBigMap(ctx);
 }
 function huntTodo(items){
-  for (const m of MONS) if (m.raid && !m.dead && m.st !== 'leave') items.unshift({ic:MON_IC[m.kind], t:`${m.V.name} 쫓아내기!`, n:`사과 ${m.bites}/3`, hot:true, go:'raid'});
+  for (const m of MONS) if (m.raid && !m.dead && m.st !== 'leave') items.unshift({ic:MON_IC[m.kind], t:`${m.V.name} 잡기!`, n:`사과 ${m.bites}/3`, hot:true, go:'raid'});
   const n = bagCount();
   if (n) items.push({ic:'🧺', t:'금비상회에 전리품 팔기', n:`${n}개`, go:'shop'});
 }
@@ -4678,7 +4678,7 @@ function uiSellLoot(){
     const have = LOOT_KEYS.filter(k => G.bag[k] > 0);
     let total = 0, ex = 0; for (const k of [...have].sort((a, b) => lootPrice(b) - lootPrice(a))) for (let i = 0; i < G.bag[k]; i++) { total += lootSell(k, ex); if (!BOSS_LOOT[k]) ex++; }
     const sat = Math.round(lootSat('x') * 100);
-    o.body.innerHTML = `<p style="margin-top:0">값은 날마다 조금씩 바뀌어요(오늘 시세). 사냥터에서 산짐승을 쫓아내거나 반짝이는 자리를 캐면 얻어요.<br>🧺 가진 건 몇 개든 다 팔 수 있어요. 다만 한 주에 많이 팔면 금비상회 창고가 차서 값이 조금씩 내려가요(1개마다 5%, 최저 절반, 다음 주에 다시 올라요). 지금 값: <b class="gs">시세의 ${sat}%</b><br>📒 올해 사냥 수입 <b>${won(incBook().hunt)}</b> · 과수원 수입 <b>${won(incBook().apple)}</b></p>
+    o.body.innerHTML = `<p style="margin-top:0">값은 날마다 조금씩 바뀌어요(오늘 시세). 사냥터에서 산짐승을 잡거나 반짝이는 자리를 캐면 얻어요.<br>🧺 가진 건 몇 개든 다 팔 수 있어요. 다만 한 주에 많이 팔면 금비상회 창고가 차서 값이 조금씩 내려가요(1개마다 5%, 최저 절반, 다음 주에 다시 올라요). 지금 값: <b class="gs">시세의 ${sat}%</b><br>📒 올해 사냥 수입 <b>${won(incBook().hunt)}</b> · 과수원 수입 <b>${won(incBook().apple)}</b></p>
       ${have.length ? `<div class="ggrid">${have.map(k => { const L = LOOT[k]; return `<div class="gslot"><div class="gh">${L.ic} ${L.name} <small>× ${G.bag[k]}</small></div>
         <div class="gd">💡 ${esc(L.desc)}</div><div class="gi"><span>지금 파는 값 <b class="gs">${won(lootSell(k))}</b> <span class="gd">(시세 ${won(L.lo)}~${won(L.hi)})</span></span>
         <span><button class="btn" data-s1="${k}">1개 팔기</button> <button class="btn pri" data-sa="${k}">전부</button></span></div></div>`; }).join('')}</div>`
@@ -7445,7 +7445,7 @@ function uiBook(tab){
     if (tab === 'fact') b = `<ol style="margin:0;padding-left:26px;line-height:1.8">${[...Object.keys(TASKS).map(k => TASKS[k].fact), ...FACTS].map(f => `<li>${esc(f)}</li>`).join('')}</ol>`;
     if (tab === 'rec') b = `<table class="tbl"><tr><th>항목</th><th>기록</th></tr>
       <tr><td>지금까지 딴 사과</td><td>${G.stats.boxes}상자</td></tr><tr><td>판 사과</td><td>${G.stats.sold}상자</td></tr>
-      <tr><td>방제 횟수</td><td>${G.stats.sprays}번</td></tr><tr><td>맞힌 퀴즈</td><td>${G.stats.quiz}개</td></tr><tr><td>쫓아낸 멧돼지·고라니</td><td>${G.stats.raids}마리</td></tr>
+      <tr><td>방제 횟수</td><td>${G.stats.sprays}번</td></tr><tr><td>맞힌 퀴즈</td><td>${G.stats.quiz}개</td></tr><tr><td>잡은 멧돼지·고라니</td><td>${G.stats.raids}마리</td></tr>
       ${G.contest.map(c => `<tr><td>${c.year}년차 품평회</td><td>${c.rank}등 (품질 ${c.q}점)</td></tr>`).join('')}</table>`;
     if (tab === 'rank') b = rankBody(o);
     o.body.innerHTML = tabs + b;
@@ -8564,7 +8564,7 @@ function lotPackSpawn(D, gd){
     MONS.push(m);
   });
   sfx('grunt'); todoSig = '';
-  toast(`🐗 산짐승 ${kinds.length}마리가 ${D.A.name}로 내려왔어요! 사과를 먹기 전에 쫓아내요`, 'bad');
+  toast(`🐗 산짐승 ${kinds.length}마리가 ${D.A.name}로 내려왔어요! 사과를 먹기 전에 잡아요`, 'bad');
 }
 // 무리 한 마리가 사과를 세 번 먹으면: 근처 나무 사과 한 상자가 줄어요
 function lotRaidBite(m){
