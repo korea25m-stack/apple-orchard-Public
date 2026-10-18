@@ -4067,7 +4067,7 @@ function drawLvBadge(c, x, y, lv, sz = 17){
   c.restore(); return w;
 }
 function monDef(m){ return m.V.def != null ? m.V.def : Math.max(0, [0, 1, 7, 12, 15, 18, 21][m.tier] + (m.tier >= 2 ? KIND_DEF[m.kind] || 0 : 0)); }
-const TIGER_NEED = 27; // 호랑이는 도구 데미지가 27 이상이어야 상처가 나요(황금 꽹과리채 +5 정도)
+const TIGER_NEED = 39; // 2026-10-18 장비 곡선: 황금 꽹과리채 +3
 function weaponUp(){ const g = ensureGear(); return g.own[g.weapon] || 0; }
 function hitMon(m, dmg, f, main){
   const bd = Math.max(1, Math.hypot(m.x - P.x, (m.y - P.y) * 1.2));
@@ -4818,24 +4818,26 @@ Object.assign(NEW_BEAST, {
     {name:'큰 반달가슴곰', hp:400, dmg:3.2, spd:1, sc:1.45, xp:230}, {name:'전설의 반달가슴곰 왕', hp:560, dmg:3.9, spd:1.05, sc:1.6, crown:1, xp:320}]
 });
 // 호랑이: 전설의 산 깊은 곳 '호랑이 굴'에만 1마리. 도구 데미지 27 이상이어야 상처를 낼 수 있어요
-const TIGER = {name:'전설의 호랑이', hp:1600, def:15, dmg:3.5, spd:1.25, sc:1.7, xp:500, boss:1};
+const TIGER = {name:'전설의 호랑이', hp:7500, def:15, dmg:2.5, spd:1.25, sc:1.7, xp:500, boss:1};
 NEW_BEAST.tiger = Array(7).fill(TIGER);
 // 2026-10-14 흰곰: 남쪽 끝 설산 '흰곰 굴'에 1마리. 호랑이보다 한 단계 세요(도구 데미지 34 이상 = 호랑이 발톱 갈퀴 +3)
-const PBEAR = {name:'전설의 흰곰', hp:2600, def:20, dmg:4.3, spd:1.15, sc:1.95, xp:800, boss:1};
+const PBEAR = {name:'전설의 흰곰', hp:8400, def:20, dmg:2.9, spd:1.15, sc:1.95, xp:800, boss:1};
 NEW_BEAST.pbear = Array(7).fill(PBEAR);
-const PBEAR_NEED = 34;
+const PBEAR_NEED = 44; // 2026-10-18 장비 곡선: 호랑이 발톱 갈퀴 +3
 // 2026-10-16 달 요청: 초심자용 보스 '검은 늑대'(지도 50, 90). 근처 짐승과 비슷한 Lv10, 호랑이보다 훨씬 약하고
 // 특수공격 2가지(뛰어들기·돌진)는 바닥 표시가 천천히 차서 피하는 연습을 하기 좋아요. 생김새는 달 님 요청대로 사납고 무섭게
-const BWOLF = {name:'검은 늑대', hp:720, def:8, dmg:2.3, spd:1.3, sc:1.5, xp:260, boss:1};
+const BWOLF = {name:'검은 늑대', hp:5500, def:8, dmg:2.0, spd:1.3, sc:1.5, xp:260, boss:1};
 NEW_BEAST.bwolf = Array(7).fill(BWOLF);
-const BWOLF_NEED = 15; // 튼튼 쇠스랑부터
+const BWOLF_NEED = 28; // 튼튼 쇠스랑부터(2026-10-18 장비 곡선)
 // 2026-10-17 달 요청: 지도 (160, 70) 사각 얼음 둥지의 '전설의 서리용'. 흰곰보다 5배 강해요(체력 5배 · 기술 5가지 · 방어 · 공격 2배).
 // 호위 공룡 티라노사우루스·트리케라톱스는 흰곰만큼 세요(기술 2가지씩). 셋이 같이 덤벼요
-const DRAGON = {name:'전설의 서리용', hp:13000, def:26, dmg:8.6, spd:1.1, sc:1.25, xp:4000, boss:1, top:265};
-const TREX = {name:'호위 티라노사우루스', hp:2600, def:20, dmg:4.3, spd:1.2, sc:1.05, xp:800, boss:1, top:195};
-const TRIKE = {name:'호위 트리케라톱스', hp:2600, def:20, dmg:4.3, spd:1.1, sc:1.05, xp:800, boss:1, top:170};
+const DRAGON = {name:'전설의 서리용', hp:10000, def:26, dmg:3.6, spd:1.1, sc:1.25, xp:4000, boss:1, top:265};
+const TREX = {name:'호위 티라노사우루스', hp:3600, def:20, dmg:3.8, spd:1.2, sc:1.05, xp:800, boss:1, top:195};
+const TRIKE = {name:'호위 트리케라톱스', hp:3600, def:20, dmg:3.8, spd:1.1, sc:1.05, xp:800, boss:1, top:170};
 NEW_BEAST.dragon = Array(7).fill(DRAGON); NEW_BEAST.trex = Array(7).fill(TREX); NEW_BEAST.trike = Array(7).fill(TRIKE);
-const DRAGON_NEED = 40; // 호랑이 발톱 갈퀴 +8
+// 2026-10-18 달 요청: 보스전 2~3분. 적정 레벨(BOSS_LV) + 그 단계 장비 +5로 피하면서 싸우면 늑대·호랑이·흰곰 약 2분 반,
+// 서리용 둥지는 호위 공룡 둘(각 40초 안팎) + 서리용(약 2분)으로 맞췄어요. 확인: test/bal.js
+const DRAGON_NEED = 45; // 2026-10-18 장비 곡선: 호랑이 발톱 갈퀴 +5
 const DEN = {x:fromGrid(133, 133)[0], y:fromGrid(133, 133)[1], rx:900, ry:680, kind:'tiger', need:TIGER_NEED, day:'tigerDay', title:'🐯 전설의 호랑이', label:'⚠️ 호랑이 굴 · 전설 보스가 살아요', ic:'🐯'};
 DEN.gate = Math.atan2((mapXY(1018, 1100)[1] - DEN.y) / DEN.ry, (mapXY(1018, 1100)[0] - DEN.x) / DEN.rx); // 2026-10-16 달 요청: M 지도 좌표 (133, 133). 길이 들어오는 쪽(북쪽)
 const BDEN = {x:fromGrid(100, 20)[0], y:fromGrid(100, 20)[1], rx:1000, ry:720, kind:'pbear', need:PBEAR_NEED, day:'pbearDay', title:'🐻‍❄️ 전설의 흰곰', label:'⚠️ 흰곰 굴 · 북쪽 숲의 전설 보스가 살아요', sign:'⚠️ 흰곰 굴 · 호랑이 발톱 갈퀴 +3', ic:'🐻‍❄️', snow:1};
@@ -4844,7 +4846,7 @@ const WDEN = {x:fromGrid(50, 90)[0], y:fromGrid(50, 90)[1], rx:820, ry:620, kind
 WDEN.gate = Math.atan2((WDEN_PATH[0][1] - WDEN.y) / WDEN.ry, (WDEN_PATH[0][0] - WDEN.x) / WDEN.rx); // 숲 오솔길이 들어오는 쪽(동북동)
 DEN.name = '호랑이 굴'; BDEN.name = '흰곰 굴';
 // 2026-10-17 달 요청: 서리용 둥지는 다른 굴과 달리 네모난 얼음 성벽(sq). 숲 오솔길이 북쪽 문으로 들어와요
-const DDEN = {x:fromGrid(160, 70)[0], y:fromGrid(160, 70)[1], rx:1150, ry:1150, sq:1, gw:210, kind:'dragon', need:DRAGON_NEED, day:'dragonDay', title:'🐉 전설의 서리용', label:'⚠️ 서리용 둥지 · 가장 무서운 전설 보스가 살아요', sign:'⚠️ 서리용 둥지 · 갈퀴 +8', ic:'🐉', snow:1, name:'서리용 둥지', gate:-Math.PI / 2,
+const DDEN = {x:fromGrid(160, 70)[0], y:fromGrid(160, 70)[1], rx:1150, ry:1150, sq:1, gw:210, kind:'dragon', need:DRAGON_NEED, day:'dragonDay', title:'🐉 전설의 서리용', label:'⚠️ 서리용 둥지 · 가장 무서운 전설 보스가 살아요', sign:'⚠️ 서리용 둥지 · 갈퀴 +5', ic:'🐉', snow:1, name:'서리용 둥지', gate:-Math.PI / 2,
   esc:[{kind:'trex', dx:-480, dy:260, day:'trexDay', need:PBEAR_NEED}, {kind:'trike', dx:480, dy:260, day:'trikeDay', need:PBEAR_NEED}]};
 const DENS = [DEN, BDEN, WDEN, DDEN], DEN_LEASH = 260; // 2026-10-16 흰곰 굴은 지웠다가 같은 날 (100, 20)에 되살렸어요
 const DEN_GATE = DEN.gate;
@@ -9534,10 +9536,14 @@ function ensureGear(){
   return G.gear;
 }
 const gearItem = (slot, id) => GEAR[slot].items.find(x => x.id === id);
-// 2026-10-13 도구 강화로 오르는 데미지를 예전의 30% 정도로(예전: 강화마다 바탕의 15% → 지금 4.5%)
-function itemStat(slot, id, lv){ const it = gearItem(slot, id), S = GEAR[slot];
-  if (slot === 'weapon') return Math.round(it.base + lv * Math.max(.3, it.base * .045));
-  return it.base + lv * Math.max(S.per, Math.round(it.base * .15)); }
+// 2026-10-18 달 요청: 장비 수치는 사진처럼 처음엔 빠르게, 갈수록 완만하게 오르는 곡선 하나를 따라요.
+// 곡선 위치 x = 목록 순서(0, 1, 2…) + 강화 1단계마다 0.16 (+5 ≈ 다음 장비 바로 아래, +10 ≈ 한 단계 반 위).
+// 새 장비는 목록에 끼우기만 하면 자동으로 이 곡선 위에 놓여요(base 숫자를 따로 정하지 않아요)
+const GEAR_CURVE = {weapon:{v0:6, A:56, tau:4}, armor:{v0:0, A:40, tau:4}, boots:{v0:0, A:34, tau:3.5}, hat:{v0:0, A:72, tau:3.5}};
+const UP_STEP = .16;
+const gearCurve = (slot, x) => { const C = GEAR_CURVE[slot]; return C.v0 + C.A * (1 - Math.exp(-x / C.tau)); };
+function itemStat(slot, id, lv){ return Math.round(gearCurve(slot, GEAR[slot].items.findIndex(x => x.id === id) + (lv || 0) * UP_STEP)); }
+for (const sl in GEAR) for (const it of GEAR[sl].items) it.base = itemStat(sl, it.id, 0); // 화면에 보이는 기본 수치도 곡선에서
 const canCraft = it => Object.entries(it.craft).every(([k, n]) => (G.bag[k] || 0) >= n);
 function weaponDmg(){ return slotStat('weapon'); }
 function slotStat(slot){ const g = ensureGear(), id = g[slot]; return itemStat(slot, id, g.own[id] || 0); }
