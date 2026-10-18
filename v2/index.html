@@ -9897,7 +9897,7 @@ function updateTaxi(dt){
   for (const tx of TAXIS) {
     if (tx.st === 'idle') { tx.x = tx.home.x; tx.y = tx.home.y; tx.wait = 1; continue; }
     tx.wait = 0;
-    const left = tx.path.len - tx.s, V = truckV(), v = clamp(Math.min(left, tx.s) * 1.4 + 120, Math.min(120, V), V);
+    const left = tx.path.len - tx.s, V = truckV() * 1.3, /* 2026-10-18 달 요청 2차: 승차장 화물차만 30% 더 (버스는 그대로) */ v = clamp(Math.min(left, tx.s) * 1.4 + 120, Math.min(120, V), V);
     tx.s = Math.min(tx.path.len, tx.s + v * dt);
     const p = txAt(tx.path, tx.s); tx.x = p.x; tx.y = p.y;
     const n8 = (Math.round(Math.atan2(p.dy, p.dx) / (Math.PI / 4)) + 8) % 8;
