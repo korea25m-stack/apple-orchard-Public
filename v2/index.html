@@ -4897,8 +4897,11 @@ function killBwolf(m){
   setTimeout(() => popup('🐺', '검은 늑대를 이겼어요!', `첫 보스를 이겼어요! ${HN()}도 이제 어엿한 사냥꾼이에요. 💎 강화석 1개와 🐺 검은 늑대 가죽 1장을 얻었어요. 검은 늑대는 3일 뒤 다시 굴로 돌아와요. 다음은 호랑이에 도전해 봐요!`), 900);
 }
 // 2026-10-17 서리용: 처음엔 무기, 다음엔 갑옷(둘 다 단 하나뿐), 그 뒤엔 강화석 8개. 재료(비늘 3 · 뿔 1 · 결정 반반)는 매번
+// 2026-10-18 달 요청: 서리용·호위 공룡은 6개월(182일)에 한 번만 다시 나와요 → 1년에 두 번
+const DRAGON_RESPAWN = 182;
+function dayDate(n){ const d = n - 1, w = Math.floor((d % 364) / 7) + 1; return {y:Math.floor(d / 364) + 1, m:weekLabel(w).m}; }
 function killDragon(m){
-  ensureGear(); G.dragonDay = absDay() + 7; G.stats.dragon = (G.stats.dragon || 0) + 1;
+  ensureGear(); G.dragonDay = absDay() + DRAGON_RESPAWN; G.stats.dragon = (G.stats.dragon || 0) + 1;
   gainXp(DRAGON.xp); unlock('dragon'); sfx('fanfare');
   let msg;
   if (!('dspear' in G.gear.own)) { G.gear.own.dspear = 0; msg = '🐉 단 하나뿐인 <서리용 이빨 창>을 얻었어요!'; }
@@ -4907,14 +4910,14 @@ function killDragon(m){
   addLoot('dscale', 3); addLoot('dhorn', 1); const gem = Math.random() < .5; if (gem) addLoot('dgem', 1);
   msg += ` 재료로 🐉 서리용 비늘 3장 · 🦴 서리용 뿔 1개${gem ? ' · 💠 서리 결정 1개' : ''}도 얻었어요(든든철물에서 용비늘 장화·용뿔 투구를 만들 수 있어요).`;
   floats.push({x:m.x, y:m.y - 300, s:'🏆 전설의 서리용을 이겼다!', t:3.5, c:'#5ab8ff', sz:48, pop:.3});
-  setTimeout(() => popup('🐉', '전설의 서리용을 이겼어요!', `얼음 둥지가 조용해졌어요. 이제 ${HN()}보다 센 사냥꾼은 없어요! ${msg} 서리용은 7일 뒤 다시 둥지로 돌아와요.`), 900);
+  setTimeout(() => popup('🐉', '전설의 서리용을 이겼어요!', `얼음 둥지가 조용해졌어요. 이제 ${HN()}보다 센 사냥꾼은 없어요! ${msg} 서리용은 6개월 뒤(${dayDate(G.dragonDay).y}년차 ${dayDate(G.dragonDay).m}월) 다시 둥지로 돌아와요.`), 900);
 }
 function killDino(m){
-  const tr = m.kind === 'trex'; ensureGear(); G[tr ? 'trexDay' : 'trikeDay'] = absDay() + 3; G.stats[m.kind] = (G.stats[m.kind] || 0) + 1;
+  const tr = m.kind === 'trex'; ensureGear(); G[tr ? 'trexDay' : 'trikeDay'] = absDay() + DRAGON_RESPAWN; G.stats[m.kind] = (G.stats[m.kind] || 0) + 1;
   gainXp(m.V.xp); sfx('fanfare');
   G.gear.stones = (G.gear.stones || 0) + 2; addLoot(tr ? 'rtooth' : 'khorn', 1);
   floats.push({x:m.x, y:m.y - 220, s:`🏆 ${m.V.name}를 이겼다!`, t:2.6, c:'#ff8a3a', sz:38, pop:.3});
-  toast(`${tr ? '🦖' : '🦕'} ${m.V.name}를 이겼어요! 💎 강화석 2개와 ${tr ? '🦷 티라노 이빨' : '🦏 트리케라톱스 뿔'} 1개를 얻었어요. 3일 뒤 다시 둥지를 지켜요.`, 'good');
+  toast(`${tr ? '🦖' : '🦕'} ${m.V.name}를 이겼어요! 💎 강화석 2개와 ${tr ? '🦷 티라노 이빨' : '🦏 트리케라톱스 뿔'} 1개를 얻었어요. 6개월 뒤 다시 둥지를 지켜요.`, 'good');
 }
 // ----- 보스 굴 그림: 어두운 돌바닥(흰곰 굴은 얼음 바닥) + 바위 벽 + 횃불 + 동굴 입구 -----
 const DEN_PAL = {rock:['#2f3a2a', '#4a423a', '#5a5046', '#3c352e', '#665b50', '#2a2420', 'rgba(30,24,20,.55)'],
@@ -5005,6 +5008,10 @@ function drawDenFx(c, dt){
   if (denDust.length < (sn ? 90 : 40)) denDust.push({x:rnd(0, W), y:rnd(-40, H), v:rnd(20, 50) * (sn ? 3 : 1), r:rnd(1.5, 3.5) * (sn ? 1.4 : 1), a:rnd(.2, .5) + (sn ? .3 : 0)});
   for (const d of denDust) { d.y += d.v * dt; d.x += Math.sin(d.y / 60) * .4 + (sn ? 70 * dt : 0); if (d.y > H + 10 || d.x > W + 10) { d.y = -10; d.x = rnd(-200, W); } c.beginPath(); c.arc(d.x, d.y, d.r, 0, 7); c.fillStyle = sn ? `rgba(255,255,255,${d.a * k})` : `rgba(230,210,180,${d.a * k})`; c.fill(); }
   drawNovaHud(c);
+  if (D.kind === 'dragon' && !MONS.some(m => m.den === D && !m.dead) && (G.dragonDay || 0) > absDay()) { // 2026-10-18 다음에 나올 때까지 남은 날
+    const n = G.dragonDay - absDay(), dd = dayDate(G.dragonDay), tx = `🐉 서리용은 ${n}일 뒤(${dd.y}년차 ${dd.m}월) 둥지로 돌아와요`;
+    c.save(); c.font = '34px Jua'; c.textAlign = 'center'; c.lineWidth = 7; c.strokeStyle = INK; c.strokeText(tx, W / 2, H - 210); c.fillStyle = '#bfe8ff'; c.fillText(tx, W / 2, H - 210); c.restore();
+  }
   if (tg && (tg.eng || Math.hypot(tg.x - P.x, tg.y - P.y) < 900)) {
     const w = 760, x = W / 2 - w / 2, y = H - 200; // 2026-10-14 화면 위쪽에 있으면 굴 안쪽(위)에 있는 호랑이를 가려서 아래로 옮겼어요
     c.font = '30px Jua'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = INK; const tt = (tg.kind === D.kind ? D.title : (MON_IC[tg.kind] || '') + ' ' + tg.V.name) + '  Lv.' + BOSS_LV[tg.kind]; c.strokeText(tt, W / 2, y - 12); c.fillStyle = sn ? '#bfe8ff' : '#ffd23a'; c.fillText(tt, W / 2, y - 12);
