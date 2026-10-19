@@ -2494,7 +2494,7 @@ const SHED_LV = [ // 2026-10-18 달 요청: 투박함 → 세련되고 심플하
   {name:'나무 창고', s:1.9, wall:'#dcb07c', wsh:'#b88a58', roof:'#3e4650', rsh:'#2a3038', door:'#5a6470', trim:'#f4ead8'},
   {name:'벽돌 창고', s:2.1, wall:'#c97a5c', wsh:'#a45e44', roof:'#34495e', rsh:'#24323f', door:'#3a4652', trim:'#f6eee4', price:5000000, mult:1.03, desc:'건물이 커지고 경매값 +3%'},
   {name:'큰 사과 창고', s:2.3, wall:'#f7f4ee', wsh:'#dcd6ca', roof:'#2c3036', rsh:'#1a1d22', door:'#b8864e', trim:'#c8473c', price:10000000, mult:1.06, desc:'경매·소매값 +6%, 소매 주문이 더 자주 들어와요'},
-  {name:'황금 사과 전시관', s:2.5, wall:'#fbf7ee', wsh:'#e6dcc6', roof:'#262a30', rsh:'#16191d', door:'#2a2e34', trim:'#d9a93a', price:15000000, mult:1.1, desc:'경매·소매값 +10%, 소매 주문 최대 3개, 평판 +5'}
+  {name:'사과 전시관', s:2.5, wall:'#fbf7ee', wsh:'#e6dcc6', roof:'#262a30', rsh:'#16191d', door:'#2a2e34', trim:'#d9a93a', price:15000000, mult:1.1, desc:'경매·소매값 +10%, 소매 주문 최대 3개, 평판 +5'}
 ];
 function shedLv(){ return clamp(G.shedLv || 0, 0, 3); }
 function shedMult(){ return SHED_LV[shedLv()].mult || 1; }
@@ -2548,8 +2548,8 @@ function drawShed(c, x, y){
   if (lv >= 2) { c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 1; for (let k = 1; k < 6; k++) { c.beginPath(); c.moveTo(-86 + k * 14.3, -106 + k * 9); c.lineTo(-80 + k * 13.3, -100 + k * 8.3); c.stroke(); } }
   if (lv === 3) line(c, [-86, -106, 0, -160, 86, -106], 2.6, L.trim);
   // 박공 가운데 표식: 동그란 사과 로고(3단계는 금빛으로 은은하게)
-  const em = lv === 3 ? ['#ffd23a', '#d4a020'] : lv === 2 ? ['#e8423a', '#a8241c'] : null;
-  if (em) { c.save(); if (lv === 3) { c.shadowColor = '#ffd23a'; c.shadowBlur = 10 + 4 * Math.sin(T * 3); } cel(c, cc => ell(cc, 0, -128, 11, 11), '#ffffff', '#e6e2da', 0, 0, 2); drawApple(c, 0, -127, 7, em[0], em[1]); c.restore(); }
+  const em = lv >= 2 ? ['#e8423a', '#a8241c'] : null; // 2026-10-19 달 요청: 4단계도 3단계처럼 빨간 사과
+  if (em) { c.save(); cel(c, cc => ell(cc, 0, -128, 11, 11), '#ffffff', '#e6e2da', 0, 0, 2); drawApple(c, 0, -127, 7, em[0], em[1]); c.restore(); }
   // 이름표: 박공 아래 처마 밑에 얇은 띠
   const nm = lv ? L.name : '사과 창고'; c.font = '12px Jua'; const pw = c.measureText(nm).width / 2 + 9;
   // 이름표: 지붕 꼭대기 위에 작고 단정하게
