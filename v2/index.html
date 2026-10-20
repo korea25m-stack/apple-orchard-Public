@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-csjyUpPHRAHbsppHoCl15HS9p8ULhwOi5BbGjqZi5Sk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -244,6 +245,10 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
 #sleepFx .sfIn{text-align:center;padding:0 120px}
 #sleepFx .sfTip{margin-top:34px;font-family:inherit;font-size:30px;line-height:1.4;color:#ffe6a8;opacity:.92}
 #fsBtn{position:absolute;left:20px;top:240px;z-index:20;width:70px;height:62px;font-size:30px}
+#embedCover{position:absolute;inset:0;z-index:400;background:rgba(20,15,34,.38);display:flex;align-items:center;justify-content:center;cursor:pointer}
+#embedCover[hidden]{display:none}
+#embedCover .ecIn{background:#fff8e6;color:#3a2215;border-radius:28px;padding:34px 60px;font-family:var(--display);font-size:54px;text-align:center;box-shadow:0 10px 0 rgba(0,0,0,.18)}
+#embedCover small{display:block;margin-top:10px;font-size:30px;opacity:.8}
 .touch .touch #helpBtn,.touch #help{display:none}
 .touch .tb{width:128px;height:110px;font-size:21px}
 .touch .tb b{font-size:44px}
@@ -1098,9 +1103,34 @@ function expandLand(){
 }
 
 function serialize(){ return JSON.stringify(G); }
+// 2026-10-20 보안: 남이 준 세이브 코드에 스크립트를 숨겨도 실행되지 않게, 불러올 때 내용을 검사해요.
+// 게임은 G에 HTML을 저장하지 않으니 글자 속 < > & " ' ` \ 는 모두 지우고, 위험한 키(__proto__ 등)는 버려요.
+const SAVE_BAD_KEY = /^(__proto__|constructor|prototype)$/;
+function cleanSave(v, tpl, d){
+  if (typeof v === 'string') return typeof tpl === 'number' ? tpl : v.replace(/[<>&"'`\\]/g, '').slice(0, 200);
+  if (typeof v === 'number') return Number.isFinite(v) ? v : (typeof tpl === 'number' ? tpl : 0);
+  if (typeof tpl === 'number') return tpl;
+  if (v === null || typeof v === 'boolean') return v;
+  if (typeof v !== 'object' || d > 14) return undefined;
+  if (Array.isArray(v)) return v.slice(0, 5000).map(x => cleanSave(x, undefined, d + 1));
+  const o = {};
+  for (const k of Object.keys(v).slice(0, 5000)) {
+    if (SAVE_BAD_KEY.test(k) || /[<>&"'`\\]/.test(k)) continue;
+    const t = tpl && typeof tpl === 'object' && !Array.isArray(tpl) ? tpl[k] : undefined;
+    const c = cleanSave(v[k], t, d + 1);
+    if (c !== undefined) o[k] = c;
+  }
+  return o;
+}
 function deserialize(s){
-  const g = JSON.parse(s);
-  if (!g || g.v !== 2 || !Array.isArray(g.trees)) throw new Error('세이브 형식이 달라요');
+  const raw = JSON.parse(s);
+  if (!raw || raw.v !== 2 || !Array.isArray(raw.trees)) throw new Error('세이브 형식이 달라요');
+  const cur = G, tpl = newGame(); G = cur;
+  const g = cleanSave(raw, tpl, 0);
+  if (!Array.isArray(g.trees) || g.trees.length > 2000) throw new Error('세이브 내용이 이상해요');
+  // 주인공 이름·모습은 새 게임과 같은 규칙으로 다시 걸러요
+  const h = g.hero && typeof g.hero === 'object' ? g.hero : {};
+  g.hero = {...h, look:HEROES.some(x => x.id === h.look) ? h.look : 'm1', name:String(h.name || '').replace(/[<>&"'`]/g, '').trim().slice(0, 8) || '우주'};
   G = g; return g;
 }
 const SAVE_KEY = 'haru-orchard-v2';
@@ -6977,7 +7007,8 @@ function drawWxFx(c, dt){
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[m]));
 let AUTO = false, POPMS = 5000;
-const store = {get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }, set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} }};
+// 2026-10-20 블로그 안에서 새 창 세이브와 연결하면 store.ls가 그쪽 저장소로 바뀌어요(05e_embed.js)
+const store = {ls:null, get(k, d){ try { const v = (store.ls || localStorage).getItem(k); return v === null ? d : v; } catch (e) { return d; } }, set(k, v){ try { (store.ls || localStorage).setItem(k, v); } catch (e) {} }};
 
 const UI = {
   modal:null, queue:[], busy:false,
@@ -7463,7 +7494,7 @@ function uiBook(tab){
 
 function uiSave(){
   UI.open({ic:'💾', title:'저장·불러오기', render(o){
-    o.body.innerHTML = `<p style="margin-top:0">게임은 이 브라우저에 저절로 저장돼요. 다른 기기에서 이어 하려면 파일이나 세이브 코드를 쓰세요.</p>
+    o.body.innerHTML = `<p style="margin-top:0">게임은 이 브라우저에 저절로 저장돼요. 다른 기기에서 이어 하려면 파일이나 세이브 코드를 쓰세요.</p>${embedSaveBox()}
       <div class="grid g2">
         <div class="opt"><span class="t">📥 내보내기</span><span>파일로 받거나, 코드를 복사해서 메모장·카톡에 붙여 두세요.</span>
           <div class="brow"><button class="btn y" id="svFile">파일로 저장</button><button class="btn" id="svCopy">코드 복사</button></div></div>
@@ -7489,6 +7520,7 @@ function uiSave(){
     const load = s => { try { decodeSave(s); afterLoad(); UI.close(); toast('📂 불러왔어요!', 'good'); } catch (e) { msg('불러오지 못했어요: ' + e.message, true); } };
     $('#ldCode').onclick = () => load($('#svText').value);
     $('#ldFile').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => load(r.result); r.readAsText(f); };
+    embedSaveWire(o, msg);
     o.footEl.innerHTML = `<button class="btn" id="newG">새 게임</button>`;
     $('#newG').onclick = () => {
       o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">정말 처음부터 할까요? 지금 진행은 사라져요.</span><button class="btn" id="ngNo">아니요</button><button class="btn pri" id="ngYes">처음부터</button>`;
@@ -7932,6 +7964,142 @@ function drawBusHint(ctx){
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = '28px Jua'; ctx.textAlign = 'center'; const tw = ctx.measureText(t).width + 50;
   ctx.beginPath(); rr(ctx, W / 2 - tw / 2, H - 196, tw, 50, 18); ctx.fillStyle = b.wait > 0 ? '#fff2b8' : '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
   ctx.fillStyle = INK; ctx.fillText(t, W / 2, H - 162); ctx.restore();
+}
+
+// ===== 2026-10-20 블로그(티스토리 등)에 넣어서 할 때 =====
+// 달 요청: 블로그 안에서도 링크로 직접 하는 것과 똑같이. 브라우저가 블로그 안 게임의 저장소를 따로 두기 때문에
+// (1) 새 창 세이브와 연결(크롬·엣지·파이어폭스, 새 창에서 한 번이라도 해 봤을 때), (2) 새 창에서 이어 하기(세이브를 주소 # 뒤에 담아 넘김),
+// (3) 세이브 코드·파일, 이렇게 세 가지 길을 둬요. 화면을 한 번 눌러야 키보드가 먹는 것도 안내해요.
+const GAME_URL = /^https?:$/.test(location.protocol) ? location.origin + location.pathname + location.search : 'https://korea25m-stack.github.io/apple-orchard-Public/v2/';
+const EMBED = {on:(() => { try { return window.self !== window.top; } catch (e) { return true; } })(), linked:false, ready:null};
+const embedFF = () => /firefox/i.test(navigator.userAgent);
+// 저장소 손잡이 얻기. 크롬·엣지는 {localStorage:true}로 받은 손잡이, 파이어폭스는 허락 뒤 window.localStorage가 새 창과 같아져요
+async function embedHandle(){
+  const h = await document.requestStorageAccess({localStorage:true});
+  if (h && h.localStorage) return h.localStorage;
+  if (embedFF()) return localStorage;
+  throw new Error('unsupported');
+}
+EMBED.ready = (async () => {
+  if (!EMBED.on || !document.requestStorageAccess || !navigator.permissions) return;
+  try {
+    const st = await Promise.race([navigator.permissions.query({name:'storage-access'}), new Promise((r, j) => setTimeout(() => j(new Error('timeout')), 1200))]);
+    if (st.state !== 'granted') return;
+    store.ls = await Promise.race([embedHandle(), new Promise((r, j) => setTimeout(() => j(new Error('timeout')), 1500))]);
+    EMBED.linked = true;
+  } catch (e) { store.ls = null; }
+})();
+
+// 세이브 요약 한 줄(고를 때 보여 줘요)
+function saveBrief(s){
+  try { const g = JSON.parse(s); return `${esc(String((g.hero && g.hero.name) || '우주').replace(/[<>&"'`]/g, '').slice(0, 8))} · ${+g.year || 1}년차 ${+g.week || 1}주 · ${won(+g.money || 0)}`; } catch (e) { return '알 수 없는 세이브'; }
+}
+async function embedLink(o, msg){
+  let ls;
+  try { ls = await embedHandle(); }
+  catch (e) {
+    msg(e.message === 'unsupported' ? '이 브라우저(사파리 등)는 연결을 지원하지 않아요. ↗ 새 창에서 이어 하기나 세이브 코드를 써 주세요.' : '연결이 거절됐어요. 새 창에서 게임을 한 번 열어 본 뒤 다시 눌러 주세요. 안 되면 ↗ 새 창에서 이어 하기를 써 주세요.', true);
+    return;
+  }
+  const mine = serialize(), theirs = ls.getItem(SAVE_KEY);
+  // 브라우저가 저장소를 나누지 않았으면(같은 곳이면) 물어볼 필요 없어요
+  let same = ls === localStorage;
+  try { const mk = 'haru-embed-probe', v = String(Math.random()); localStorage.setItem(mk, v); same = same || ls.getItem(mk) === v; localStorage.removeItem(mk); } catch (e) {}
+  // 키 설정·소리·랭킹 로그인은 새 창 쪽에 없을 때만 옮겨요
+  for (const k of ['haru-keys', 'haru-sound', 'haru-rank-auth', 'haru-help', 'haru-todo']) { try { const v = localStorage.getItem(k); if (v !== null && ls.getItem(k) === null) ls.setItem(k, v); } catch (e) {} }
+  const use = s => {
+    try { if (theirs && s !== theirs) ls.setItem(SAVE_KEY + '-backup', theirs); } catch (e) {}
+    store.ls = ls; EMBED.linked = true; store.set(SAVE_KEY, s);
+    try { deserialize(s); } catch (e) {}
+    afterLoad(); UI.close(); toast('🔗 새 창 세이브와 연결했어요. 이제 블로그와 새 창이 같은 게임이에요.', 'good');
+  };
+  if (!theirs || theirs === mine || same) { use(mine); return; }
+  o.body.innerHTML = `<p style="margin-top:0"><b>어느 게임으로 이어 할까요?</b> 고르지 않은 쪽은 백업으로 한 칸 남겨 둬요.</p>
+    <div class="grid g2"><div class="opt"><span class="t">📰 블로그에서 하던 게임</span><span>${saveBrief(mine)}</span><div class="brow"><button class="btn y" id="lkMine">이걸로</button></div></div>
+    <div class="opt"><span class="t">🌐 새 창에서 하던 게임</span><span>${saveBrief(theirs)}</span><div class="brow"><button class="btn y" id="lkTheirs">이걸로</button></div></div></div>`;
+  $('#lkMine').onclick = () => use(mine);
+  $('#lkTheirs').onclick = () => use(theirs);
+}
+
+// 새 창에서 이어 하기: 세이브를 압축해서 주소 # 뒤에 담아요(주소는 서버로 가지 않아요)
+const b64u = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64u = t => { const s = atob(t.replace(/-/g, '+').replace(/_/g, '/')); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
+async function packSave(){
+  const raw = new TextEncoder().encode(serialize());
+  if (window.CompressionStream) { const z = await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer(); return 'z' + b64u(new Uint8Array(z)); }
+  return 'r' + b64u(raw);
+}
+async function unpackSave(t){
+  if (t.length > 400000) throw new Error('too long');
+  const u = unb64u(t.slice(1));
+  if (t[0] === 'z') return new TextDecoder().decode(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  return new TextDecoder().decode(u);
+}
+async function embedOpenWindow(msg){
+  // 창은 클릭하자마자 열어야 막히지 않아요. 주소는 압축이 끝나면 넣어요
+  const w = window.open('about:blank', '_blank');
+  try {
+    saveLocal();
+    const url = GAME_URL + '#from-blog=' + await packSave();
+    if (w) w.location.href = url; else location.assign(url);
+  } catch (e) { if (w) w.location.href = GAME_URL; msg && msg('세이브를 담지 못했어요. 세이브 코드로 옮겨 주세요.', true); }
+}
+
+function embedSaveBox(){
+  if (!EMBED.on) return '';
+  return `<div class="opt" style="margin:0 0 12px"><span class="t">📰 블로그 안에서 하는 중이에요</span>
+    <span>${EMBED.linked ? '🔗 새 창 세이브와 연결돼 있어요. 블로그와 새 창이 같은 게임이에요.' : '브라우저가 블로그 안 게임을 따로 저장해요. 새 창에서 하던 게임과 이어 하려면 연결하거나 새 창으로 옮기세요.'}</span>
+    <div class="brow">${EMBED.linked ? '' : '<button class="btn y" id="emLink">🔗 새 창 세이브와 연결</button>'}<button class="btn" id="emOpen">↗ 새 창에서 이어 하기</button></div></div>`;
+}
+function embedSaveWire(o, msg){
+  const l = $('#emLink'), w = $('#emOpen');
+  if (l) l.onclick = () => embedLink(o, msg);
+  if (w) w.onclick = () => embedOpenWindow(msg);
+}
+
+// 새 창에서 '#from-blog=' 으로 열렸을 때: 물어보고 이어 해요
+async function embedFromHash(){
+  const m = location.hash.match(/^#from-blog=([A-Za-z0-9_-]+)$/);
+  if (!m) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  let s;
+  try { s = await unpackSave(m[1]); JSON.parse(s); } catch (e) { toast('블로그에서 넘어온 세이브를 읽지 못했어요.', 'bad'); return; }
+  const here = EMBED.prev;
+  const go = () => {
+    try { if (here) store.set(SAVE_KEY + '-backup', here); deserialize(s); afterLoad(); UI.close(); toast('📰 블로그에서 하던 게임을 이어 해요!', 'good'); }
+    catch (e) { UI.close(); toast('불러오지 못했어요: ' + e.message, 'bad'); }
+  };
+  const ask = () => UI.open({ic:'📰', title:'블로그에서 하던 게임', noX:true, render(o){
+    o.body.innerHTML = `<p style="margin-top:0">블로그에서 하던 게임을 이 창에서 이어 할까요?</p>
+      <div class="opt"><span class="t">📰 넘어온 게임</span><span>${saveBrief(s)}</span></div>
+      ${here ? `<div class="opt" style="margin-top:10px"><span class="t">🌐 이 창에 있던 게임</span><span>${saveBrief(here)} · 이어 하면 백업으로 한 칸 남겨 둬요.</span></div>` : ''}`;
+    o.footEl.innerHTML = `<button class="btn" id="fbNo">이 창 게임 그대로</button><button class="btn pri" id="fbYes">이어 하기</button>`;
+    $('#fbNo').onclick = () => { UI.close(); if (!here) setTimeout(() => uiHeroPick(intro), 160); }; $('#fbYes').onclick = go;
+  }});
+  // 시작 화면(주인공 고르기)이 떠 있으면 닫고 물어봐요
+  if (UI.modal && UI.modal.noX && !here) UI.close();
+  ask();
+}
+
+// 키보드 안내: 블로그 안에서는 화면을 한 번 눌러야 키가 먹어요
+function embedAfterBoot(){
+  embedFromHash();
+  if (!EMBED.on) return;
+  const st = $('#stage'), cover = document.createElement('div');
+  cover.id = 'embedCover';
+  cover.innerHTML = '<div class="ecIn">🖱️ 화면을 한 번 눌러 주세요<small>그래야 키보드로 움직일 수 있어요</small></div>';
+  st.appendChild(cover);
+  const touch = document.body.classList.contains('touch');
+  const sync = () => { cover.hidden = touch || document.hasFocus(); };
+  cover.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); try { window.focus(); } catch (er) {} cover.hidden = true; });
+  addEventListener('focus', sync); addEventListener('blur', () => setTimeout(sync, 50));
+  sync();
+  // 스페이스·방향키·PageUp/Down이 블로그 글을 스크롤하지 않게
+  addEventListener('keydown', e => {
+    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.code)) e.preventDefault();
+  });
+  if (!EMBED.linked) setTimeout(() => toast('📰 블로그 안에서는 저장이 따로 돼요. 💾 저장에서 새 창 게임과 연결할 수 있어요.'), 2500);
 }
 
 // ===== 농사 미니게임 (2026-10-15 달 요청: 농사 재미 아이디어 1·2·3·5번) =====
@@ -8983,14 +9151,18 @@ function drawHeroGhost(c){
 const RANK_CFG = {db:'https://orchard-rank-default-rtdb.asia-southeast1.firebasedatabase.app', apiKey:'AIzaSyD0EKMi-3zuDYAkgPNlsXuwZ9jycxPLjaY'};
 const rankOnline = () => !!(RANK_CFG.db && RANK_CFG.apiKey);
 // 서버 규칙과 같은 상한(조작 방지). 과수원 최대 20줄×12그루×6상자 = 한 해 1440상자
-const RANK_MAX = {lv:99, rep:999, money:1e11, avg:1440, year:200};
+const RANK_MAX = {lv:50, rep:999, money:1e11, avg:1440, year:200};
+// 2026-10-20 보안: 해마다 벌 수 있는 만큼만(돈 1년에 30억, 평판 1년에 300) — 서버 규칙과 같아요
+const RANK_PER_YEAR = {money:3e9, rep:300};
+const rankCapOk = r => r.lv <= RANK_MAX.lv && r.money <= r.year * RANK_PER_YEAR.money && r.rep <= r.year * RANK_PER_YEAR.rep;
 const RANK_BAD = ['시발', '씨발', 'ㅅㅂ', 'ㅆㅂ', '병신', 'ㅂㅅ', '개새', '새끼', '좆', '존나', '지랄', '미친', '닥쳐', '꺼져', '니미', '느금', '엠창', 'fuck', 'shit', 'bitch', 'sex', '섹스', 'porn', 'damn'];
 
 // 연평균 수확량 = 지금까지 딴 상자 ÷ 지나간 해 수(올해 포함)
 function rankStats(){
   const lv = (G.fm && G.fm.lv) || 1, year = G.year || 1;
   const avg = Math.round((G.stats.boxes || 0) / Math.max(1, year) * 10) / 10;
-  const r = {name:HN(), lv:Math.min(lv, RANK_MAX.lv), rep:Math.min(G.rep || 0, RANK_MAX.rep), money:clamp(Math.round(G.money || 0), 0, RANK_MAX.money), avg:Math.min(avg, RANK_MAX.avg), year:Math.min(year, RANK_MAX.year)};
+  const y = Math.min(year, RANK_MAX.year);
+  const r = {name:HN(), lv:Math.min(lv, RANK_MAX.lv), rep:Math.min(G.rep || 0, RANK_MAX.rep, y * RANK_PER_YEAR.rep), money:clamp(Math.round(G.money || 0), 0, Math.min(RANK_MAX.money, y * RANK_PER_YEAR.money)), avg:Math.min(avg, RANK_MAX.avg), year:y};
   r.score = rankScore(r);
   return r;
 }
@@ -9036,7 +9208,7 @@ async function rankFetch(){
   const res = await fetch(rankUrl('/rank.json?orderBy="score"&limitToLast=100'));
   if (!res.ok) throw new Error('list ' + res.status);
   const j = await res.json() || {};
-  return Object.entries(j).map(([id, v]) => ({id, ...v})).filter(v => v && v.score === rankScore(v) && !rankNameOk(v.name)).sort((a, b) => b.score - a.score);
+  return Object.entries(j).map(([id, v]) => ({id, ...v})).filter(v => v && typeof v.name === 'string' && ['lv', 'rep', 'money', 'avg', 'year', 'score'].every(k => Number.isFinite(v[k])) && v.score === rankScore(v) && !rankNameOk(v.name) && rankCapOk(v)).sort((a, b) => b.score - a.score);
 }
 
 // ----- 화면 -----
@@ -11300,8 +11472,10 @@ function boot(){
   };
   requestAnimationFrame(frame);
 }
-if (document.fonts && document.fonts.load) Promise.race([document.fonts.load('20px Jua'), new Promise(r => setTimeout(r, 1500))]).then(boot, boot);
-else boot();
+// 2026-10-20 블로그 안이면 새 창 세이브 연결(허락해 둔 경우)을 먼저 확인하고 시작해요
+const bootWait = [EMBED.ready];
+if (document.fonts && document.fonts.load) bootWait.push(Promise.race([document.fonts.load('20px Jua'), new Promise(r => setTimeout(r, 1500))]));
+Promise.all(bootWait.map(x => Promise.resolve(x).catch(() => {}))).then(() => { EMBED.prev = store.get(SAVE_KEY, null); boot(); embedAfterBoot(); });
 
 </script>
 </body></html>
