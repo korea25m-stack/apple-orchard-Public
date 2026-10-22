@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-dninS8uwYPtHiKZ6z77ZwZbQLZ50Pkcs73U8CHQ+AHM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-7SFVwLO5PuoBJt0Rc+YHA1IlHaqIYuEW8lHnh7nIdK4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -38,6 +38,14 @@ body{font-family:var(--body);color:var(--ink)}
 #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:#8fd16a}
 #cv,#mini{position:absolute;left:0;top:0;width:1920px;height:1080px;display:block}
 #mini{z-index:40}
+/* 2026-10-22 모바일(작은 터치 화면): 글자·창을 --k배(최대 1.5) */
+.mobui #wx,.mobui #top,.mobui #todo,.mobui #toasts,.mobui .modal{zoom:var(--k)}
+.mobui #top{right:calc((var(--mmw) + 50px) / var(--k))}
+.mobui #todo{top:calc((var(--mmb) + 18px) / var(--k));width:calc(var(--mmw) / var(--k) + 12px)}
+.mobui #todo ul{max-height:calc((600px - var(--mmb)) / var(--k) - 70px)}
+.mobui .modal{max-height:calc(1040px / var(--k));max-width:calc((var(--sw) - 40px) / var(--k))}
+.mobui #fsBtn{top:330px}
+#mini{box-shadow:0 0 0 400px #8fd16a} /* 넓힌 무대에서 미니게임 양옆을 풀밭색으로 */
 .battleOn #joy,.battleOn #fBtn{z-index:50}
 [hidden]{display:none!important}
 button{font-family:var(--display);color:var(--ink);cursor:pointer;border:none;background:none}
@@ -249,7 +257,7 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
 #embedCover[hidden]{display:none}
 #embedCover .ecIn{background:#fff8e6;color:#3a2215;border-radius:28px;padding:34px 60px;font-family:var(--display);font-size:54px;text-align:center;box-shadow:0 10px 0 rgba(0,0,0,.18)}
 #embedCover small{display:block;margin-top:10px;font-size:30px;opacity:.8}
-.touch .touch #helpBtn,.touch #help{display:none}
+.touch #helpBtn,.touch #help{display:none}
 .touch .tb{width:128px;height:110px;font-size:21px}
 .touch .tb b{font-size:44px}
 #rotate{display:none;position:fixed;inset:0;z-index:999;background:#ffe9a8;color:var(--ink);font-family:var(--display);font-size:28px;align-items:center;justify-content:center;flex-direction:column;gap:14px;text-align:center;padding:20px}
@@ -363,7 +371,11 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
 <script>
 'use strict';
 // ===== 기본 수치 (사용자 확정값) =====
-const W = 1920, H = 1080;
+// 2026-10-22 달 요청(모바일에서도 할 만하게, PC는 그대로): 터치 기기만 바꿔요.
+// 폰처럼 옆으로 긴 화면은 무대를 옆으로 넓혀(최대 2400) 양옆 검은 띠를 없애고, 화면이 작으면 글자·창(UIK)을 최대 1.5배로 키워요.
+const MOB = (() => { try { return matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window; } catch (e) { return false; } })();
+const W = (() => { try { const a = Math.max(innerWidth, innerHeight) / Math.min(innerWidth, innerHeight); return MOB && a > 16 / 9 + .01 ? Math.min(2400, Math.round(1080 * a / 2) * 2) : 1920; } catch (e) { return 1920; } })(), H = 1080;
+const UIK = (() => { if (!MOB) return 1; try { const s = Math.min(Math.max(innerWidth, innerHeight) / W, Math.min(innerWidth, innerHeight) / H); return Math.round(Math.max(1, Math.min(1.5, .5 / s)) * 100) / 100; } catch (e) { return 1; } })();
 const PX = 40;                      // 1m = 40px
 // 2026-10-16 달 요청: 나무 간격 3m, 줄 간격 4m. 같은 크기 밭 두 개를 가로로 나란히, 사이에 폭 8m 농로
 const TREE_DX = 3 * PX;             // 나무 간격 3m
@@ -4627,7 +4639,8 @@ function huntEntities(ctx, add, vis, T){
 }
 // 화면 위: 작은 지도, 습격 화살표, 구역 안내
 let miniBase = null;
-const MM = {w:240, h:Math.round(240 * WORLD_H / WORLD_W)}; MM.x = W - 26 - MM.w; MM.y = 24; // 2026-10-13 오른쪽 위 끝
+// 2026-10-22 모바일은 작은 지도도 UIK배
+const MM = {w:Math.round(240 * UIK), h:Math.round(240 * UIK * WORLD_H / WORLD_W)}; MM.x = W - 26 - MM.w; MM.y = 24; // 2026-10-13 오른쪽 위 끝
 // 2026-10-15 달 요청(짐승과 빨간 점이 안 맞아요): 온 세상을 240px에 넣으면 1px이 143걸음이라, 화면 안 짐승은 우주 점 밑에 숨고
 // 화면 밖 짐승만 우주 바로 옆 점으로 보였어요. 이제 작은 지도는 우주 둘레(가로 MM_VIEW)만 크게 보여 줘요. 지도를 누르면 온 세상 ↔ 우리 둘레.
 const MM_VIEW = 9000; let MM_FULL = false;
@@ -11518,6 +11531,14 @@ miniEl.addEventListener('pointerup', miniUp); miniEl.addEventListener('pointerca
 setInterval(() => { const f = $('#fLab'); if (f) f.textContent = inCombat() ? '🛡️ 막기' : targetLabel(curTarget) || '일하기'; }, 300);
 
 // 무대 크기 맞추기
+// 2026-10-22 모바일: 넓힌 무대 크기와 글자 배율(UIK)을 화면에 적용해요
+(function mobStage(){
+  const st = $('#stage'), cvs = $('#cv');
+  st.style.width = W + 'px'; cvs.width = W; cvs.style.width = W + 'px';
+  $('#mini').style.left = ((W - 1920) / 2) + 'px'; // 방제 운전 미니게임은 1920 그대로 가운데
+  st.style.setProperty('--k', UIK); st.style.setProperty('--sw', W + 'px'); st.style.setProperty('--mmw', MM.w + 'px'); st.style.setProperty('--mmb', (MM.y + MM.h) + 'px');
+  if (UIK > 1) document.body.classList.add('mobui');
+})();
 function fit(){
   const s = Math.min(innerWidth / W, innerHeight / H);
   const st = $('#stage');
