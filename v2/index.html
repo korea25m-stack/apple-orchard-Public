@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-csjyUpPHRAHbsppHoCl15HS9p8ULhwOi5BbGjqZi5Sk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-dninS8uwYPtHiKZ6z77ZwZbQLZ50Pkcs73U8CHQ+AHM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -9257,14 +9257,15 @@ const RETAIL_C = [
   {name:'서울 단골 손님', ic:'📮'}, {name:'캠핑장 사장님', ic:'🏕️'}, {name:'옆 마을 빵집', ic:'🥐'}, {name:'유치원 간식', ic:'🧸'},
   {name:'등산객 가족', ic:'🥾'}, {name:'카페 사장님', ic:'☕'}, {name:'할머니 손주 선물', ic:'🎀'}, {name:'동네 반찬가게', ic:'🍱'}
 ];
-const RETAIL_MAX = PRICE_CAP * 10000, RETAIL_P = .35;
-const RETAIL_LOW = [{name:'사과즙 공방', ic:'🧃'}, {name:'잼 만드는 할머니', ic:'🍯'}, {name:'마을 식당', ic:'🍲'}, {name:'주스 가게', ic:'🥤'}], RETAIL_LOW_P = .25;
+// 2026-10-22 달 요청: 소매 주문이 너무 잦아서 확률을 절반쯤으로 (.35/.1/.25 → .18/.05/.12)
+const RETAIL_MAX = PRICE_CAP * 10000, RETAIL_P = .18;
+const RETAIL_LOW = [{name:'사과즙 공방', ic:'🧃'}, {name:'잼 만드는 할머니', ic:'🍯'}, {name:'마을 식당', ic:'🍲'}, {name:'주스 가게', ic:'🥤'}], RETAIL_LOW_P = .12;
 function retailUnit(gk){ const hi = clamp(gByK(gk).base * 1.07 * (G.b.cold ? 1.1 : 1) * shedMult(), 3, PRICE_CAP); return Math.min(RETAIL_MAX, Math.round(hi * 2 * 10) * 1000); }
 function retailWeek(){
   if (!G.retail) G.retail = [];
   G.retail = G.retail.filter(o => { if (o.year < G.year || o.due < G.week) { toast(`${o.name} 소매 주문 날짜가 지났어요`, 'bad'); return false; } return true; });
   const lowOk = gradeN('C') >= 2; // 2026-10-15 달 요청: 즙·하과 소매 주문이 더 자주 와요
-  if (totalStock() < 2 || G.retail.length + offerCount('retail') >= (shedLv() >= 3 ? 3 : 2) || Math.random() > RETAIL_P + (shedLv() >= 2 ? .1 : 0) + (lowOk ? RETAIL_LOW_P : 0)) return;
+  if (totalStock() < 2 || G.retail.length + offerCount('retail') >= (shedLv() >= 3 ? 3 : 2) || Math.random() > RETAIL_P + (shedLv() >= 2 ? .05 : 0) + (lowOk ? RETAIL_LOW_P : 0)) return;
   const gs = GRADES.map(g => g.k).filter(k => stockAtLeast(k) >= 2);
   if (!gs.length) return;
   const low = lowOk && Math.random() < .5, t = pick(low ? RETAIL_LOW : RETAIL_C), g = low ? 'C' : pick(gs);
@@ -9387,7 +9388,8 @@ const DEST = {'서울 단골 손님':'서울시 마포구 사과길 7', '캠핑�
   '추석 선물세트':'읍내 선물세트 포장센터', '사과즙 공방':'마을 사과즙 공방', '잼 만드는 할머니':'윗마을 감나무집', '마을 식당':'마을 시장 맛나식당', '주스 가게':'읍내 생과일 주스 가게', '로컬푸드 매장':'읍내 로컬푸드 직매장', '학교 급식':'햇살초등학교 급식실', '백화점 납품':'시내 백화점 식품관'};
 const BULK_N = 6, BULK_FEE = 10000, BAD_P = .1;
 // 2026-10-15 달 요청: 상자 하나에 사과 PK_APL개를 한 번 누를 때 하나씩 → 흰 보호망(낱개 포장) 씌우기 → 상자로. 운송장은 가끔(BILL_ERR) 틀리게 나와요.
-const PK_APL = 3, BILL_ERR = .25, NET = {x:84, y:330}, BASKET = {x:64, y:476};
+// 2026-10-22 달 요청: 망 씌우는 사과는 한 상자에 2알
+const PK_APL = 2, BILL_ERR = .25, NET = {x:84, y:330}, BASKET = {x:64, y:476};
 const SORT_X = {S:400, A:700, B:1000, C:1300};
 
 function shedInit(){ if (!G.raw) G.raw = {}; if (!G.carry) G.carry = {}; if (!G.sorter) G.sorter = {}; }
@@ -11192,9 +11194,14 @@ function update(dt){
     if (PV.on && PV.yaw && (mx || my)) { const a = mx * PV.cs - my * PV.sn, b = mx * PV.sn + my * PV.cs; mx = a; my = b; } // 3인칭: 보는 방향 기준으로 걸어요
     if (mx || my) { P.tgt = null; P.pend = null; }
     else if (P.tgt) {
+      followNpc(dt);
+      if (P.routeFor !== P.tgt) planRoute();
+      while (P.route && P.route.length && Math.hypot(P.route[0].x - P.x, P.route[0].y - P.y) < 16) P.route.shift();
       const dx = P.tgt.x - P.x, dy = P.tgt.y - P.y, d = Math.hypot(dx, dy);
-      if (d < 10) { P.tgt = null; if (P.pend) { const pd = P.pend; P.pend = null; act(pd); } }
-      else { mx = dx / d; my = dy / d; }
+      // 길찾기로 갈 수 있는 끝까지 왔는데 목표 자리가 막혀 있으면(물건 위) 거기서 도착으로 쳐요
+      const near = d < 10 || (P.route && !P.route.length && P.routeEnd && d < 70);
+      if (near) { P.tgt = null; P.route = null; if (P.pend) { const pd = P.pend; P.pend = null; act(pd); } }
+      else { const w = P.route && P.route.length ? P.route[0] : P.tgt, wx = w.x - P.x, wy = w.y - P.y, wd = Math.hypot(wx, wy) || 1; mx = wx / wd; my = wy / wd; }
     }
   }
   updateMount();
@@ -11213,7 +11220,7 @@ function update(dt){
     }
     if (Math.abs(nx) > .2) P.face = nx < 0 ? -1 : 1;
     const moved = Math.hypot(P.x - ox, P.y - oy);
-    if (P.tgt && moved < .5) { P.stuck = (P.stuck || 0) + dt; if (P.stuck > .4) { P.stuck = 0; detour(); } } else P.stuck = 0;
+    if (P.tgt && moved < .5) { P.stuck = (P.stuck || 0) + dt; if (P.stuck > .4) { P.stuck = 0; if ((P.replan = (P.replan || 0) + 1) <= 2) P.routeFor = null; else { P.replan = 0; detour(); } } } else P.stuck = 0;
     cam.ox *= .9; cam.oy *= .9;
   } else P.walk = 0;
   if (P.sw > 0) P.sw -= dt;
@@ -11239,6 +11246,76 @@ function update(dt){
   if (!ssAnim) { cam.x += (P.x + cam.ox - cam.x) * Math.min(1, dt * 6); cam.y += (P.y - 60 + cam.oy - cam.y) * Math.min(1, dt * 6); }
   const hw = W / 2 / cam.z, hh = H / 2 / cam.z;
   cam.x = clamp(cam.x, WX0 + hw, WX1 - hw); cam.y = clamp(cam.y, WY0 + hh, worldBot() - hh);
+}
+// ----- 2026-10-22 달 요청: 자동 이동(할 일 '갖다주기'·클릭 이동)이 물건에 걸려 우왕좌왕하지 않게 길찾기(A*)로 돌아가요 -----
+const PF_CELL = 32;
+const pfFree = (x, y) => !blocked(x, y) && !blocked(x - 14, y) && !blocked(x + 14, y) && !blocked(x, y - 12) && !blocked(x, y + 12);
+function pfLine(a, b){ // 두 점 사이를 막힘 없이 곧장 갈 수 있나
+  const d = Math.hypot(b.x - a.x, b.y - a.y), n = Math.ceil(d / 14);
+  for (let k = 1; k < n; k++) if (!pfFree(a.x + (b.x - a.x) * k / n, a.y + (b.y - a.y) * k / n)) return false;
+  return true;
+}
+function findPath(ax, ay, bx, by){
+  const far = Math.hypot(bx - ax, by - ay), C = far > 2500 ? PF_CELL * 1.75 : PF_CELL, pad = 700; // 멀면 칸을 크게 해서 빨리 찾아요
+  const x0 = Math.min(ax, bx) - pad, y0 = Math.min(ay, by) - pad;
+  const nx = Math.ceil((Math.abs(bx - ax) + pad * 2) / C) + 1, ny = Math.ceil((Math.abs(by - ay) + pad * 2) / C) + 1;
+  if (nx * ny > 200000) return null;
+  const st = new Int8Array(nx * ny); // 0 모름, 1 지나감, 2 막힘
+  const free = (i, j) => { if (i < 0 || j < 0 || i >= nx || j >= ny) return false; const k = j * nx + i; if (!st[k]) st[k] = pfFree(x0 + i * C, y0 + j * C) ? 1 : 2; return st[k] === 1; };
+  const si = Math.round((ax - x0) / C), sj = Math.round((ay - y0) / C);
+  let gi = Math.round((bx - x0) / C), gj = Math.round((by - y0) / C);
+  if (!free(gi, gj)) { // 목표가 막혀 있으면 가장 가까운 빈칸으로
+    let best = null, bd = 1e9;
+    for (let r = 1; r <= 8 && !best; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+      if (Math.max(Math.abs(di), Math.abs(dj)) !== r || !free(gi + di, gj + dj)) continue;
+      const dd = di * di + dj * dj; if (dd < bd) { bd = dd; best = [gi + di, gj + dj]; }
+    }
+    if (!best) return null; [gi, gj] = best;
+  }
+  const N = nx * ny, g = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
+  const h = (i, j) => { const dx = Math.abs(i - gi), dy = Math.abs(j - gj); return dx + dy - .586 * Math.min(dx, dy); };
+  const heap = [], push = (f, k) => { heap.push([f, k]); let c = heap.length - 1; while (c) { const p = (c - 1) >> 1; if (heap[p][0] <= heap[c][0]) break; [heap[p], heap[c]] = [heap[c], heap[p]]; c = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = c * 2 + 1, r = l + 1; let m = c; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === c) break; [heap[m], heap[c]] = [heap[c], heap[m]]; c = m; } } return top; };
+  const s0 = sj * nx + si, goal = gj * nx + gi;
+  g[s0] = 0; push(h(si, sj) * 1.5, s0); // 1.5배 가중: 조금 덜 곧아도 훨씬 빨리 찾아요
+  let found = false, it = 0;
+  while (heap.length && it++ < 80000) {
+    const [, k] = pop(); if (closed[k]) continue; closed[k] = 1;
+    if (k === goal) { found = true; break; }
+    const i = k % nx, j = (k - i) / nx;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue;
+      const a = i + di, b = j + dj;
+      if (!free(a, b) || (di && dj && (!free(i + di, j) || !free(i, j + dj)))) continue;
+      const k2 = b * nx + a, ng = g[k] + (di && dj ? 1.414 : 1);
+      if (ng < g[k2]) { g[k2] = ng; from[k2] = k; push(ng + h(a, b) * 1.5, k2); }
+    }
+  }
+  if (!found) return null;
+  const pts = []; for (let k = goal; k !== -1 && k !== s0; k = from[k]) pts.push({x:x0 + (k % nx) * C, y:y0 + Math.floor(k / nx) * C});
+  pts.reverse();
+  if (pfFree(bx, by)) pts.push({x:bx, y:by});
+  // 곧장 갈 수 있는 점은 건너뛰어서 지그재그 없이 걸어요
+  // 칸 정보(이미 계산해 둔 것)로 직선 검사해서 빨라요
+  const lineOk = (a, b) => { const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (C / 2)); for (let k = 1; k < n; k++) if (!free(Math.round((a.x + (b.x - a.x) * k / n - x0) / C), Math.round((a.y + (b.y - a.y) * k / n - y0) / C))) return false; return true; };
+  const out = []; let cur = {x:ax, y:ay}, i = 0;
+  while (i < pts.length) { let j = i; while (j + 1 < pts.length && lineOk(cur, pts[j + 1])) j++; out.push(pts[j]); cur = pts[j]; i = j + 1; }
+  return out;
+}
+function planRoute(){
+  P.routeFor = P.tgt; P.route = null; P.routeEnd = false;
+  const t = P.tgt;
+  if (pfLine(P, t)) return; // 막힌 데가 없으면 곧장
+  const r = findPath(P.x, P.y, t.x, t.y);
+  if (r) { P.route = r; P.routeEnd = true; }
+}
+// 걸어가는 동안 주민이 자리를 옮기면 따라가요
+function followNpc(dt){
+  const pd = P.pend; if (!pd || pd.kind !== 'npc') return;
+  P.npcT = (P.npcT || 0) - dt; if (P.npcT > 0) return; P.npcT = .8;
+  const n = NPCS[pd.n]; if (!n) return;
+  const x = n.x + 55, y = n.y + 20;
+  if (Math.hypot(x - P.tgt.x, y - P.tgt.y) > 50) { P.tgt = {x, y}; pd.x = x; pd.y = y; }
 }
 function detour(){
   if (!P.tgt) return;
