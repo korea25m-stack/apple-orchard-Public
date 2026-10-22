@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-7SFVwLO5PuoBJt0Rc+YHA1IlHaqIYuEW8lHnh7nIdK4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-QfwamedL2XEotz1NkBbSp1PLR+CXL9bt1csfqE7mezs='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -289,6 +289,35 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
 .gact{flex:none;width:210px;display:flex;flex-direction:column;gap:6px}
 .gact .btn{width:100%;text-align:center;white-space:normal;line-height:1.25}
 .ivg>.gnote{grid-column:1/-1}
+/* 2026-10-22 가방 새 디자인 */
+.ivleft{flex:none;width:330px;display:flex;flex-direction:column;gap:10px}
+.ivme{margin-left:auto;align-self:center;font-family:var(--display);font-size:18px;color:#5a4636}
+.ivtabs{margin:0 0 10px;align-items:center}
+.ivlist{max-height:390px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:2px 4px 2px 2px}
+.ivrow{display:flex;gap:10px;align-items:stretch;background:#fffaf1;border:2px solid var(--line);border-radius:14px;padding:8px}
+.ivrh{flex:none;width:74px;display:flex;align-items:center;justify-content:center;text-align:center;font-family:var(--display);font-size:18px;line-height:1.2;border-right:2px dashed var(--line);padding-right:8px}
+.ivrt{display:flex;flex-wrap:wrap;gap:8px}
+.ivt2 img{-webkit-user-drag:none;user-select:none;pointer-events:none}
+.ivt2{position:relative;width:112px;min-height:104px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:14px;background:#fff;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;cursor:pointer;touch-action:none}
+.ivt2 b{font-family:var(--display);font-weight:400;font-size:14px;line-height:1.15;word-break:keep-all}
+.ivt2 small{font-size:13px;color:var(--muted)}
+.ivt2 i{font-style:normal;font-size:40px;line-height:1.15}
+.ivt2.on{background:#fff3c4}
+.ivt2.sel{box-shadow:0 0 0 4px #4aa8e8}
+.ivt2:hover{background:#fff6d6}
+.ivlv{position:absolute;left:5px;top:4px;font-family:var(--display);font-size:13px;background:#ffe2b8;border:1.5px solid var(--ink);border-radius:8px;padding:0 5px}
+.ivon{position:absolute;right:5px;top:4px;width:22px;height:22px;border-radius:50%;background:#2f8a3e;color:#fff;font-size:14px;display:grid;place-items:center;border:1.5px solid var(--ink)}
+.ivsp{position:absolute;right:4px;bottom:-9px;font-family:var(--display);font-size:12px;background:#ffd25e;border:1.5px solid var(--ink);border-radius:8px;padding:0 6px}
+.ivdet{display:flex;gap:14px;align-items:center;margin-top:10px;background:#fff7dc;border:2.5px solid var(--ink);border-radius:16px;padding:10px 14px}
+.ivdet .gimg{flex:none;background:#fffaf1;border:2px solid #e3d8c4;border-radius:12px}
+.ivdt{flex:1;min-width:0}.ivdt b{font-family:var(--display);font-weight:400;font-size:21px}.ivdt small{color:var(--muted);font-size:15px}
+.ivdt p{margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px;color:#5a4636;line-height:1.35}
+.ivup{color:#2f8a3e;font-family:var(--display);font-size:16px}.ivdn{color:#c0392b;font-family:var(--display);font-size:16px}.ivok{color:#8a6a2a;font-family:var(--display);font-size:16px}
+.ivdb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.mobui .ivlist{max-height:300px}.mobui .ivlg{max-height:400px}
+.ivlg{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;max-height:520px;overflow:auto;padding:2px}
+.ivt2.loot{cursor:default}
+.ivnote{margin-top:10px;font-size:17px;background:#e9f6ff;border:2px solid #9ad7ff;border-radius:12px;padding:8px 12px}
 .tbl td:last-child,.tbl th:last-child{text-align:right}
 .tbl td{vertical-align:middle}
 .rkTbl td,.rkTbl th{text-align:right}.rkTbl td:nth-child(2),.rkTbl th:nth-child(2){text-align:left}.rkTbl .rkN{text-align:center;font-family:var(--display)}.rkTbl th:first-child{text-align:center}
@@ -4234,14 +4263,17 @@ function killMon(m){
 // 2026-10-18 달 요청: 필드 산짐승은 모두 2~3단계 장비(대나무 장대·튼튼 쇠스랑급, 1단계는 처음부터 가짐)를 가끔 떨어뜨려요.
 // 4단계 무기(늑대 송곳니 방망이)·작업복(늑대 털 조끼)은 늑대만: 필드 늑대 2%, 검은 늑대(보스) 30%. 이미 가진 건 안 나와요
 const FIELD_GEAR_P = .04, WOLF_GEAR_P = .02, BWOLF_GEAR_P = .3;
-function giveGear(slot, idx){ const it = GEAR[slot].items[idx]; if (!it || it.id in G.gear.own) return null; G.gear.own[it.id] = 0; return `${it.name}${jo(it.name, '을', '를').slice(it.name.length)} 주웠어요! 🎒 가방에서 끌어다 낄 수 있어요.`; }
-function wolfGearDrop(p){ ensureGear(); if (Math.random() >= p) return null; const sl = Math.random() < .5 ? ['weapon', 'armor'] : ['armor', 'weapon']; for (const s of sl) { const r = giveGear(s, 3); if (r) return r; } return null; }
+// 2026-10-22 달 요청: 이미 가진 장비도 떨어져요 → 여분으로 가방에 들어가요(팔 수 있어요)
+function giveGear(slot, idx){ const it = GEAR[slot].items[idx]; if (!it) return null;
+  if (it.id in G.gear.own) { addSpare(it.id); return `여분 ${jo(it.name, '을', '를')} 주웠어요! 🎒 가방에서 ${won(spareOne(slot, it.id))}에 팔 수 있어요.`; }
+  G.gear.own[it.id] = 0; return `${jo(it.name, '을', '를')} 주웠어요! 🎒 가방에서 끌어다 낄 수 있어요.`; }
+function wolfGearDrop(p){ ensureGear(); if (Math.random() >= p) return null; const own = s => GEAR[s].items[3].id in G.gear.own, sl = ['weapon', 'armor'].filter(s => !own(s)); return giveGear(pick(sl.length ? sl : ['weapon', 'armor']), 3); } // 없는 것 먼저, 다 있으면 여분
 function fieldGearDrop(m){
   ensureGear();
   if (m.kind === 'wolf') { const r = wolfGearDrop(WOLF_GEAR_P); if (r) return r; }
   if (Math.random() >= FIELD_GEAR_P) return null;
   const top = m.tier >= 2 ? 2 : 1, opts = [];
-  for (const s of SLOTS) for (let i = 1; i <= top; i++) if (!(GEAR[s].items[i].id in G.gear.own)) opts.push([s, i]);
+  for (const s of SLOTS) for (let i = 1; i <= top; i++) opts.push([s, i]); // 가진 것도 떨어져요(여분)
   return opts.length ? giveGear(...pick(opts)) : null;
 }
 // 사냥터 산짐승은 강화석도 아주 가끔
@@ -4936,6 +4968,7 @@ function updateTiger(){
     }
   }
 }
+const BOSS_SPARE_P = .3; // 2026-10-22 이미 가진 보스 장비도 30% 확률로 여분이 떨어져요
 function killTiger(m){
   if (m.kind === 'pbear') return killPbear(m);
   if (m.kind === 'dragon') return killDragon(m);
@@ -4945,7 +4978,7 @@ function killTiger(m){
   gainXp(TIGER.xp); unlock('tiger'); sfx('fanfare');
   let msg;
   if (!('tclaw' in G.gear.own)) { G.gear.own.tclaw = 0; msg = '🐯 단 하나뿐인 <호랑이 발톱 갈퀴>를 얻었어요! 장비 창에서 낄 수 있어요.'; }
-  else { G.gear.stones = (G.gear.stones || 0) + 3; msg = '💎 강화석 3개를 얻었어요!'; }
+  else { G.gear.stones = (G.gear.stones || 0) + 3; msg = '💎 강화석 3개를 얻었어요!'; if (Math.random() < BOSS_SPARE_P) { addSpare('tclaw'); msg += ` 🎁 여분 '${gearItem('weapon', 'tclaw').name}'도 떨어뜨렸어요!`; } }
   addLoot('tskin', 1); msg += ' 🐯 호랑이 가죽도 1장 얻었어요(팔거나 가죽 장비를 만들 수 있어요).';
   floats.push({x:m.x, y:m.y - 220, s:'🏆 전설의 호랑이를 이겼다!', t:3, c:'#ff7a1a', sz:44, pop:.3});
   setTimeout(() => popup('🐯', '전설의 호랑이를 이겼어요!', `${HN()}의 이름이 온 산에 퍼졌어요. ${msg} 호랑이는 7일 뒤 다시 굴로 돌아와요.`), 900);
@@ -4955,7 +4988,7 @@ function killPbear(m){
   gainXp(PBEAR.xp); unlock('pbear'); sfx('fanfare');
   let msg;
   if (!('pcoat' in G.gear.own)) { G.gear.own.pcoat = 0; msg = '🐻‍❄️ 단 하나뿐인 <흰곰 털 외투>를 얻었어요! 장비 창에서 입을 수 있어요.'; }
-  else { G.gear.stones = (G.gear.stones || 0) + 4; msg = '💎 강화석 4개를 얻었어요!'; }
+  else { G.gear.stones = (G.gear.stones || 0) + 4; msg = '💎 강화석 4개를 얻었어요!'; if (Math.random() < BOSS_SPARE_P) { addSpare('pcoat'); msg += ` 🎁 여분 '${gearItem('armor', 'pcoat').name}'도 떨어뜨렸어요!`; } }
   addLoot('pfur', 1); msg += ' 🐻‍❄️ 흰곰 털가죽도 1장 얻었어요(금비상회에 비싸게 팔 수 있어요).';
   floats.push({x:m.x, y:m.y - 240, s:'🏆 전설의 흰곰을 이겼다!', t:3, c:'#4aa8e8', sz:44, pop:.3});
   setTimeout(() => popup('🐻‍❄️', '전설의 흰곰을 이겼어요!', `설산 꼭대기까지 ${HN()}의 이름이 울려 퍼졌어요. ${msg} 흰곰은 7일 뒤 다시 굴로 돌아와요.`), 900);
@@ -4980,7 +5013,7 @@ function killDragon(m){
   let msg;
   if (!('dspear' in G.gear.own)) { G.gear.own.dspear = 0; msg = '🐉 단 하나뿐인 <서리용 이빨 창>을 얻었어요!'; }
   else if (!('darmor' in G.gear.own)) { G.gear.own.darmor = 0; msg = '🐉 단 하나뿐인 <서리용 비늘 갑옷>을 얻었어요!'; }
-  else { G.gear.stones = (G.gear.stones || 0) + 8; msg = '💎 강화석 8개를 얻었어요!'; }
+  else { G.gear.stones = (G.gear.stones || 0) + 8; msg = '💎 강화석 8개를 얻었어요!'; if (Math.random() < BOSS_SPARE_P) { const sp = pick([['weapon', 'dspear'], ['armor', 'darmor']]); addSpare(sp[1]); msg += ` 🎁 여분 '${gearItem(...sp).name}'도 떨어뜨렸어요!`; } }
   addLoot('dscale', 3); addLoot('dhorn', 1); const gem = Math.random() < .5; if (gem) addLoot('dgem', 1);
   msg += ` 재료로 🐉 서리용 비늘 3장 · 🦴 서리용 뿔 1개${gem ? ' · 💠 서리 결정 1개' : ''}도 얻었어요(든든철물에서 용비늘 장화·용뿔 투구를 만들 수 있어요).`;
   floats.push({x:m.x, y:m.y - 300, s:'🏆 전설의 서리용을 이겼다!', t:3.5, c:'#5ab8ff', sz:48, pop:.3});
@@ -10449,31 +10482,61 @@ function drawDoll(cv){
   c.restore();
 }
 function equipGear(s, id){ if (!(id in G.gear.own) || G.gear[s] === id) return false; G.gear[s] = id; sfx('good'); toast(`🎒 ${jo(gearItem(s, id).name, '을', '를')} 꼈어요!`, 'good'); updateHUD(true); return true; }
+// 2026-10-22 달 요청: 가진 장비도 다시 떨어져요 → 여분(G.gear.spare[id] 개수). 여분은 팔거나 버릴 수 있어요(강화 없는 값).
+const spareN = id => (ensureGear().spare && G.gear.spare[id]) || 0;
+function addSpare(id){ const g = ensureGear(); g.spare = g.spare || {}; g.spare[id] = (g.spare[id] || 0) + 1; }
+const spareOne = (slot, id) => Math.round(gearItem(slot, id).price * .5 / 10000) * 10000;
+function sellSpare(slot, id, all){
+  const n = spareN(id); if (!n) return false;
+  const k = all ? n : 1, pay = spareOne(slot, id) * k;
+  G.gear.spare[id] = n - k; if (!G.gear.spare[id]) delete G.gear.spare[id];
+  G.money += pay; sfx('coin'); toast(`💰 여분 ${gearItem(slot, id).name} ${k}개를 ${won(pay)}에 팔았어요.`, 'gold'); updateHUD(true); return true;
+}
+// 2026-10-22 달 요청: 가방을 보기 좋게. 왼쪽 인형, 오른쪽 탭(장비·전리품), 작은 칸 + 아래 자세히 보기
+let invTab = 'gear', invSel = null;
+const INV_ST = {weapon:v => `⚔️ ${v}`, armor:v => `🛡️ ${v}`, boots:v => `👢 +${v}%`, hat:v => `❤️ +${v}`};
 function uiInv(){
   ensureGear();
-  UI.open({ic:'🎒', title:HN() + '의 가방', w:1240, inv:1, render(o){
+  UI.open({ic:'🎒', title:HN() + '의 가방', w:1300, inv:1, render(o){
     const g = G.gear, f = farmer(), have = LOOT_KEYS.filter(k => G.bag[k] > 0);
     const total = have.reduce((a, k) => a + lootPrice(k) * G.bag[k], 0);
-    const loot = have.length ? have.map(k => { const L = LOOT[k]; return `<div class="ivc" title="${esc(L.desc)}"><i>${L.ic}</i><b>${L.name}</b><span class="ivn">×${G.bag[k]}</span><small>오늘 ${won(lootPrice(k))}</small></div>`; }).join('')
-      : '<div class="gnote">아직 전리품이 없어요. 사냥터에서 산짐승을 쫓거나 반짝이는 자리를 캐 보세요! 🌲</div>';
-    const gear = SLOTS.flatMap(s => GEAR[s].items.filter(it => it.id in g.own).map(it => {
-      const lv = g.own[it.id] || 0, on = g[s] === it.id;
-      return `<div class="ivc drag ${on ? 'on' : ''}" data-eq="${s}|${it.id}">${gearImg(it.id, 56)}<b>${it.name}${lv ? ` +${lv}` : ''}</b><small>${GEAR[s].ic} ${GEAR[s].unit} ${itemStat(s, it.id, lv)}</small>${on ? '<span class="ivt">끼는 중</span>' : '<span class="ivt off">끌어다 끼기</span>'}${gearSellBtns(s, it)}</div>`;
-    })).join('');
-    const slots = SLOTS.map(s => { const id = g[s], lv = g.own[id] || 0, P2 = SLOT_POS[s];
-      return `<div class="dslot" data-slot="${s}" style="left:${P2.x}px;top:${P2.y}px" title="${GEAR[s].name}">${gearImg(id, 52)}<small>${GEAR[s].name}${lv ? ` +${lv}` : ''}</small></div>`; }).join('');
-    o.body.innerHTML = `<div class="gstat"><b>🧑‍🌾 ${HN()} Lv.${f.lv}</b><span>💰 ${won(G.money)}</span><span>💎 강화석 ${g.stones || 0}개</span><span>🧺 전리품 ${bagCount()}개 · 팔면 약 ${won(total)}</span></div>
-      <div class="ivwrap"><div class="doll" id="doll"><canvas id="dollCv" width="330" height="420"></canvas>${slots}
-        <div class="dstat">⚔️ 공격 <b>${f.atk}</b> · 🛡️ 방어 <b>${f.def}</b> · 👢 +${f.spd}% · ❤️ ${f.hp}</div></div>
-      <div class="ivside"><h3 class="ivh" style="margin-top:4px">🛠️ 장비 <small>끌어서 왼쪽 칸에 놓거나 눌러서 껴요</small></h3><div class="ivg g4">${gear}</div>
-      <h3 class="ivh">🧺 전리품</h3><div class="ivg g4">${loot}</div></div></div>`;
+    const nGear = SLOTS.reduce((a, s) => a + GEAR[s].items.filter(it => it.id in g.own).length, 0);
+    if (!invSel || !(invSel.id in g.own)) invSel = {s:'weapon', id:g.weapon};
+    const tile = (s, it) => { const lv = g.own[it.id] || 0, on = g[s] === it.id, sp = spareN(it.id), sel = invSel.id === it.id;
+      return `<div class="ivt2 drag ${on ? 'on' : ''} ${sel ? 'sel' : ''}" data-eq="${s}|${it.id}">${gearImg(it.id, 46)}<b>${it.name}</b><small>${INV_ST[s](itemStat(s, it.id, lv))}</small>${lv ? `<span class="ivlv">+${lv}</span>` : ''}${on ? '<span class="ivon">✓</span>' : ''}${sp ? `<span class="ivsp">여분 ${sp}</span>` : ''}</div>`; };
+    const gearList = SLOTS.map(s => { const its = GEAR[s].items.filter(it => it.id in g.own);
+      return `<div class="ivrow"><div class="ivrh">${GEAR[s].ic} ${GEAR[s].name}</div><div class="ivrt">${its.map(it => tile(s, it)).join('')}</div></div>`; }).join('');
+    // 고른 장비 자세히
+    const S = invSel.s, it = gearItem(S, invSel.id), lv = g.own[it.id] || 0, on = g[S] === it.id, sp = spareN(it.id);
+    const st = itemStat(S, it.id, lv), cur = slotStat(S), d = st - cur;
+    const cmp = on ? '<span class="ivok">지금 끼고 있어요</span>' : `<span class="${d > 0 ? 'ivup' : d < 0 ? 'ivdn' : 'ivok'}">${d > 0 ? '▲' : d < 0 ? '▼' : '='} 지금 것보다 ${d > 0 ? '+' : ''}${d}</span>`;
+    const detail = `<div class="ivdet">${gearImg(it.id, 72)}<div class="ivdt"><b>${it.name}${lv ? ` +${lv}` : ''}</b> <small>${GEAR[S].name} · ${INV_ST[S](st)}</small> ${cmp}<p>${esc(it.desc || '')}</p>
+      <div class="ivdb">${on ? '' : '<button class="btn sm pri" id="ivEq">🎽 끼기</button>'}${on ? '' : gearSellBtns(S, it).replace(/<\/?span[^>]*>/g, '')}${sp ? `<button class="btn sm" id="ivSp1">💰 여분 1개 ${won(spareOne(S, it.id))}</button>${sp > 1 ? `<button class="btn sm" id="ivSpA">💰 여분 ${sp}개 모두 ${won(spareOne(S, it.id) * sp)}</button>` : ''}` : ''}</div></div></div>`;
+    const loot = have.length ? `<div class="ivlg">${have.map(k => { const L = LOOT[k]; return `<div class="ivt2 loot" title="${esc(L.desc)}"><i>${L.ic}</i><b>${L.name}</b><small>${won(lootPrice(k))}</small><span class="ivlv">×${G.bag[k]}</span></div>`; }).join('')}</div>
+      <div class="ivnote">🧺 모두 팔면 약 <b>${won(total)}</b> · 금비상회 황금비 사장님한테 팔아요. 시세는 날마다 바뀌어요.</div>`
+      : '<div class="gnote">아직 전리품이 없어요. 사냥터에서 산짐승을 잡거나 반짝이는 자리를 캐 보세요! 🌲</div>';
+    const slots = SLOTS.map(s => { const id = g[s], l = g.own[id] || 0, P2 = SLOT_POS[s];
+      return `<div class="dslot" data-slot="${s}" style="left:${P2.x}px;top:${P2.y}px" title="${GEAR[s].name}">${gearImg(id, 52)}<small>${GEAR[s].name}${l ? ` +${l}` : ''}</small></div>`; }).join('');
+    o.body.innerHTML = `<div class="ivwrap"><div class="ivleft"><div class="doll" id="doll"><canvas id="dollCv" width="330" height="420"></canvas>${slots}
+        <div class="dstat">⚔️ ${f.atk} · 🛡️ ${f.def} · 👢 +${f.spd}% · ❤️ ${f.hp}</div></div>
+        </div>
+      <div class="ivside"><div class="tabs ivtabs"><button class="tab ${invTab === 'gear' ? 'on' : ''}" data-it="gear">🛠️ 장비 ${nGear}</button><button class="tab ${invTab === 'loot' ? 'on' : ''}" data-it="loot">🧺 전리품 ${bagCount()}</button><span class="ivme">🧑‍🌾 ${HN()} Lv.${f.lv} · 💰 ${won(G.money)} · 💎 강화석 ${g.stones || 0}개</span></div>
+        ${invTab === 'gear' ? `<div class="ivlist">${gearList}</div>${detail}` : loot}</div></div>`;
     drawDoll($('#dollCv'));
-    bindSellBtns(o.body, o);
-    // 끌어다 놓기 (마우스·손가락 모두)
-    o.body.querySelectorAll('.ivc[data-eq]').forEach(card => card.onpointerdown = e => {
-      if (e.target.closest('button')) return;
+    o.body.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { invTab = b.dataset.it; o.render(o); });
+    if (invTab === 'gear') {
+      bindSellBtns(o.body, o);
+      const eq = $('#ivEq'); if (eq) eq.onclick = () => { equipGear(S, it.id); o.render(o); };
+      const s1 = $('#ivSp1'), sa = $('#ivSpA');
+      if (s1) s1.onclick = () => { sellSpare(S, it.id, false); o.render(o); };
+      if (sa) sa.onclick = () => { sellSpare(S, it.id, true); o.render(o); };
+    }
+    // 누르면 고르기(아래에 자세히), 끌어서 인형에 놓으면 끼기, 두 번 누르면 바로 끼기
+    o.body.querySelectorAll('.ivt2[data-eq]').forEach(card => card.onpointerdown = e => {
       const [s, id] = card.dataset.eq.split('|'), x0 = e.clientX, y0 = e.clientY;
-      let ghost = null;
+      e.preventDefault();
+      let ghost = null, done = false;
+      try { card.setPointerCapture(e.pointerId); } catch (_) {}
       const move = ev => {
         if (!ghost && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) {
           ghost = document.createElement('div'); ghost.className = 'dghost'; ghost.innerHTML = gearImg(id, 64); document.body.appendChild(ghost);
@@ -10482,16 +10545,18 @@ function uiInv(){
         if (ghost) { ghost.style.left = ev.clientX - 36 + 'px'; ghost.style.top = ev.clientY - 36 + 'px'; const t = document.elementFromPoint(ev.clientX, ev.clientY); o.body.querySelectorAll('.dslot').forEach(d => d.classList.toggle('hov', !!t && (t.closest('.dslot') === d || (t.closest('#doll') && d.dataset.slot === s)))); }
       };
       const up = ev => {
-        removeEventListener('pointermove', move); removeEventListener('pointerup', up);
+        if (done) return; done = true;
+        card.removeEventListener('pointermove', move); card.removeEventListener('pointerup', up); card.removeEventListener('pointercancel', up);
         if (ghost) { ghost.remove(); const t = document.elementFromPoint(ev.clientX, ev.clientY), sl = t && t.closest('.dslot');
           if ((sl && sl.dataset.slot === s) || (!sl && t && t.closest('#doll'))) equipGear(s, id);
           else if (sl) toast(`${GEAR[s].name} 칸이 아니에요`, 'bad'); }
-        else equipGear(s, id);
+        else if (ev.type === 'pointerup' && invSel && invSel.id === id && performance.now() - (invSel.t || 0) < 400) equipGear(s, id);
+        invSel = {s, id, t:performance.now()};
         o.render(o);
       };
-      addEventListener('pointermove', move); addEventListener('pointerup', up);
+      card.addEventListener('pointermove', move); card.addEventListener('pointerup', up); card.addEventListener('pointercancel', up);
     });
-    o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">I 키로 열고 닫아요 · 전리품은 금비상회에서 팔아요</span><button class="btn" id="ivGear">🔨 장비 사기·강화</button><button class="btn pri" id="ivOk">닫기</button>`;
+    o.footEl.innerHTML = `<span style="align-self:center;margin-right:auto">눌러서 고르고, 두 번 누르거나 인형에 끌어다 놓으면 껴요 · I 키로 열고 닫아요</span><button class="btn" id="ivGear">🔨 장비 사기·강화</button><button class="btn pri" id="ivOk">닫기</button>`;
     $('#ivGear').onclick = () => { UI.close(); setTimeout(uiGear, 160); };
     $('#ivOk').onclick = () => UI.close();
   }});
