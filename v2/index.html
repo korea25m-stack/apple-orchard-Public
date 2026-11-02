@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-QfwamedL2XEotz1NkBbSp1PLR+CXL9bt1csfqE7mezs='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-BHv8yw6RbCMF28HpV5nEXFG4a9w+98P0y9pjorE0en8='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2326,7 +2326,13 @@ function chibiHat(c, S, side, back, hero){
   } else if (hat === 'band') pc(c, cc => rr(cc, -23.5, y - 13, 47, 7, 3), '#ffffff', '#cfd8e0', 1, 1.5, 2.4);
 }
 // 대화창·퀴즈·경매 얼굴 (2026-10-13 맵 캐릭터와 같은 새 그림체로 가슴 위만 크게)
-function drawPortrait(cv, who){
+const PORT_FILE = {'오복순 할머니':'bokssun','황금비 사장님':'geumbi','최봉구 아저씨':'bonggu','박만석 할아버지':'manseok','조막순 할머니':'maksun','한도윤':'doyun','한소이':'soi','나방울':'bangul','서다솜':'dasom','임고은 선생님':'goeun','차분해 순경':'sungyeong','문태풍 기사님':'taepung','윤꽃님':'kkotnim','곽든든 사장님':'deundeun','송이슬 선생님':'iseul','양벌찬':'beolchan','하노을':'noeul','남궁빛나':'bitna',grandma:'grandma',chief:'chief',hunter:'hunter',worker:'worker',dealer:'dealer'};
+const PORT_IMG = {};
+for (const k of new Set(Object.values(PORT_FILE))) { const im = new Image(); im.src = 'portraits/npc_' + k + '_v1.webp'; PORT_IMG[k] = im; }
+function drawPortrait(cv, who, key){
+  const pf = PORT_FILE[key || who], pim = pf && PORT_IMG[pf];
+  if (pim && pim.complete && pim.naturalWidth) { const pc = cv.getContext('2d'); pc.clearRect(0, 0, cv.width, cv.height); pc.drawImage(pim, 0, 0, cv.width, cv.width); return; }
+  if (pim && !pim.complete && !pim._w) { pim._w = 1; pim.addEventListener('load', () => { if (cv.isConnected) drawPortrait(cv, who, key); }); }
   const c = cv.getContext('2d'), w = cv.width, hero = who === 'haru';
   const S = hero ? heroGearSpec() : toSpec(typeof who === 'string' ? LOOKS[who] : who);
   c.clearRect(0, 0, w, w); c.save(); c.scale(w / 240, w / 240);
@@ -7582,7 +7588,7 @@ function talk(who, html, foot){
   const name = npc ? who.name : {grandma:'김순자 할머니', chief:'고만수 이장님', hunter:HUNTER_NAME, haru:HN(), worker:'인부 아저씨'}[who];
   return UI.open({ic:'💬', title:name, w:900, render(o){
     o.body.innerHTML = `<div class="talk"><canvas width="200" height="200" id="ptr"></canvas><div class="bubble"><div class="who">${name}${npc ? ` <small style="opacity:.6">· ${who.role}</small>` : ''}</div>${html}</div></div><div id="talkX"></div>`;
-    drawPortrait($('#ptr'), npc ? who.look : who);
+    drawPortrait($('#ptr'), npc ? who.look : who, npc ? who.name : who);
     o.footEl.innerHTML = foot || `<button class="btn pri" id="tOk">알겠어요</button>`;
     const ok = $('#tOk'); if (ok) ok.onclick = () => UI.close();
   }});
@@ -10758,6 +10764,19 @@ function gearImg(id, px = 64){
 }
 
 // ===== 시작할 때 주인공 고르기 + 이름 정하기 =====
+const HERO_IMG = {};
+for (const h of HEROES) { const im = new Image(); im.src = 'portraits/hero_' + h.id + '_v1.webp'; HERO_IMG[h.id] = im; }
+function drawHeroCard(cv, h){
+  const c = cv.getContext('2d'), im = HERO_IMG[h.id];
+  if (im && im.complete && im.naturalWidth) {
+    const sw = im.naturalWidth * cv.width / cv.height;
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.drawImage(im, (im.naturalWidth - sw) / 2, 0, sw, im.naturalHeight, 0, 0, cv.width, cv.height);
+    return;
+  }
+  if (im && !im._w) { im._w = 1; im.addEventListener('load', () => { if (cv.isConnected) drawHeroCard(cv, h); }); }
+  c.save(); c.translate(60, 196); c.scale(1.52, 1.52); drawHuman(c, 0, 0, h, 0, 0, 0, false); c.restore();
+}
 function uiHeroPick(done){
   let sel = (G.hero && G.hero.look) || 'm1', name = (G.hero && G.hero.name) || '';
   UI.open({ic:'🧑‍🌾', title:'🍎 과수원키우기 · 누구랑 과수원을 가꿀까요?', w:1500, noX:true, render(o){
@@ -10767,7 +10786,7 @@ function uiHeroPick(done){
       <div class="hpn"><label for="hpName">주인공 이름</label><input id="hpName" maxlength="8" placeholder="우주" value="${esc(name)}" autocomplete="off"><small>비워 두면 '우주'예요. 8글자까지.</small></div>`;
     o.body.querySelectorAll('.hpk').forEach(b => {
       const h = HEROES.find(x => x.id === b.dataset.h), cv = b.querySelector('canvas'), c = cv.getContext('2d');
-      c.save(); c.translate(60, 196); c.scale(1.52, 1.52); drawHuman(c, 0, 0, h, 0, 0, 0, false); c.restore();
+      drawHeroCard(cv, h);
       b.onclick = () => { sel = h.id; name = $('#hpName').value; o.render(o); };
     });
     const inp = $('#hpName');
