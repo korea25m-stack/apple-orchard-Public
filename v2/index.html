@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-BHv8yw6RbCMF28HpV5nEXFG4a9w+98P0y9pjorE0en8='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-85TJOF43Ewi/KnMm8qVD77VcN/NG0As2XGtQjQEz3qw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2330,7 +2330,8 @@ const PORT_FILE = {'오복순 할머니':'bokssun','황금비 사장님':'geumbi
 const PORT_IMG = {};
 for (const k of new Set(Object.values(PORT_FILE))) { const im = new Image(); im.src = 'portraits/npc_' + k + '_v1.webp'; PORT_IMG[k] = im; }
 function drawPortrait(cv, who, key){
-  const pf = PORT_FILE[key || who], pim = pf && PORT_IMG[pf];
+  const hg = who === 'haru' ? ensureGear() : null, hk = hg && hg.armor === 'cloth' && hg.boots === 'rubber' && hg.hat === 'straw' ? heroSpec().id : null;
+  const pf = PORT_FILE[key || who], pim = hk ? HERO_IMG[hk] : pf && PORT_IMG[pf];
   if (pim && pim.complete && pim.naturalWidth) { const pc = cv.getContext('2d'); pc.clearRect(0, 0, cv.width, cv.height); pc.drawImage(pim, 0, 0, cv.width, cv.width); return; }
   if (pim && !pim.complete && !pim._w) { pim._w = 1; pim.addEventListener('load', () => { if (cv.isConnected) drawPortrait(cv, who, key); }); }
   const c = cv.getContext('2d'), w = cv.width, hero = who === 'haru';
