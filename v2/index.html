@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-J9NVmQ/D1d36PCg8zBmJuddfH0KRFXJ6jQRTOqwBNx0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-7zT/2sInCLt9U/SjQDf5f/7Kz0PVH1bdJeccP1PHhvA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -461,7 +461,7 @@ const toGrid = (x, y) => [Math.round((x - WX0) / GRID), Math.round((y - WY0) / G
 const fromGrid = (gx, gy) => [WX0 + gx * GRID, WY0 + gy * GRID];
 const cDist = (x, y) => Math.hypot((x - MCX) / MHX, (y - MCY) / MHY);
 const WORLD_W = WX1 - WX0, WORLD_H = WY1 - WY0;
-const HOME = {x0:-1100, y0:440, x1:3600, y1:4300, name:'우리 과수원'}; // 2026-10-16 지도의 왼쪽 위 검은 원(집·창고·과수원)
+const HOME = {x0:-1100, y0:440, x1:3600, y1:5800, name:'우리 과수원'}; // 2026-10-16 지도의 왼쪽 위 검은 원(집·창고·과수원)
 const worldH = rows => OY + rows * ROW_H + 520;
 
 const VARS = {
@@ -1250,7 +1250,7 @@ function freshLeft(k){
 }
 
 // ===== 셀화 그리기 도구 =====
-const AA={on:!/[?&]art=0/.test(location.search),im:{},cv:{}};
+const AA={on:true,im:{},cv:null};
 const AA_OBJ=['tree','shed','shed1','shed2','shed3','v_tteok','v_geumbi','v_hall','v_bakery','v_flower','v_hardware','v_vet','v_honey','v_school','v_police','v_dali','v_bitna','v_post','v_gukbap','v_library','v_juice','b_hanok','b_cold','b_factory','b_wondumak','b_hive','b_jangdok','b_sotdae','b_nm1','b_nm2','b_nm3'];
 AA_OBJ.push('post','rail','f_pine','f_pine_w','f_oak','f_oak_a','f_oak_w','f_bush','f_bush_w','f_big','f_big_w','f_rock','f_blossom');
 const AV={'복순 떡방앗간':'v_tteok','금비상회':'v_geumbi','사과골 마을회관':'v_hall','다솜빵집':'v_bakery','꽃님꽃집':'v_flower','든든철물':'v_hardware','이슬동물병원':'v_vet','벌찬꿀집':'v_honey','햇살분교':'v_school','사과골 파출소':'v_police','달이네 집':'v_dali','빛나네 집':'v_bitna','강변 우체국':'v_post','할매 국밥집':'v_gukbap','작은 도서관':'v_library','사과즙 공방':'v_juice'};
@@ -1259,7 +1259,9 @@ for (const a of [2,1]) for (const s of ['bare','bud','bloom','leaf','fall','gree
 AA_OBJ.push('t2_yellow','t1_red','t0_bare','t0_leaf','t0_fall');
 // 그림 둘레 빈 곳을 잘라 크기·발 위치를 맞춰요
 function aTrim(i){ const c=document.createElement('canvas'); c.width=i.naturalWidth; c.height=i.naturalHeight; const x=c.getContext('2d'); x.drawImage(i,0,0); const gd=x.getImageData(0,0,c.width,c.height), d=gd.data; for(let k=0;k<d.length;k+=4) if(d[k]-d[k+1]>40&&d[k+2]-d[k+1]>40) d[k+3]=0; else if(d[k+1]<150&&d[k]-d[k+1]>12&&d[k+2]-d[k+1]>12) d[k+2]=d[k+1]; x.putImageData(gd,0,0); let x0=c.width,x1=0,y0=c.height,y1=0; for(let y=0;y<c.height;y++) for(let q=0;q<c.width;q++) if(d[(y*c.width+q)*4+3]>40){ if(q<x0)x0=q; if(q>x1)x1=q; if(y<y0)y0=y; if(y>y1)y1=y; } const o=document.createElement('canvas'); o.width=x1-x0+1; o.height=y1-y0+1; o.getContext('2d').drawImage(c,-x0,-y0); return o; }
-for (const n of AA_OBJ) { const i=new Image(); i.onload=()=>{ AA.cv[n]=aTrim(i); }; i.src='art/'+n+'.webp'; }
+// 그림은 처음 쓸 때 불러와요(첫 로딩을 가볍게)
+const AA_SET=new Set(AA_OBJ), AA_ST={}, AA_ASK={};
+AA.cv=new Proxy(AA_ST,{get(t,k){ if(!(k in t)&&AA_SET.has(k)&&!AA_ASK[k]){ AA_ASK[k]=1; const i=new Image(); i.onload=()=>{ t[k]=aTrim(i); }; i.src='art/'+k+'.webp'; } return t[k]; }});
 const aTex=n=>{ const i=AA.im[n]; return AA.on&&i&&i.complete&&i.naturalWidth?i:null; };
 for (const n of ['f_floor','f_plaza','dirt','cobble','grass','grass_spring','grass_autumn','grass_winter','soil','soil_winter']) { const i=new Image(); i.onload=()=>{ try{tiles.clear();}catch(e){} }; i.src='art/'+n+'.webp'; AA.im[n]=i; }
 const aGround=(k,S)=>{ const n=k==='grass'?(S==='summer'?'grass':'grass_'+S):(S==='winter'?'soil_winter':'soil'), i=AA.im[n]; return AA.on&&i.complete&&i.naturalWidth?i:null; };
@@ -1271,7 +1273,6 @@ const AH_N=['d_stand','dr_stand','r_stand','ur_stand','u_stand','r_walk1','r_wal
 function aHeroLoad(id){ if(AH_L[id]) return; AH_L[id]=1; const dir=id==='m1'?'hero':'hero_'+id; for (const n of AH_N) { const i=new Image(); i.onload=()=>{ AA.cv['h_'+id+'_'+n]=aTrim(i); }; i.src='art/'+dir+'/'+n+'.webp'; } }
 function aHeroFrame(dir,walk){ if(!AA.on) return null; const hid=heroSpec().id; aHeroLoad(hid); const g=ensureGear(); if(g.armor!=='cloth'||g.boots!=='rubber') return null; const ph=walk?((Math.floor(walk/Math.PI*2)%4)+4)%4:-1; const base=dir===0?'d':dir===1?'u':dir===2||dir===3?'r':dir===4||dir===5?'dr':'ur'; const flip=dir===2||dir===5||dir===7; let n=base+'_stand',step=false; if(walk){ step=true; n=ph===0?base+'_walk1':ph===2?base+'_walk2':(base==='r'?'r_walk2':base+'_stand'); if(base==='r'&&ph===2) n='r_walk1'; } let cv=AA.cv['h_'+hid+'_'+n]; if(!cv){ cv=AA.cv['h_'+hid+'_'+base+'_stand']; step=false; } return cv?{cv,flip,step}:null; }
 function aDraw(c,cv,x,y,w){ const hh=w*cv.height/cv.width; c.drawImage(cv,x-w/2,y-hh,w,hh); }
-addEventListener('keydown',e=>{ if(e.key==='F8'){AA.on=!AA.on;tiles.clear();e.preventDefault();} });
 const INK = '#2a1c17';
 function mk(w, h){ const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 // 모양 하나를 두 톤(바탕 + 아래오른쪽 그림자)으로 칠하고 외곽선
@@ -2362,10 +2363,10 @@ function chibiHat(c, S, side, back, hero){
 // 대화창·퀴즈·경매 얼굴 (2026-10-13 맵 캐릭터와 같은 새 그림체로 가슴 위만 크게)
 const PORT_FILE = {'오복순 할머니':'bokssun','황금비 사장님':'geumbi','최봉구 아저씨':'bonggu','박만석 할아버지':'manseok','조막순 할머니':'maksun','한도윤':'doyun','한소이':'soi','나방울':'bangul','서다솜':'dasom','임고은 선생님':'goeun','차분해 순경':'sungyeong','문태풍 기사님':'taepung','윤꽃님':'kkotnim','곽든든 사장님':'deundeun','송이슬 선생님':'iseul','양벌찬':'beolchan','하노을':'noeul','남궁빛나':'bitna',grandma:'grandma',chief:'chief',hunter:'hunter',worker:'worker',dealer:'dealer'};
 const PORT_IMG = {};
-for (const k of new Set(Object.values(PORT_FILE))) { const im = new Image(); im.src = 'portraits/npc_' + k + '_v1.webp'; PORT_IMG[k] = im; }
+for (const k of new Set(Object.values(PORT_FILE))) { const im = new Image(); im.dataset.s = 'portraits/npc_' + k + '_v1.webp'; PORT_IMG[k] = im; }
 function drawPortrait(cv, who, key){
   const hg = who === 'haru' ? ensureGear() : null, hk = hg && hg.armor === 'cloth' && hg.boots === 'rubber' && hg.hat === 'straw' ? heroSpec().id : null;
-  const pf = PORT_FILE[key || who], pim = hk ? HERO_IMG[hk] : pf && PORT_IMG[pf];
+  const pf = PORT_FILE[key || who], pim = hk ? HERO_IMG[hk] : pf && PORT_IMG[pf]; if (pim && !pim.getAttribute('src')) pim.src = pim.dataset.s;
   if (pim && pim.complete && pim.naturalWidth) { const pc = cv.getContext('2d'); pc.clearRect(0, 0, cv.width, cv.height); pc.drawImage(pim, 0, 0, cv.width, cv.width); return; }
   if (pim && !pim.complete && !pim._w) { pim._w = 1; pim.addEventListener('load', () => { if (cv.isConnected) drawPortrait(cv, who, key); }); }
   const c = cv.getContext('2d'), w = cv.width, hero = who === 'haru';
@@ -2406,7 +2407,7 @@ const ROAD = [[HOME.x0 - 40, 1250], [930, 1250], [930, 1150]]; // 2026-10-16 서
 const YARD = {x:520, y:925, rx:270, ry:85}, HYARD = {x:-450, y:1000, rx:230, ry:72};
 
 let P = {x:930, y:1000, dir:0, walk:0, act:0, tgt:null, spd:270};
-let cam = {x:930, y:900, z:1.35, ox:0, oy:0}; // 시점 고정 (2026-10-11 조금 더 멀리)
+let cam = {x:930, y:900, z:1, ox:0, oy:0}; // 시점 고정 (2026-10-11 조금 더 멀리)
 const floats = [];
 const workerS = {x:780, y:1080, tx:780, ty:1080, dir:0, walk:0, act:0, on:false, idle:0, sit:false};
 // 2026-10-15 달 요청: 할 일이 없으면 인부는 과수원 오른쪽 위 구석 벤치에 앉아 쉬어요(테이블에 빵·음료)
@@ -10539,9 +10540,9 @@ function gearImg(id, px = 64){
 
 // ===== 시작할 때 주인공 고르기 + 이름 정하기 =====
 const HERO_IMG = {};
-for (const h of HEROES) { const im = new Image(); im.src = 'portraits/hero_' + h.id + '_v1.webp'; HERO_IMG[h.id] = im; }
+for (const h of HEROES) { const im = new Image(); im.dataset.s = 'portraits/hero_' + h.id + '_v1.webp'; HERO_IMG[h.id] = im; }
 function drawHeroCard(cv, h){
-  const c = cv.getContext('2d'), im = HERO_IMG[h.id];
+  const c = cv.getContext('2d'), im = HERO_IMG[h.id]; if (im && !im.getAttribute('src')) im.src = im.dataset.s;
   if (im && im.complete && im.naturalWidth) {
     const sw = im.naturalWidth * cv.width / cv.height;
     c.clearRect(0, 0, cv.width, cv.height);
