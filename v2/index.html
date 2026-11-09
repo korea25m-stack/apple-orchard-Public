@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-85TJOF43Ewi/KnMm8qVD77VcN/NG0As2XGtQjQEz3qw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-J9NVmQ/D1d36PCg8zBmJuddfH0KRFXJ6jQRTOqwBNx0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -240,8 +240,6 @@ textarea{width:100%;box-sizing:border-box;height:110px;font-size:15px;border:2.5
 #fBtn{position:absolute;right:70px;bottom:170px;width:220px;height:220px;border-radius:50%;background:var(--sun);border:4px solid var(--ink);z-index:20;font-family:var(--display);font-size:80px;box-shadow:0 8px 0 var(--ink)}
 #fBtn small{display:block;font-size:26px;margin-top:-6px}
 #rideBtn{position:absolute;right:236px;bottom:22px;width:132px;height:100px;z-index:21;font-size:44px;line-height:1;background:#ffe2b8;border:4px solid var(--ink);border-radius:22px;box-shadow:0 6px 0 var(--ink);cursor:pointer}
-#viewBtn{position:absolute;width:52px;height:52px;z-index:21;font-size:26px;line-height:1;background:#fffaf1;border:3px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);cursor:pointer;padding:0}
-#viewBtn.on{background:#ffd25e}
 #rideBtn small{display:block;font-size:19px;font-family:var(--display);margin-top:4px}
 #rideBtn.on{background:#ff9a3a} #rideBtn:disabled{opacity:.55;filter:grayscale(.6);cursor:default}
 .mountSlot{grid-column:1/-1}.mountRow{display:flex;align-items:center;gap:16px}.mountRow p{margin:4px 0 0;font-size:16px;color:var(--muted)}.mountRow>div{flex:1}
@@ -334,6 +332,21 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
 .hqList{display:flex;flex-direction:column;gap:8px;margin-top:10px}.hqCard{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;text-align:left;border:2.5px solid var(--ink);border-radius:14px;background:#fff;padding:8px 12px;font-size:17px}
 .hqCard:hover{background:#fff3c4}.hqCard.off{background:#f1ece4;opacity:.75}.hqCard b{font-family:var(--display);font-weight:400;font-size:20px}.hqCard small,.hqCard .hqR{grid-column:2;color:#6a5a4c;font-size:15px}.hqCard .hqR{color:#2f6f3e}
 .hqLv{grid-row:span 3;color:#fff;font-family:var(--display);border:2px solid var(--ink);border-radius:10px;padding:4px 10px;font-size:17px}.hqRew{margin-top:10px;background:#f3fbe8;border:2px solid #9fd39a;border-radius:12px;padding:8px 12px;font-size:17px}
+
+/* A 수채풍 UI */
+.card{background:linear-gradient(180deg,#fdf6e6,#f6ead0);border:2.5px solid #9a7144;border-radius:18px;box-shadow:0 3px 10px rgba(70,45,20,.35),inset 0 0 0 2px rgba(255,255,255,.55)}
+#bar{background:linear-gradient(180deg,#b98a56,#976a3c);border-color:#6d4a28}
+.tb{background:linear-gradient(180deg,#fff9ec,#f3e4c6);border:2px solid #8a6238;box-shadow:0 3px 0 #6d4a28;color:#4a2f1b}
+.tb:hover{background:#fff3cf}
+.tb b img{width:56px;height:56px;object-fit:contain;display:block;pointer-events:none}
+.modal .mh{background:linear-gradient(180deg,#d9ad72,#c2915a);border-bottom:2.5px solid #8a6238;color:#3f2714}
+.modal .mh .x{border:2px solid #8a6238;background:#fff9ec}
+.modal .mf{border-top:2px dashed #d9c39c}
+.btn{border:2px solid #8a6238;background:#fff9ec;box-shadow:0 3px 0 #8a6238;color:#4a2f1b}
+.btn:active{box-shadow:0 1px 0 #8a6238}
+.btn.pri{background:#d9543f;border-color:#8f3020;box-shadow:0 3px 0 #8f3020;color:#fff}
+.btn.go{background:#6fae5f;border-color:#43753a;box-shadow:0 3px 0 #43753a;color:#fff}
+.btn.y{background:#f2c95e}
 </style>
 
 </head><body>
@@ -366,20 +379,19 @@ label.btn{display:inline-flex;align-items:center;font-family:var(--display)}
   </div>
 
   <div id="bar" class="hud card">
-    <button class="tb" data-ui="plant"><b>🌱</b>묘목</button>
-    <button class="tb" data-ui="spray" id="sprayBtn"><b>💧</b>방제</button>
-    <button class="tb" data-ui="worker"><b>👷</b>인부</button>
-    <button class="tb" data-ui="store"><b>📦</b>창고</button>
-    <button class="tb" data-ui="build"><b>🏡</b>건물</button>
-    <button class="tb" data-ui="land"><b>🗺️</b>땅</button>
-    <button class="tb" data-ui="inv"><b>🎒</b>가방</button>
-    <button class="tb" data-ui="gear"><b>🔨</b>장비</button>
-    <button class="tb" data-ui="book"><b>📖</b>도감</button>
-    <button class="tb" data-ui="save"><b>💾</b>저장</button>
-    <button class="tb" data-ui="rank"><b>🏆</b>랭킹</button>
+    <button class="tb" data-ui="plant"><b><img src="art/i_plant.webp" alt=""></b>묘목</button>
+    <button class="tb" data-ui="spray" id="sprayBtn"><b><img src="art/i_spray.webp" alt=""></b>방제</button>
+    <button class="tb" data-ui="worker"><b><img src="art/i_worker.webp" alt=""></b>인부</button>
+    <button class="tb" data-ui="store"><b><img src="art/i_store.webp" alt=""></b>창고</button>
+    <button class="tb" data-ui="build"><b><img src="art/i_build.webp" alt=""></b>건물</button>
+    <button class="tb" data-ui="land"><b><img src="art/i_land.webp" alt=""></b>땅</button>
+    <button class="tb" data-ui="inv"><b><img src="art/i_inv.webp" alt=""></b>가방</button>
+    <button class="tb" data-ui="gear"><b><img src="art/i_gear.webp" alt=""></b>장비</button>
+    <button class="tb" data-ui="book"><b><img src="art/i_book.webp" alt=""></b>도감</button>
+    <button class="tb" data-ui="save"><b><img src="art/i_save.webp" alt=""></b>저장</button>
+    <button class="tb" data-ui="rank"><b><img src="art/i_rank.webp" alt=""></b>랭킹</button>
   </div>
 
-  <button id="viewBtn" title="시점 바꾸기 (V)">🎥</button>
   <button id="rideBtn" style="display:none">🐯<small>타기</small></button>
 
   <div id="touchUI">
@@ -408,7 +420,7 @@ const UIK = (() => { if (!MOB) return 1; try { const s = Math.min(Math.max(inner
 const PX = 40;                      // 1m = 40px
 // 2026-10-16 달 요청: 나무 간격 3m, 줄 간격 4m. 같은 크기 밭 두 개를 가로로 나란히, 사이에 폭 8m 농로
 const TREE_DX = 3 * PX;             // 나무 간격 3m
-const ROW_H = 4 * PX;               // 줄 간격 4m
+const ROW_H = 6 * PX;               // 줄 간격 4m
 const STRIP = 1.2 * PX;             // 나무 띠 1.2m
 const ALLEY = ROW_H - STRIP;        // 줄 사이 길 2.8m
 const PER_ROW = 12;                 // 한 줄 = 왼쪽 밭 6그루 + 오른쪽 밭 6그루
@@ -1238,6 +1250,28 @@ function freshLeft(k){
 }
 
 // ===== 셀화 그리기 도구 =====
+const AA={on:!/[?&]art=0/.test(location.search),im:{},cv:{}};
+const AA_OBJ=['tree','shed','shed1','shed2','shed3','v_tteok','v_geumbi','v_hall','v_bakery','v_flower','v_hardware','v_vet','v_honey','v_school','v_police','v_dali','v_bitna','v_post','v_gukbap','v_library','v_juice','b_hanok','b_cold','b_factory','b_wondumak','b_hive','b_jangdok','b_sotdae','b_nm1','b_nm2','b_nm3'];
+AA_OBJ.push('post','rail','f_pine','f_pine_w','f_oak','f_oak_a','f_oak_w','f_bush','f_bush_w','f_big','f_big_w','f_rock','f_blossom');
+const AV={'복순 떡방앗간':'v_tteok','금비상회':'v_geumbi','사과골 마을회관':'v_hall','다솜빵집':'v_bakery','꽃님꽃집':'v_flower','든든철물':'v_hardware','이슬동물병원':'v_vet','벌찬꿀집':'v_honey','햇살분교':'v_school','사과골 파출소':'v_police','달이네 집':'v_dali','빛나네 집':'v_bitna','강변 우체국':'v_post','할매 국밥집':'v_gukbap','작은 도서관':'v_library','사과즙 공방':'v_juice'};
+const aB=(c,n,x,y,w,sh)=>{ const v=AA.on&&AA.cv[n]; if(!v) return false; if(sh) shadow(c,x,y+2,w*.46,w*.09); aDraw(c,v,x,y+8,w); return true; };
+for (const a of [2,1]) for (const s of ['bare','bud','bloom','leaf','fall','green']) AA_OBJ.push('t'+a+'_'+s);
+AA_OBJ.push('t2_yellow','t1_red','t0_bare','t0_leaf','t0_fall');
+// 그림 둘레 빈 곳을 잘라 크기·발 위치를 맞춰요
+function aTrim(i){ const c=document.createElement('canvas'); c.width=i.naturalWidth; c.height=i.naturalHeight; const x=c.getContext('2d'); x.drawImage(i,0,0); const gd=x.getImageData(0,0,c.width,c.height), d=gd.data; for(let k=0;k<d.length;k+=4) if(d[k]-d[k+1]>40&&d[k+2]-d[k+1]>40) d[k+3]=0; else if(d[k+1]<150&&d[k]-d[k+1]>12&&d[k+2]-d[k+1]>12) d[k+2]=d[k+1]; x.putImageData(gd,0,0); let x0=c.width,x1=0,y0=c.height,y1=0; for(let y=0;y<c.height;y++) for(let q=0;q<c.width;q++) if(d[(y*c.width+q)*4+3]>40){ if(q<x0)x0=q; if(q>x1)x1=q; if(y<y0)y0=y; if(y>y1)y1=y; } const o=document.createElement('canvas'); o.width=x1-x0+1; o.height=y1-y0+1; o.getContext('2d').drawImage(c,-x0,-y0); return o; }
+for (const n of AA_OBJ) { const i=new Image(); i.onload=()=>{ AA.cv[n]=aTrim(i); }; i.src='art/'+n+'.webp'; }
+const aTex=n=>{ const i=AA.im[n]; return AA.on&&i&&i.complete&&i.naturalWidth?i:null; };
+for (const n of ['f_floor','f_plaza','dirt','cobble','grass','grass_spring','grass_autumn','grass_winter','soil','soil_winter']) { const i=new Image(); i.onload=()=>{ try{tiles.clear();}catch(e){} }; i.src='art/'+n+'.webp'; AA.im[n]=i; }
+const aGround=(k,S)=>{ const n=k==='grass'?(S==='summer'?'grass':'grass_'+S):(S==='winter'?'soil_winter':'soil'), i=AA.im[n]; return AA.on&&i.complete&&i.naturalWidth?i:null; };
+function aTreeName(t){ const L=treeLook(t), A=L.age, w=G.week; let s;
+  if (L.ap) { const V=VARS[t.v], p=clamp((w-18)/Math.max(1,V.hv[0]-18),0,1); if (A===0) s='leaf'; else if (t.v==='aori'||p<.45) s='green'; else if (A===2&&p<.8) s='yellow'; else s='red'; }
+  else if (L.bare) s='bare'; else if (L.bud) s=A?'bud':'leaf'; else if (L.bloom) s=A?'bloom':'leaf'; else if (w>=45&&w<=48) s='fall'; else s='leaf';
+  return A===2&&s==='red'?'tree':'t'+A+'_'+s; }
+const AH_N=['d_stand','dr_stand','r_stand','ur_stand','u_stand','r_walk1','r_walk2','d_walk1','d_walk2','dr_walk1','dr_walk2','ur_walk1','ur_walk2','u_walk1','u_walk2'], AH_L={};
+function aHeroLoad(id){ if(AH_L[id]) return; AH_L[id]=1; const dir=id==='m1'?'hero':'hero_'+id; for (const n of AH_N) { const i=new Image(); i.onload=()=>{ AA.cv['h_'+id+'_'+n]=aTrim(i); }; i.src='art/'+dir+'/'+n+'.webp'; } }
+function aHeroFrame(dir,walk){ if(!AA.on) return null; const hid=heroSpec().id; aHeroLoad(hid); const g=ensureGear(); if(g.armor!=='cloth'||g.boots!=='rubber') return null; const ph=walk?((Math.floor(walk/Math.PI*2)%4)+4)%4:-1; const base=dir===0?'d':dir===1?'u':dir===2||dir===3?'r':dir===4||dir===5?'dr':'ur'; const flip=dir===2||dir===5||dir===7; let n=base+'_stand',step=false; if(walk){ step=true; n=ph===0?base+'_walk1':ph===2?base+'_walk2':(base==='r'?'r_walk2':base+'_stand'); if(base==='r'&&ph===2) n='r_walk1'; } let cv=AA.cv['h_'+hid+'_'+n]; if(!cv){ cv=AA.cv['h_'+hid+'_'+base+'_stand']; step=false; } return cv?{cv,flip,step}:null; }
+function aDraw(c,cv,x,y,w){ const hh=w*cv.height/cv.width; c.drawImage(cv,x-w/2,y-hh,w,hh); }
+addEventListener('keydown',e=>{ if(e.key==='F8'){AA.on=!AA.on;tiles.clear();e.preventDefault();} });
 const INK = '#2a1c17';
 function mk(w, h){ const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 // 모양 하나를 두 톤(바탕 + 아래오른쪽 그림자)으로 칠하고 외곽선
@@ -1392,7 +1426,7 @@ const LOOKS = {
 const shd = (col, t = .28) => mix(col, '#3a1a10', t);
 // dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
 function drawPerson(c, x, y, who, dir, walk, act){
-  if (who === 'haru') return drawHuman(c, x, y, heroGearSpec(), dir, walk, act, true);
+  if (who === 'haru') { const hc=aHeroFrame(dir,walk); if (hc&&!act&&!HERO_SIT) { shadow(c,x,y,20,6); c.save(); c.translate(x,y-(walk&&!hc.step?Math.abs(Math.sin(walk))*3:0)); if(hc.flip)c.scale(-1,1); const w=125*hc.cv.width/hc.cv.height; c.drawImage(hc.cv,-w/2,-125,w,125); c.restore(); return; } return drawHuman(c, x, y, heroGearSpec(), dir, walk, act, true); }
   return drawHuman(c, x, y, toSpec(typeof who === 'string' ? LOOKS[who] : who), dir, walk, act, false);
   const L = who === 'haru' ? haruLook() : typeof who === 'string' ? LOOKS[who] : who;
   const kid = L.kid, sc = kid ? .72 : 1;
@@ -2372,7 +2406,7 @@ const ROAD = [[HOME.x0 - 40, 1250], [930, 1250], [930, 1150]]; // 2026-10-16 서
 const YARD = {x:520, y:925, rx:270, ry:85}, HYARD = {x:-450, y:1000, rx:230, ry:72};
 
 let P = {x:930, y:1000, dir:0, walk:0, act:0, tgt:null, spd:270};
-let cam = {x:930, y:900, z:.9, ox:0, oy:0}; // 시점 고정 (2026-10-11 조금 더 멀리)
+let cam = {x:930, y:900, z:1.35, ox:0, oy:0}; // 시점 고정 (2026-10-11 조금 더 멀리)
 const floats = [];
 const workerS = {x:780, y:1080, tx:780, ty:1080, dir:0, walk:0, act:0, on:false, idle:0, sit:false};
 // 2026-10-15 달 요청: 할 일이 없으면 인부는 과수원 오른쪽 위 구석 벤치에 앉아 쉬어요(테이블에 빵·음료)
@@ -2404,7 +2438,7 @@ const critters = [];
 const TILE = 512;
 const tiles = new Map();
 let gsig = '', feats = null;
-function groundSig(){ return seasonOf(G.week) + '|' + G.rows + '|' + (G.deco.pond ? 1 : 0); }
+function groundSig(){ return (AA.on?'a|':'') + seasonOf(G.week) + '|' + G.rows + '|' + (G.deco.pond ? 1 : 0); }
 function inOrchard(x, y, pad = 0){ return x > OX - 130 - pad && x < OX + ORCH_W + 130 + pad && y > OY - 95 - pad && y < OY + G.rows * ROW_H + pad; }
 function nearRoad(x, y, d){
   for (const R of [ROAD, ...VROADS, ...YARD_ROADS, ...HOUSE_PATHS]) for (let i = 0; i < R.length - 1; i++) {
@@ -2453,7 +2487,7 @@ function checkGround(){
 function getTile(tx, ty){
   const k = tx + ',' + ty;
   let t = tiles.get(k); if (t) return t;
-  if (tiles.size > (PV.on ? 130 : 90)) tiles.delete(tiles.keys().next().value); // 넓은 맵: 오래된 땅 조각은 버려요
+  if (tiles.size > 90) tiles.delete(tiles.keys().next().value); // 넓은 맵: 오래된 땅 조각은 버려요
   t = mk(TILE, TILE); const c = t.getContext('2d');
   c.translate(-tx * TILE, -ty * TILE);
   drawGround(c, tx * TILE, ty * TILE, TILE, TILE);
@@ -2463,9 +2497,9 @@ function getTile(tx, ty){
 function drawGround(c, x0, y0, w, h){
   const S = seasonOf(G.week), pal = PAL[S], win = S === 'winter';
   const inB = (x, y, m) => x > x0 - m && x < x0 + w + m && y > y0 - m && y < y0 + h + m;
-  c.fillStyle = pal.g; c.fillRect(x0, y0, w, h);
+  const aG=aGround('grass',S), aS=aGround('soil',S); c.fillStyle = aG ? c.createPattern(aG,'repeat') : pal.g; c.fillRect(x0, y0, w, h);
   for (const b of featsNear(feats.blobs, x0, y0, w, h)) {
-    if (!inB(b.x, b.y, b.r * 1.3)) continue;
+    if (aG || !inB(b.x, b.y, b.r * 1.3)) continue;
     // 2026-10-14 바닥 얼룩: 각진 다각형 대신 둥글게 이은 곡선 + 옅게
     const P = b.pts, n = P.length, mid = i => [(P[i][0] + P[(i + 1) % n][0]) / 2, (P[i][1] + P[(i + 1) % n][1]) / 2];
     c.beginPath(); c.moveTo(...mid(n - 1)); for (let i = 0; i < n; i++) { const m = mid(i); c.quadraticCurveTo(P[i][0], P[i][1], m[0], m[1]); } c.closePath();
@@ -2477,14 +2511,14 @@ function drawGround(c, x0, y0, w, h){
   drawVillageGround(c, win, x0, y0, w, h);
   for (const Y of [YARD, HYARD]) {
     c.beginPath(); ell(c, Y.x, Y.y, Y.rx + 8, Y.ry + 8); c.fillStyle = win ? '#d8dfe6' : '#c99d62'; c.fill();
-    c.beginPath(); ell(c, Y.x, Y.y, Y.rx, Y.ry); c.fillStyle = win ? '#f2f5f8' : '#ecd29a'; c.fill();
+    c.beginPath(); ell(c, Y.x, Y.y, Y.rx, Y.ry); c.fillStyle = (!win&&aTex('dirt')) ? c.createPattern(aTex('dirt'),'repeat') : win ? '#f2f5f8' : '#ecd29a'; c.fill();
   }
   // 자갈 점
   const R = srand(77);
   for (let i = 0; i < 160; i++) { const a = R() * 6.28, d = Math.sqrt(R()); const x = YARD.x + Math.cos(a) * d * YARD.rx * .92, y = YARD.y + Math.sin(a) * d * YARD.ry * .9; c.beginPath(); ell(c, x, y, 3, 2); c.fillStyle = win ? '#dfe5ea' : '#d8b97c'; c.fill(); }
   // 과수원: 둘레 길 + 나무 띠 + 농기계 길
   const top = OY - 90, bot = OY + G.rows * ROW_H;
-  c.fillStyle = pal.alley; c.fillRect(OX - 120, top, ORCH_W + 240, bot - top);
+  c.fillStyle = aG ? c.createPattern(aG,'repeat') : pal.alley; c.fillRect(OX - 120, top, ORCH_W + 240, bot - top);
   c.strokeStyle = pal.track; c.lineWidth = 3; c.strokeRect(OX - 120, top, ORCH_W + 240, bot - top);
   for (let r = 0; r < G.rows; r++) {
     const y = OY + r * ROW_H;
@@ -2495,14 +2529,14 @@ function drawGround(c, x0, y0, w, h){
     // 나무 띠 (왼쪽 밭 · 오른쪽 밭)
     for (const bx of [OX, ROAD_X1]) {
       c.beginPath(); rr(c, bx - 24, y, BLOCK_W + 48, STRIP, 20); c.fillStyle = win ? '#e3e8ec' : '#9b6b44'; c.fill();
-      c.beginPath(); rr(c, bx - 18, y + 5, BLOCK_W + 36, STRIP - 10, 16); c.fillStyle = win ? '#f4f7f9' : '#b9875a'; c.fill();
+      c.beginPath(); rr(c, bx - 18, y + 5, BLOCK_W + 36, STRIP - 10, 16); c.fillStyle = aS ? c.createPattern(aS,'repeat') : win ? '#f4f7f9' : '#b9875a'; c.fill();
       if (!win) { const R2 = srand(r * 2 + (bx > OX ? 1 : 0) + 5); for (let k = 0; k < 30; k++) { c.beginPath(); ell(c, bx + R2() * BLOCK_W, y + 10 + R2() * (STRIP - 20), 4, 2); c.fillStyle = '#a2734a'; c.fill(); } }
     }
   }
   // 줄 끝 바퀴자국 (머리 길)
   c.fillStyle = pal.track; c.fillRect(OX - 100, top + 18, ORCH_W + 200, 20);
   // 2026-10-16 두 밭 사이 농로 8m (흙길 + 바퀴 자국 두 줄)
-  c.fillStyle = win ? '#e9eef2' : '#d9bb86'; c.fillRect(ROAD_X0 + 26, top, FARM_ROAD - 52, bot - top + 60);
+  c.fillStyle = (!win&&aTex('dirt')) ? c.createPattern(aTex('dirt'),'repeat') : win ? '#e9eef2' : '#d9bb86'; c.fillRect(ROAD_X0 + 26, top, FARM_ROAD - 52, bot - top + 60);
   c.fillStyle = win ? '#dfe6ec' : '#c9a66c'; for (const k of [.3, .7]) c.fillRect(ROAD_X0 + FARM_ROAD * k - 11, top, 22, bot - top + 60);
   c.strokeStyle = win ? '#cfd8e0' : '#b88f58'; c.lineWidth = 3; c.strokeRect(ROAD_X0 + 26, top, FARM_ROAD - 52, bot - top + 60);
   // 풀
@@ -2531,6 +2565,7 @@ function drawGround(c, x0, y0, w, h){
 
 // ----- 큰 건물 그림 -----
 function drawHanok(c, x, y, s = 1){
+  if (aB(c,'b_hanok',x,y,470*s,1)) return;
   c.save(); c.translate(x, y); c.scale(s, s);
   shadow(c, 0, 4, 220, 30, .25);
   // 기단
@@ -2585,6 +2620,7 @@ function upgradeShed(){
   return true;
 }
 function drawShed(c, x, y){
+  const av=AA.on&&AA.cv[['shed','shed1','shed2','shed3'][shedLv()]]; if (av) { const s=SHED_LV[shedLv()].s; shadow(c,x,y+2,95*s,18*s); aDraw(c,av,x,y+10,190*s); c.save(); c.translate(x,y+36*s); c.scale(s*.72,s*.72); drawStockBoardOn(c,shedLv(),SHED_LV[shedLv()]); c.restore(); return; }
   const lv = shedLv(), L = SHED_LV[lv];
   c.save(); c.translate(x, y); c.scale(L.s, L.s);
   shadow(c, 0, 6, 100, 20);
@@ -2653,6 +2689,7 @@ function drawStockBoardOn(c, lv, L){
   for (const sx of [-1, 1]) { c.beginPath(); ell(c, sx * 31, -91, 1.3, 1.3); c.fillStyle = '#9aa0a8'; c.fill(); } // 벽 고정 나사
 }
 function drawWondumak(c, x, y){
+  if (aB(c,'b_wondumak',x,y,180,1)) return;
   c.save(); c.translate(x, y); shadow(c, 0, 4, 80, 16);
   for (const px of [-60, 56]) for (const py of [0, -40]) cel(c, cc => rr(cc, px, py - 100, 8, 100, 2), '#a8704a', '#7a4a2c', 2, 0, 2.2);
   cel(c, cc => rr(cc, -70, -70, 140, 18, 3), '#c99a68', '#9a6a40', 3, 3, 2.6);
@@ -2661,6 +2698,7 @@ function drawWondumak(c, x, y){
   c.restore();
 }
 function drawHive(c, x, y, t){
+  if (aB(c,'b_hive',x,y,52*(1+hiveLv()*.12),1)) return;
   const lv = hiveLv(), s = 1 + lv * .12; // 단계마다 커지고 층이 늘어요
   c.save(); c.translate(x, y); c.scale(s, s); shadow(c, 0, 2, 22, 6);
   cel(c, cc => rr(cc, -18, -34, 36, 34, 3), '#ffd76a', '#d9a63a', 4, 4, 2.4);
@@ -2673,6 +2711,7 @@ function drawHive(c, x, y, t){
   c.restore();
 }
 function drawCold(c, x, y){
+  if (aB(c,'b_cold',x,y,220,1)) return;
   c.save(); c.translate(x, y); shadow(c, 0, 4, 100, 18);
   cel(c, cc => rr(cc, -90, -120, 180, 120, 6), '#f4f8fb', '#cbd8e2', 6, 6, 3);
   c.strokeStyle = '#cbd8e2'; c.lineWidth = 2; for (let i = -60; i < 90; i += 30) { c.beginPath(); c.moveTo(i, -116); c.lineTo(i, -4); c.stroke(); }
@@ -2682,6 +2721,7 @@ function drawCold(c, x, y){
   c.restore();
 }
 function drawFactory(c, x, y){
+  if (aB(c,'b_factory',x,y,220,1)) return;
   c.save(); c.translate(x, y); shadow(c, 0, 4, 90, 16);
   cel(c, cc => rr(cc, -80, -100, 160, 100, 4), '#f2d1b0', '#c9a07a', 6, 6, 3);
   c.strokeStyle = '#c9a07a'; c.lineWidth = 1.6; for (let r2 = -90; r2 < 0; r2 += 14) { c.beginPath(); c.moveTo(-78, r2); c.lineTo(78, r2); c.stroke(); }
@@ -2691,6 +2731,7 @@ function drawFactory(c, x, y){
   c.restore();
 }
 function drawPine(c, x, y, s){
+  { const w=snowK(y)>.4||seasonOf(G.week)==='winter'; if (aB(c,w?'f_pine_w':'f_pine',x,y,105*s,1)) return; }
   c.save(); c.translate(x, y); c.scale(s, s); shadow(c, 0, 2, 34, 9);
   cel(c, cc => rr(cc, -6, -40, 12, 42, 3), '#8a5a3a', '#5e3a22', 2, 0, 2.2);
   const S = snowK(y) > .4 ? 'winter' : seasonOf(G.week); // 2026-10-14 설산 소나무는 늘 눈이 쌓여 있어요
@@ -2701,6 +2742,7 @@ function drawPine(c, x, y, s){
   c.restore();
 }
 function drawBush(c, x, y, s, R){
+  { const w=snowK(y)>.4||seasonOf(G.week)==='winter'; if (aB(c,w?'f_bush_w':'f_bush',x,y,72*s,1)) return; }
   const S = snowK(y) > .4 ? 'winter' : seasonOf(G.week), pal = PAL[S];
   c.save(); c.translate(x, y); c.scale(s, s); shadow(c, 0, 2, 30, 8);
   celBlob(c, [[-16, -16, 17], [14, -16, 17], [0, -28, 20]], S === 'winter' ? '#e9f1f5' : mix(pal.leaf, '#3f9a4a', .4), S === 'winter' ? '#c4d4de' : pal.leafS, 5, 5, 2.4);
@@ -2708,6 +2750,7 @@ function drawBush(c, x, y, s, R){
   c.restore();
 }
 function drawBlossomTree(c, x, y){
+  { const S=seasonOf(G.week); if (aB(c,S==='spring'?'f_blossom':S==='winter'?'f_oak_w':S==='autumn'?'f_oak_a':'f_oak',x,y,135,1)) return; }
   const S = seasonOf(G.week);
   c.save(); c.translate(x, y); shadow(c, 0, 2, 50, 12);
   cel(c, cc => { cc.moveTo(-8, 0); cc.lineTo(-5, -60); cc.lineTo(5, -60); cc.lineTo(8, 0); cc.closePath(); }, '#8a5a3a', '#5e3a22', 2, 0, 2.4);
@@ -2716,12 +2759,14 @@ function drawBlossomTree(c, x, y){
   c.restore();
 }
 function drawFenceRun(c, x1, y1, x2, y2, electric){
+  const av=AA.on&&AA.cv.rail; if (av) { c.drawImage(av,x1,y1-40,x2-x1,34); if (electric) line(c,[x1,y1-46,x2,y2-46],2.2,'#ffd23a'); return; }
   inkLine(c, [x1, y1 - 30, x2, y2 - 30], 4, '#c08a5a');
   inkLine(c, [x1, y1 - 14, x2, y2 - 14], 4, '#c08a5a');
   if (electric) { line(c, [x1, y1 - 42, x2, y2 - 42], 2.2, '#ffd23a'); }
 }
-function drawPost(c, x, y){ cel(c, cc => rr(cc, x - 5, y - 44, 10, 46, 3), '#a8704a', '#7a4a2c', 2, 0, 2.2); }
+function drawPost(c, x, y){ const av=AA.on&&AA.cv.post; if (av) { aDraw(c,av,x,y+4,16); return; } cel(c, cc => rr(cc, x - 5, y - 44, 10, 46, 3), '#a8704a', '#7a4a2c', 2, 0, 2.2); }
 function drawJangdok(c, x, y){
+  if (aB(c,'b_jangdok',x,y,125,0)) return;
   c.save(); c.translate(x, y);
   cel(c, cc => rr(cc, -54, -14, 108, 16, 4), '#c9c2b6', '#9a9284', 3, 3, 2.4);
   for (const [jx, s] of [[-30, 1], [6, .85], [34, .7]]) {
@@ -2732,6 +2777,7 @@ function drawJangdok(c, x, y){
   c.restore();
 }
 function drawSotdae(c, x, y){
+  if (aB(c,'b_sotdae',x,y,38,0)) return;
   inkLine(c, [x, y, x, y - 130], 4, '#a8704a');
   c.save(); c.translate(x, y - 138);
   cel(c, cc => { ell(cc, 0, 0, 20, 8); }, '#d9b58a', '#a8845a', 2, 2, 2.4);
@@ -2895,7 +2941,6 @@ const flies = Array.from({length:14}, (_, i) => ({x:rnd(0, WORLD_W), y:rnd(500, 
 // ----- 그리기 -----
 function render(ctx, dt, T){
   checkGround(); syncCritters();
-  if (PV.on) return render3D(ctx, dt, T);
   const z = cam.z;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = PAL[seasonOf(G.week)].g; ctx.fillRect(0, 0, W, H);
@@ -3004,7 +3049,7 @@ function collectEntities(ctx, vis, T, w){
     const t = G.trees[i]; if (!t) continue;
     const p = treePos(i); if (!vis(p.x, p.y)) continue;
     const sp = treeSprite(t);
-    add(p.y, p.x, () => ctx.drawImage(sp, p.x - 85, p.y - 222));
+    add(p.y, p.x, () => { const av=AA.on&&AA.cv[aTreeName(t)]; if (av) { const A=Math.min(2,t.age+(t.y2?1:0)); shadow(ctx,p.x+8,p.y+2,[12,26,36][A],[4,8,11][A]); aDraw(ctx,av,p.x,p.y+6,[30,75,100][A]); } else ctx.drawImage(sp, p.x - 85, p.y - 222); });
   }
   // 줄 끝 큰 기둥
   for (let r = 0; r < G.rows; r++) {
@@ -3098,7 +3143,7 @@ const petals = Array.from({length:40}, () => ({x:rnd(0, W), y:rnd(0, H), t:rnd(0
 function drawSkyFx(ctx, dt, T){
   const x = G.wx, w = G.week, S = seasonOf(w);
   // 구름 그림자 (월드 좌표를 화면으로)
-  if (!PV.on) for (const c of clouds) {
+  for (const c of clouds) {
     c.x += dt * 22; if (c.x > WORLD_W + 500) c.x = -500;
     const sx = (c.x - cam.x) * cam.z + W / 2, sy = (c.y - cam.y) * cam.z + H / 2;
     if (sx < -600 || sx > W + 600 || sy < -600 || sy > H + 600) continue;
@@ -3136,277 +3181,7 @@ function drawSkyFx(ctx, dt, T){
   if (a > 0) { ctx.fillStyle = `rgba(255,160,90,${a})`; ctx.fillRect(0, 0, W, H); }
 }
 
-// ===== 3인칭 시점 (2026-10-15 달 요청) =====
-// 미니맵 옆 🎥 버튼(또는 V)을 누르면 우주 등 뒤 위에서 앞(북쪽)을 바라보는 시점이 돼요. 다시 누르면 원래 시점.
-// 땅은 WebGL로 원근 투영(타일 그대로), 나무·사람·짐승·건물은 서 있는 그림이라 발 위치 깊이에 맞춰 크게·작게 그려요.
-// 카메라는 늘 북쪽을 봐요 → WASD 방향·조작은 그대로예요.
-const PV = {on:false, f:780, h:330, back:520, hor:.32, far:2400, near:120, x:0, y:0, shx:0, shy:0, yaw:0, cs:1, sn:0};
-// 2026-10-15 달 요청: 마우스로 둘러보기. PV.yaw만큼 카메라가 돌아요(0 = 북쪽). 오른쪽 r = (cs, sn), 앞 = (sn, -cs)
-const pvHor = () => H * PV.hor;
-function pvLD(x, y){ const dx = x - PV.x, dy = y - PV.y; return [dx * PV.cs + dy * PV.sn, PV.back + dx * PV.sn - dy * PV.cs]; } // [옆, 앞 거리]
-function w2s(x, y){
-  if (!PV.on) return {x:(x - cam.x) * cam.z + W / 2, y:(y - cam.y) * cam.z + H / 2, s:cam.z};
-  const [l, d0] = pvLD(x, y), d = Math.max(1, d0), s = PV.f / d;
-  return {x:W / 2 + l * s, y:pvHor() + PV.f * PV.h / d, s};
-}
-function s2w(p){
-  const d = Math.min(PV.far, PV.f * PV.h / Math.max(6, p.y - pvHor())), l = (p.x - W / 2) * d / PV.f, fw = d - PV.back;
-  return {x:PV.x + l * PV.cs + fw * PV.sn, y:PV.y + l * PV.sn - fw * PV.cs};
-}
-// 서 있는 그림: 발(x, y) 깊이의 크기로 똑바로
-function pvAt(c, x, y){
-  const [l, d] = pvLD(x, y); if (d < PV.near) return false;
-  const s = PV.f / d, sx = W / 2 + l * s, sy = pvHor() + PV.f * PV.h / d;
-  c.setTransform(s, 0, 0, s, sx - x * s + PV.shx, sy - y * s + PV.shy);
-  c.globalAlpha = clamp((PV.far + 200 - d) / 500, 0, 1);
-  return true;
-}
-// 땅에 깔린 표시(동그라미·위험 구역): 그 자리에서 눕혀서 (원근 투영을 그 점에서 1차 근사)
-function pvAtG(c, x0, y0){
-  const [l, d] = pvLD(x0, y0); if (d < PV.near) return false;
-  const F = PV.f, d2 = d * d, cs = PV.cs, sn = PV.sn;
-  const a = F * (cs * d - l * sn) / d2, k = F * (sn * d + l * cs) / d2, b = -F * PV.h * sn / d2, e = F * PV.h * cs / d2;
-  const sx = W / 2 + l * F / d, sy = pvHor() + F * PV.h / d;
-  c.setTransform(a, b, k, e, sx - a * x0 - k * y0 + PV.shx, sy - b * x0 - e * y0 + PV.shy);
-  return true;
-}
-// 우주가 바라보는 방향을 카메라 기준으로 바꿔서 그려요(앞으로 걸으면 등이 보이게)
-function pvHeroSwap(){
-  const hx = P.hx != null ? P.hx : [0, 0, -1, 1][P.dir || 0], hy = P.hy != null ? P.hy : [1, -1, 0, 0][P.dir || 0];
-  const l = hx * PV.cs + hy * PV.sn, fw = hx * PV.sn - hy * PV.cs, keep = {dir:P.dir, face:P.face, d8:P.d8};
-  P.dir = Math.abs(l) > Math.abs(fw) ? (l < 0 ? 2 : 3) : (fw > 0 ? 1 : 0);
-  if (Math.abs(l) > .2) P.face = l < 0 ? -1 : 1;
-  P.d8 = (Math.round(Math.atan2(-fw, l) / (Math.PI / 4)) + 8) % 8;
-  return keep;
-}
-const pvLocked = () => typeof cv !== 'undefined' && document.pointerLockElement === cv;
-// 좌우 = 돌기, 위아래 = 고개 들기·숙이기(지평선 높이 .08~.40)
-function pvLook(dx, dy){ PV.yaw = (PV.yaw + dx * .0032) % (Math.PI * 2); PV.hor = clamp(PV.hor - (dy || 0) * .0009, .08, .40); }
-function toggleView(){
-  PV.on = !PV.on; PV.x = P.x; PV.y = P.y; PV.yaw = 0; PV.hor = .32; sfx('click');
-  if (!PV.on && pvLocked()) document.exitPointerLock();
-  toast(PV.on ? '🎥 3인칭 시점이에요. 화면을 누르면 마우스로 둘러봐요!' : '🗺️ 원래 시점으로 돌아왔어요.');
-  viewBtnSync();
-}
-function viewBtnSync(){
-  const b = $('#viewBtn'); if (!b) return;
-  b.classList.toggle('on', PV.on); b.style.top = (MM.y + MM.h - 54) + 'px'; b.style.right = (W - MM.x + 14) + 'px';
-}
-
-// ----- WebGL 땅 -----
-let PG = null;
-const PTEX = new Map();
-function pvGL(){
-  if (PG) return PG;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const gl = cv.getContext('webgl', {alpha:true, premultipliedAlpha:false, antialias:false, preserveDrawingBuffer:true});
-  if (!gl) return PG = {fail:true};
-  const sh = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); return s; };
-  const pr = gl.createProgram();
-  gl.attachShader(pr, sh(gl.VERTEX_SHADER, `attribute vec2 q; uniform vec2 o; uniform float T; uniform vec4 u; uniform vec4 v; uniform vec3 r; varying vec2 uv; varying float dd;
-    void main(){ vec2 a = o + q * T, e = a - u.xy; float l = e.x * r.x + e.y * r.y, d = r.z + e.x * r.y - e.y * r.x; dd = d; uv = q;
-      gl_Position = vec4(l * 2.0 * u.z / v.x, d * (1.0 - 2.0 * v.z / v.y) - 2.0 * u.z * u.w / v.y, 2.0 * v.w - d, d); }`));
-  gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, `precision mediump float; uniform sampler2D tx; uniform vec3 fog; uniform float far; varying vec2 uv; varying float dd;
-    void main(){ if (dd > far) discard; vec4 c = texture2D(tx, uv); float f = smoothstep(far * .4, far, dd); gl_FragColor = vec4(mix(c.rgb, fog, f * .9), 1.0); }`));
-  gl.linkProgram(pr);
-  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return PG = {fail:true};
-  gl.useProgram(pr);
-  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
-  const qa = gl.getAttribLocation(pr, 'q'); gl.enableVertexAttribArray(qa); gl.vertexAttribPointer(qa, 2, gl.FLOAT, false, 0, 0);
-  const U = n => gl.getUniformLocation(pr, n);
-  const an = gl.getExtension('EXT_texture_filter_anisotropic') || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
-  return PG = {cv, gl, o:U('o'), T:U('T'), u:U('u'), v:U('v'), fog:U('fog'), far:U('far'), r:U('r'), an, anMax:an ? Math.min(8, gl.getParameter(an.MAX_TEXTURE_MAX_ANISOTROPY_EXT)) : 0};
-}
-function pvTex(tx, ty, budget){
-  const k = tx + ',' + ty, gl = PG.gl;
-  let cvT = tiles.get(k);
-  if (!cvT) { if (budget.n <= 0) return null; budget.n--; cvT = getTile(tx, ty); }
-  let e = PTEX.get(k);
-  if (e && e.cv === cvT) return e.t;
-  if (e) gl.deleteTexture(e.t);
-  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cvT);
-  gl.generateMipmap(gl.TEXTURE_2D);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  if (PG.an) gl.texParameterf(gl.TEXTURE_2D, PG.an.TEXTURE_MAX_ANISOTROPY_EXT, PG.anMax);
-  PTEX.set(k, {cv:cvT, t});
-  if (PTEX.size > 150) for (const [k2, e2] of PTEX) if (tiles.get(k2) !== e2.cv) { gl.deleteTexture(e2.t); PTEX.delete(k2); }
-  return t;
-}
-const PV_FOG = {spring:'#dcefe6', summer:'#d8eee2', autumn:'#efe4d0', winter:'#eef3f7'};
-const PV_SKY = {spring:'#8fd0ff', summer:'#7cc6ff', autumn:'#9cc8ee', winter:'#c4d8ea'};
-const hex3 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
-function pvGround(ctx){
-  const S = seasonOf(G.week), hor = pvHor();
-  ctx.fillStyle = PAL[S].g; ctx.fillRect(0, hor, W, H - hor);
-  const g = pvGL(); if (g.fail) return;
-  const gl = g.gl;
-  gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.uniform4f(g.u, PV.x, PV.y, PV.f, PV.h); gl.uniform4f(g.v, W, H, hor, PV.near); gl.uniform3f(g.r, PV.cs, PV.sn, PV.back);
-  gl.uniform1f(g.T, TILE); gl.uniform1f(g.far, PV.far); gl.uniform3fv(g.fog, hex3(PV_FOG[S]));
-  // 보이는 사다리꼴을 감싸는 땅 조각만, 가까운 것부터 (새 땅 조각은 한 장면에 3장까지만 만들어요)
-  const cn = [[PV.near, -1], [PV.near, 1], [PV.far, -1], [PV.far, 1]].map(([d, sd]) => { const l = sd * W / 2 * d / PV.f, fw = d - PV.back; return [PV.x + l * PV.cs + fw * PV.sn, PV.y + l * PV.sn - fw * PV.cs]; });
-  const xs = cn.map(c => c[0]), ys = cn.map(c => c[1]), list = [], M = TILE * .72;
-  for (let ty = Math.floor(Math.min(...ys) / TILE) - 1; ty <= Math.floor(Math.max(...ys) / TILE) + 1; ty++)
-    for (let tx = Math.floor(Math.min(...xs) / TILE) - 1; tx <= Math.floor(Math.max(...xs) / TILE) + 1; tx++) {
-      const [l, d] = pvLD((tx + .5) * TILE, (ty + .5) * TILE);
-      if (d < PV.near - M || d > PV.far + M || Math.abs(l) > W / 2 * Math.max(d, PV.near) / PV.f + M) continue;
-      list.push([d, tx, ty]);
-    }
-  list.sort((a2, b2) => a2[0] - b2[0]);
-  const budget = {n:3};
-  for (const [, tx, ty] of list) {
-    const t = pvTex(tx, ty, budget); if (!t) continue;
-    gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform2f(g.o, tx * TILE, ty * TILE); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  }
-  ctx.drawImage(g.cv, 0, 0);
-}
-// 하늘과 먼 산
-// 2026-10-16 달 요청: 하늘이 시간에 맞춰 바뀌어요. 아침 노을 → 파란 낮(해가 동쪽에서 서쪽으로) → 저녁 노을 → 해 진 뒤 달·별.
-// 하늘만 바뀌고 땅·캐릭터는 어두워지지 않아요(예전 깜빡임 싫다는 요청). 구름은 날씨에 따라 많아지고 천천히 흘러가요
-const PV_STARS = (() => { const R = srand(4242), o = []; for (let i = 0; i < 90; i++) o.push({a:R() * 6.283, e:.12 + R() * .9, r:.8 + R() * 1.8, tw:R() * 6}); return o; })();
-const PV_CLOUDS = (() => { const R = srand(777), o = []; for (let i = 0; i < 16; i++) o.push({a:R() * 6.283, e:.18 + R() * .55, w:90 + R() * 130, v:.004 + R() * .006, n:3 + Math.floor(R() * 3), k:R()}); return o; })();
-function pvSkyCols(S){
-  const h = G.hour, day = [PV_SKY[S], mix(PV_FOG[S], '#ffffff', .2)], dawn = ['#6f9ad8', '#ffc69a'], dusk = ['#4a5aa8', '#ff9468'], night = ['#0e1634', '#34386a'];
-  const lerp2 = (A, B, k) => [mix(A[0], B[0], k), mix(A[1], B[1], k)];
-  if (h < 8) return lerp2(dawn, day, clamp((h - 6) / 2, 0, 1));
-  if (h < 17) return day;
-  if (h < 18.6) return lerp2(day, dusk, (h - 17) / 1.6);
-  return lerp2(dusk, night, clamp((h - 18.6) / 1.1, 0, 1));
-}
-function pvSky(ctx){
-  const S = seasonOf(G.week), hor = pvHor(), fog = PV_FOG[S], h = G.hour, wx = G.wx || {}, wet = wx.sky === 'rain' || wx.sky === 'snow', grey = wet ? .55 : wx.sky === 'cloud' ? .25 : 0;
-  let [top, bot] = pvSkyCols(S);
-  if (grey) { top = mix(top, '#8a96a8', grey); bot = mix(bot, '#c4ccd6', grey); }
-  const g = ctx.createLinearGradient(0, 0, 0, hor + 40); g.addColorStop(0, top); g.addColorStop(.75, bot); g.addColorStop(1, mix(bot, fog, .6));
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, hor + 60);
-  // 하늘 위치(방위 a: 0 = 북쪽, + = 동쪽에서 오른쪽으로 돌아요 / 높이 e: 0 = 지평선, 1 = 머리 위) → 화면
-  const FOV = 2 * Math.atan(W / 2 / PV.f), skyAt = (a, e) => { let d = a - PV.yaw; d = ((d + Math.PI) % 6.283 + 6.283) % 6.283 - Math.PI; return [W / 2 + d / FOV * W, hor - e * hor * .95]; };
-  const T = performance.now() / 1000, nightK = clamp((h - 18.4) / 1.2, 0, 1) * (1 - grey * .8);
-  // 별
-  if (nightK > 0) for (const st of PV_STARS) { const [x, y] = skyAt(st.a, st.e); if (x < -10 || x > W + 10) continue;
-    ctx.globalAlpha = nightK * (.55 + .45 * Math.sin(T * 2 + st.tw)); ctx.beginPath(); ctx.arc(x, y, st.r, 0, 7); ctx.fillStyle = '#fffbe8'; ctx.fill();
-    if (st.r > 2.2) { ctx.lineWidth = 1; ctx.strokeStyle = '#fffbe8'; ctx.beginPath(); ctx.moveTo(x - 5, y); ctx.lineTo(x + 5, y); ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5); ctx.stroke(); } }
-  ctx.globalAlpha = 1;
-  // 해: 6시 왼쪽(동) 지평선 → 13시 높이 → 20시 오른쪽(서)으로 져요
-  const sk = (h - 6) / 13.2;
-  if (sk > -.02 && sk < 1.02 && grey < .5) {
-    const [x, y] = skyAt(-1.35 + sk * 2.7, Math.sin(clamp(sk, 0, 1) * Math.PI) * .78 + .03), low = 1 - Math.sin(clamp(sk, 0, 1) * Math.PI);
-    const col = mix('#fff4b0', '#ff8a4a', low * .9), gl = ctx.createRadialGradient(x, y, 10, x, y, 150);
-    gl.addColorStop(0, mix(col, '#ffffff', .3)); gl.addColorStop(1, 'rgba(255,220,150,0)');
-    ctx.globalAlpha = 1 - grey; ctx.fillStyle = gl; ctx.fillRect(x - 150, y - 150, 300, 300);
-    ctx.beginPath(); ctx.arc(x, y, 30 + low * 8, 0, 7); ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1;
-  }
-  // 달: 저녁 6시쯤 동쪽에서 떠올라요 (초승달 모양)
-  const mk = clamp((h - 17.6) / 2.4, 0, 1);
-  if (mk > 0 && grey < .6) {
-    const [x, y] = skyAt(-.62 + mk * .3, .1 + mk * .4), r = 26;
-    ctx.globalAlpha = clamp((h - 17.6) / .8, 0, 1) * (1 - grey);
-    const gl = ctx.createRadialGradient(x, y, 8, x, y, 90); gl.addColorStop(0, 'rgba(255,250,220,.5)'); gl.addColorStop(1, 'rgba(255,250,220,0)'); ctx.fillStyle = gl; ctx.fillRect(x - 90, y - 90, 180, 180);
-    ctx.save();
-    ctx.restore(); ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.clip(); ctx.beginPath(); ctx.rect(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4); ctx.arc(x + r * .78, y - r * .22, r * .82, 0, 7); ctx.fillStyle = '#fff6cf'; ctx.fill('evenodd'); ctx.restore(); ctx.globalAlpha = 1;
-  }
-  // 구름: 맑으면 몇 개, 흐리거나 비·눈이면 많고 회색
-  const cn = wet ? 16 : wx.sky === 'cloud' ? 12 : 6, ccol = mix(mix('#ffffff', '#ffd2b8', clamp(1 - Math.abs(h - 18.2) / 1.3, 0, 1) * .7 + clamp((7.5 - h) / 1.5, 0, 1) * .5), '#5a6488', nightK * .75), cs = wet ? mix(ccol, '#8a94a4', .5) : ccol;
-  for (let i = 0; i < cn; i++) { const c = PV_CLOUDS[i], [x, y] = skyAt(c.a + T * c.v * .2, c.e); if (x < -300 || x > W + 300) continue;
-    ctx.globalAlpha = .88; ctx.fillStyle = cs;
-    for (let k = 0; k < c.n; k++) { ctx.beginPath(); ctx.ellipse(x + (k - (c.n - 1) / 2) * c.w * .42, y - Math.sin(k * 1.7 + c.k * 5) * c.w * .12, c.w * .36, c.w * .2, 0, 0, 7); ctx.fill(); }
-    ctx.globalAlpha = 1; }
-  const R = srand(91), dim = clamp((h - 18) / 2, 0, 1) * .35;
-  for (const [k, col, amp, base] of [[.012, mix(mix(fog, '#7a9ab8', .45), '#3a4466', dim), 120, 30], [.03, mix(mix(fog, '#6a9a7a', .5), '#3a4a52', dim), 70, 8]]) {
-    const off = PV.yaw * 1080 * -1 - PV.x * k * .3;
-    ctx.beginPath(); ctx.moveTo(0, hor + 10);
-    for (let x = -200; x <= W + 200; x += 40) { const X = x - ((off % 1600) + 1600) % 1600, wx2 = (x - off) / 260;
-      ctx.lineTo(x, hor + base - amp * (.55 + .45 * Math.sin(wx2) * Math.sin(wx2 * .37 + 1.3)) * (.7 + .3 * Math.sin(wx2 * 2.1))); }
-    ctx.lineTo(W, hor + 10); ctx.closePath(); ctx.fillStyle = col; ctx.fill();
-  }
-  ctx.fillStyle = fog; ctx.fillRect(0, hor + 6, W, 14);
-}
-
-function render3D(ctx, dt, T){
-  const k = Math.min(1, dt * 7); PV.x += (P.x - PV.x) * k; PV.y += (P.y - PV.y) * k; PV.cs = Math.cos(PV.yaw); PV.sn = Math.sin(PV.yaw);
-  PV.shx = FX.shake > 0 ? rnd(-1, 1) * FX.shake * 16 : 0; PV.shy = FX.shake > 0 ? rnd(-1, 1) * FX.shake * 12 : 0;
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true;
-  pvSky(ctx); pvGround(ctx);
-  const vis = (x, y, m = 260) => { const [l, d] = pvLD(x, y); return d > PV.near - m && d < PV.far + m && Math.abs(l) < W / 2 * Math.max(d, PV.near) / PV.f + m + 120; };
-  const w = G.week, plantOk = TASKS.plant.ok(w);
-  // 땅 위 표시
-  for (let i = 0; i < G.trees.length; i++) {
-    if (G.trees[i]) continue;
-    const p = treePos(i); if (!vis(p.x, p.y) || !pvAtG(ctx, p.x, p.y)) continue;
-    ctx.beginPath(); ell(ctx, p.x, p.y + 4, 18, 7); ctx.fillStyle = '#7a5032'; ctx.fill();
-    if (plantOk) { ctx.setLineDash([6, 6]); ctx.beginPath(); ell(ctx, p.x, p.y + 4, 28, 12); ctx.lineWidth = 2.5; ctx.strokeStyle = '#fffaf1'; ctx.stroke(); ctx.setLineDash([]); }
-  }
-  // 서 있는 것들 (먼 것부터)
-  const E = collectEntities(ctx, vis, T, w);
-  for (const e of E) { if (e[0] > 1e8) { e[0] = P.y; e[2] = P.x; } e.d = e[0] < -1e8 ? 1e9 : pvLD(e[2], e[0])[1]; }
-  E.sort((a, b) => b.d - a.d);
-  const keep = pvHeroSwap();
-  for (const e of E) {
-    if (e[0] < -1e8) { ctx.setTransform(1, 0, 0, 1, 0, 0); e[1](); continue; } // 보스 위험 구역은 자기가 눕혀 그려요
-    if (!pvAt(ctx, e[2], e[0])) continue;
-    e[1]();
-  }
-  ctx.globalAlpha = 1;
-  if (!ssAnim && pvAt(ctx, P.x, P.y)) { ctx.globalAlpha = 1; drawHeroGhost(ctx); }
-  Object.assign(P, keep);
-  ctx.globalAlpha = 1;
-  for (const m of mist) if (pvAtG(ctx, m.x, m.y)) { ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 7); ctx.fillStyle = `rgba(235,248,255,${m.a})`; ctx.fill(); }
-  if (seasonOf(w) === 'spring' || seasonOf(w) === 'summer') for (const f of flies) {
-    if (!vis(f.x, f.y) || !pvAt(ctx, f.x, f.y + 60)) continue;
-    const fl = Math.abs(Math.sin(f.t * 14)) * 7 + 2;
-    ctx.fillStyle = f.c; ctx.strokeStyle = INK; ctx.lineWidth = 1.4;
-    for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(f.x + s * fl * .6, f.y, fl, 5, 0, 0, 7); ctx.fill(); ctx.stroke(); }
-  }
-  ctx.globalAlpha = 1;
-  // 할 일 표시
-  for (let i = 0; i < G.trees.length; i++) {
-    const p = treePos(i);
-    if ((p.x - P.x) ** 2 + (p.y - P.y) ** 2 > 520 * 520) continue;
-    const k2 = taskFor(i); if (!k2 || (k2 === 'plant' && G.money < SAPLING) || !pvAt(ctx, p.x, p.y)) continue;
-    const by = p.y - (G.trees[i] ? (G.trees[i].age === 0 ? 140 : 205) : 50) + Math.sin(T * 3 + i) * 4;
-    ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(p.x, by, 15, 0, 7); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
-    ctx.font = '17px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(TASKS[k2].ic, p.x, by + 1); ctx.textBaseline = 'alphabetic';
-  }
-  drawVillageTags(ctx); drawLotTags(ctx);
-  const tg = ssAnim || !UI.free() ? null : findTarget();
-  curTarget = tg;
-  if (tg) {
-    const ty = tg.kind === 'tree' ? tg.y - 4 : tg.y;
-    if (pvAtG(ctx, tg.x, ty)) { ctx.globalAlpha = 1; ctx.beginPath(); ell(ctx, tg.x, ty, 36 + Math.sin(T * 6) * 3, 13); ctx.lineWidth = 4; ctx.strokeStyle = '#ffd25e'; ctx.stroke(); }
-    const lab = targetLabel(tg);
-    if (lab && pvAt(ctx, P.x, P.y)) {
-      ctx.globalAlpha = 1; const bx = P.x, by = P.y - 148;
-      ctx.font = '22px Jua'; const tw = ctx.measureText(lab).width + 56;
-      ctx.beginPath(); rr(ctx, bx - tw / 2, by - 22, tw, 40, 14); ctx.fillStyle = '#fffaf1'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
-      ctx.beginPath(); rr(ctx, bx - tw / 2 + 6, by - 16, 28, 28, 7); ctx.fillStyle = '#ffd25e'; ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.fillText('F', bx - tw / 2 + 20, by + 6);
-      ctx.textAlign = 'left'; ctx.fillText(lab, bx - tw / 2 + 42, by + 6);
-    }
-  }
-  drawFx(ctx);
-  for (const f of floats) {
-    if (f.age == null) f.age = 0; f.age += dt;
-    if (!pvAt(ctx, f.x, (f.y0 == null ? (f.y0 = f.y) : f.y0) + 110)) continue;
-    const pop = f.pop ? 1 + Math.max(0, 1 - f.age / f.pop) * .7 : 1;
-    ctx.globalAlpha = clamp(f.t * 2, 0, 1);
-    ctx.font = Math.round((f.sz || 26) * pop) + 'px Jua'; ctx.textAlign = 'center'; ctx.lineWidth = 6; ctx.strokeStyle = '#fffaf1'; ctx.strokeText(f.s, f.x, f.y); ctx.fillStyle = f.c || INK; ctx.fillText(f.s, f.x, f.y);
-  }
-  ctx.globalAlpha = 1;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  drawDenFx(ctx, dt);
-  drawWxFx(ctx, dt);
-  drawHurtVignette(ctx);
-  drawSkyFx(ctx, dt, T);
-  drawHuntOverlay(ctx, T);
-  if (!pvLocked() && UI.free()) { // 둘러보기 안내
-    const t = '🖱️ 화면을 누르면 마우스로 둘러봐요 · Esc로 마우스 풀기'; ctx.font = '20px Jua'; const tw = ctx.measureText(t).width + 36;
-    ctx.beginPath(); rr(ctx, W / 2 - tw / 2, H - 176, tw, 38, 19); ctx.fillStyle = 'rgba(255,250,241,.9)'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
-    ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.fillText(t, W / 2, H - 150); ctx.textAlign = 'left';
-  }
-}
+function w2s(x, y){ return {x:(x - cam.x) * cam.z + W / 2, y:(y - cam.y) * cam.z + H / 2, s:cam.z}; }
 
 // ===== 마을 두 곳: 사과골 마을(지도 가운데 빨간 원) · 강변 마을(지도 위 빨간 원) =====
 // 2026-10-13 마을 2배: 아래 좌표(옛 배치)를 광장 기준으로 두 배 넓혀요 → vxy()
@@ -3575,11 +3350,11 @@ function paveRoads(c, list, win, x0, y0, w, h, plates){
   for (const p of plates || []) segs.push({...p, plain:1});
   const vis = s => !(x0 != null) || (s.x < x0 + w + 40 && s.x + s.w > x0 - 40 && s.y < y0 + h + 40 && s.y + s.h > y0 - 40);
   const S = segs.filter(vis);
-  c.fillStyle = win ? '#c8d2da' : '#a99f8e'; for (const s of S) { c.beginPath(); rr(c, s.x - 7, s.y - 7, s.w + 14, s.h + 14, 10); c.fill(); }
-  c.fillStyle = win ? '#f2f5f8' : '#e8e1d3'; for (const s of S) { c.beginPath(); rr(c, s.x, s.y, s.w, s.h, 6); c.fill(); }
+  c.fillStyle = (!win&&aTex('cobble')) ? 'rgba(120,100,70,.3)' : win ? '#c8d2da' : '#a99f8e'; for (const s of S) { c.beginPath(); rr(c, s.x - 7, s.y - 7, s.w + 14, s.h + 14, 10); c.fill(); }
+  const aC=!win&&aTex('cobble'); let aCP=null; if(aC){aCP=c.createPattern(aC,'repeat');aCP.setTransform(new DOMMatrix().scale(.5));} c.fillStyle = aC ? aCP : win ? '#f2f5f8' : '#e8e1d3'; for (const s of S) { c.beginPath(); rr(c, s.x, s.y, s.w, s.h, 6); c.fill(); }
   c.strokeStyle = win ? '#dfe6ec' : '#d3c8b4'; c.lineWidth = 2;
   for (const s of S) {
-    if (s.plain) continue;
+    if (s.plain || aC) continue;
     c.save(); c.beginPath(); c.rect(s.x, s.y, s.w, s.h); c.clip(); c.beginPath();
     const bw = 46, rows = Math.max(1, Math.round((s.hor ? s.h : s.w) / 30)), rh = (s.hor ? s.h : s.w) / rows;
     for (let r = 1; r < rows; r++) { if (s.hor) { c.moveTo(s.x, s.y + r * rh); c.lineTo(s.x + s.w, s.y + r * rh); } else { c.moveTo(s.x + r * rh, s.y); c.lineTo(s.x + r * rh, s.y + s.h); } }
@@ -3594,10 +3369,10 @@ function drawVillageGround(c, win, x0, y0, w, h){
   paveRoads(c, [...[ROAD, ...VROADS, ...YARD_ROADS].map(p => [p, 96]), ...HOUSE_PATHS.map(p => [p, 40])], win, x0, y0, w, h,
     VB.map(b => { const hw = b.big ? 130 : 100; return {x:b.x - hw, y:b.y - 10, w:hw * 2, h:40}; }));
   for (const PZ of [PLAZA, PLAZA1]) {
-    c.beginPath(); ell(c, PZ.x, PZ.y, PZ.rx + 8, PZ.ry + 8); c.fillStyle = win ? '#d8dfe6' : '#b8b0a2'; c.fill();
-    c.beginPath(); ell(c, PZ.x, PZ.y, PZ.rx, PZ.ry); c.fillStyle = win ? '#f2f5f8' : '#eee6d6'; c.fill();
+    c.beginPath(); ell(c, PZ.x, PZ.y, PZ.rx + 8, PZ.ry + 8); const aZ=!win&&aTex('f_plaza'); c.fillStyle = aZ ? 'rgba(120,100,70,.35)' : win ? '#d8dfe6' : '#b8b0a2'; c.fill();
+    c.beginPath(); ell(c, PZ.x, PZ.y, PZ.rx, PZ.ry); c.fillStyle = aZ ? c.createPattern(aZ,'repeat') : win ? '#f2f5f8' : '#eee6d6'; c.fill();
     // 보도블록 무늬
-    c.strokeStyle = win ? '#e2e8ee' : '#d6cdbc'; c.lineWidth = 2;
+    c.strokeStyle = aZ ? 'rgba(0,0,0,0)' : win ? '#e2e8ee' : '#d6cdbc'; c.lineWidth = 2;
     for (let k = 1; k < 4; k++) { c.beginPath(); ell(c, PZ.x, PZ.y, PZ.rx * k / 4, PZ.ry * k / 4); c.stroke(); }
   }
   // 놀이터 모래밭
@@ -3605,6 +3380,7 @@ function drawVillageGround(c, win, x0, y0, w, h){
 }
 // 2026-10-16 달 요청: 마을 건물을 한옥(기와집)·초가집으로. b.roof는 기와 색에 살짝만 섞어 가게마다 구분돼요
 function drawVHouse(c, b){
+  if (aB(c,AV[b.sign],b.x,b.y,b.big?310:240,1)) { const v=AA.cv[AV[b.sign]], w=b.big?310:240, top=b.y-w*v.height/v.width; c.font='17px Jua'; const tw=c.measureText(b.sign).width+22; c.beginPath(); rr(c,b.x-tw/2,top-24,tw,26,6); c.fillStyle='#5e3820'; c.fill(); c.fillStyle='#fff2c8'; c.textAlign='center'; c.fillText(b.sign,b.x,top-5); c.textAlign='left'; return; }
   const w = b.big ? 240 : 180, hw = w / 2, wh = b.big ? 80 : 68, choga = b.choga, win = seasonOf(G.week) === 'winter';
   const WOOD = '#8a5432', WOODS = '#5e3820';
   c.save(); c.translate(b.x, b.y);
@@ -3689,6 +3465,7 @@ function drawJeongja(c, x, y){
   c.restore();
 }
 function drawBigTree(c, x, y){
+  if (aB(c,seasonOf(G.week)==='winter'?'f_big_w':'f_big',x,y,360,1)) return;
   const S = seasonOf(G.week);
   const lf = S === 'autumn' ? '#f0a43a' : S === 'winter' ? '#e6edf2' : '#5cb85c', ls = S === 'autumn' ? '#c06a22' : S === 'winter' ? '#b8c8d4' : '#2f7f3a';
   c.save(); c.translate(x, y);
@@ -3725,7 +3502,6 @@ function drawVillageTags(ctx){
     const d = Math.hypot(n.x - P.x, n.y - P.y); if (d > 300) continue;
     ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
     const tw = ctx.measureText(n.name).width + 18, ty = n.y - (n.look.kid ? 104 : 136);
-    if (PV.on && !pvAt(ctx, n.x, n.y)) continue;
     ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
     ctx.beginPath(); rr(ctx, n.x - tw / 2, ty - 18, tw, 25, 10); ctx.fillStyle = 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.fillText(n.name, n.x, ty);
@@ -3898,7 +3674,6 @@ function buildForest(){
 let BORDER = [], SOLID_G = null, PEAKS = [];
 // 2026-10-16 달 요청: 미니맵·전체 지도에 내가 바라보는 방향을 작은 부채꼴로
 function heroFacing(){
-  if (PV.on && PV.yaw != null) return PV.yaw - Math.PI / 2;
   if (P.hx || P.hy) return Math.atan2(P.hy || 0, P.hx || 0);
   return [Math.PI / 2, -Math.PI / 2, Math.PI, 0][P.dir || 0];
 }
@@ -3911,7 +3686,7 @@ function drawFacingFan(ctx, x, y, r){
 let FOREST_G = null;
 function forestNear(){
   if (!FOREST_G) { FOREST_G = new Map(); for (const o of FOREST) { const k = Math.floor(o.x / 1500) + ',' + Math.floor(o.y / 1500); let L = FOREST_G.get(k); if (!L) FOREST_G.set(k, L = []); L.push(o); } }
-  const out = [], gx = Math.floor(cam.x / 1500), gy = Math.floor(cam.y / 1500), r = PV.on ? 4 : 2;
+  const out = [], gx = Math.floor(cam.x / 1500), gy = Math.floor(cam.y / 1500), r = 2;
   for (let y = gy - r; y <= gy + r; y++) for (let x = gx - r; x <= gx + r; x++) { const L = FOREST_G.get(x + ',' + y); if (L) for (const o of L) out.push(o); }
   return out;
 }
@@ -3942,6 +3717,7 @@ function huntBlocked(x, y){
   return false;
 }
 function drawOak(c, x, y, s){
+  { const S=seasonOf(G.week); if (aB(c,S==='winter'?'f_oak_w':S==='autumn'?'f_oak_a':'f_oak',x,y,175*s,1)) return; }
   const S = seasonOf(G.week);
   const lf = S === 'autumn' ? '#e8a03a' : S === 'winter' ? '#e6edf2' : S === 'spring' ? '#7fcf5a' : '#4fae48';
   const ls = S === 'autumn' ? '#b0602a' : S === 'winter' ? '#b8c8d4' : '#2c7a35';
@@ -3952,6 +3728,7 @@ function drawOak(c, x, y, s){
   c.restore();
 }
 function drawRock(c, x, y, s){
+  if (aB(c,'f_rock',x,y,95*s,1)) return;
   c.save(); c.translate(x, y); c.scale(s, s);
   shadow(c, 0, 2, 40, 10, .22);
   cel(c, cc => { cc.moveTo(-40, 0); cc.quadraticCurveTo(-44, -36, -6, -44); cc.quadraticCurveTo(38, -48, 42, -8); cc.lineTo(38, 0); cc.closePath(); }, '#b2aca8', '#7d7772', 8, 7, 3);
@@ -3966,7 +3743,7 @@ function drawHuntGround(c, x0, y0, w, h, win){
     if (!inHunt(cx + 32, cy + 32)) continue;
     const cd = cDist(cx + 32, cy + 32), t = clamp((cd - .3) / .9, 0, 1), sk = snowK(cy + 32);
     const t2 = clamp((cd - 1.2) / .7, 0, 1); // 바깥 숲(★5~★7)은 더 짙은 숲
-    c.fillStyle = mix(mix(base, dark, .1 + t * .35 + t2 * .22), '#eef4f8', sk * .94); c.fillRect(cx, cy, 65, 65);
+    const aF=!win&&sk<.5&&aTex('f_floor'); if (aF) { c.save(); c.globalAlpha=clamp(.2+t*.6+t2*.2,0,1); c.fillStyle=c.createPattern(aF,'repeat'); c.fillRect(cx,cy,64,64); c.restore(); } else { c.fillStyle = mix(mix(base, dark, .1 + t * .35 + t2 * .22), '#eef4f8', sk * .94); c.fillRect(cx, cy, 65, 65); }
   }
   const sk = snowK(y0 + h / 2), sn = sk > .5; win = win || sn;
   // 2026-10-14 바닥 얼룩: 땅 조각 경계에서 잘리지 않게 월드 격자(256)마다 같은 자리에 그려요. 부드러운 두 겹 타원
@@ -3974,7 +3751,7 @@ function drawHuntGround(c, x0, y0, w, h, win){
     const R = srand(gx * 7919 + gy * 104729 + 11);
     for (let k = 0; k < 2; k++) {
       const x = (gx + R()) * 256, y = (gy + R()) * 256, rx = 60 + R() * 90, ry = rx * (.35 + R() * .2), lt = R() < .45;
-      if (!inHunt(x, y)) continue;
+      if (!inHunt(x, y) || (!win && aTex('f_floor'))) continue;
       c.fillStyle = win ? (lt ? 'rgba(255,255,255,.35)' : 'rgba(170,190,205,.16)') : (lt ? 'rgba(255,255,220,.10)' : 'rgba(30,70,25,.09)');
       c.beginPath(); ell(c, x, y, rx, ry); c.fill(); c.beginPath(); ell(c, x + rx * .2, y - ry * .1, rx * .62, ry * .62); c.fill();
     }
@@ -3992,16 +3769,16 @@ function drawHuntGround(c, x0, y0, w, h, win){
   // 2026-10-16 지도의 강(동계천)과 큰 도로(농암로)
   if (hit(RIVER_BB)) { road(RIVER, 300, win ? '#d8e4ec' : '#c9b48a'); road(RIVER, 250, win ? '#e8f2f8' : '#6fb8d8'); road(RIVER, 150, win ? '#f2f8fb' : '#8ccbe4'); road(RIVER, 40, win ? '#ffffff' : '#b4e0f0'); }
   if (hit(HIGHWAY_BB)) { road(HIGHWAY, 230, win ? '#c8d2da' : '#8a8a86'); road(HIGHWAY, 210, win ? '#e6ebef' : '#6a6e72'); c.setLineDash([60, 50]); road(HIGHWAY, 8, '#ffd23a'); c.setLineDash([]); }
-  const snowMix = col => mix(col, '#f4f7fa', win && !sn ? .85 : sk * .88);
+  const aRP=!win&&!sn&&aTex('dirt')?c.createPattern(aTex('dirt'),'repeat'):null; const snowMix = col => aRP&&(col==='#d8bc8c'||col==='#cfa874') ? aRP : mix(col, '#f4f7fa', win && !sn ? .85 : sk * .88);
   // 큰길: 넓은 흙길(자갈 섞인 밝은 색)
   for (const T of mainR) road(T, 150, win ? 'rgba(200,214,224,.55)' : 'rgba(70,110,50,.2)');
   for (const T of mainR) road(T, 128, snowMix('#b49064'));
   for (const T of mainR) road(T, 116, snowMix('#d8bc8c'));
-  for (const T of mainR) { c.setLineDash([2, 26]); road(T, 60, snowMix('#c4a676')); c.setLineDash([]); }
+  if (!aRP) for (const T of mainR) { c.setLineDash([2, 26]); road(T, 60, snowMix('#c4a676')); c.setLineDash([]); }
   for (const T of near) road(T, 98, win ? 'rgba(200,214,224,.55)' : 'rgba(70,110,50,.18)');
   for (const T of near) road(T, 76, snowMix('#b88d5c'));
   for (const T of near) road(T, 66, snowMix('#cfa874'));
-  for (const T of near) road(T, 26, snowMix('#dcbd8a'));
+  if (!aRP) for (const T of near) road(T, 26, snowMix('#dcbd8a'));
   // 길가 장식: 작은 돌 · 풀포기 · 들꽃
   for (let ty = Math.floor(y0 / 512) - 1; ty <= Math.floor((y0 + h) / 512); ty++) for (let tx = Math.floor(x0 / 512) - 1; tx <= Math.floor((x0 + w) / 512); tx++) {
     const M = TRAIL_DECO.get(tx + ',' + ty); if (!M) continue;
@@ -4114,7 +3891,6 @@ function drawFx(c){
   for (const r of FX.rings) {
     if (r.t < 0) continue;
     const k = r.t / r.life, e = 1 - (1 - k) * (1 - k), rad = 30 + r.r * e;
-    if (PV.on && !pvAtG(c, r.x, r.y)) continue;
     c.save(); c.globalAlpha = (1 - k) * .9;
     c.beginPath();
     if (r.half != null) { const fx = r.x + Math.cos(r.half) * r.fly * e, fy = r.y + Math.sin(r.half) * r.fly * e * .55; c.ellipse(fx, fy, rad, rad * .55, 0, r.half - Math.PI / 2, r.half + Math.PI / 2); }
@@ -4124,7 +3900,6 @@ function drawFx(c){
     c.restore();
   }
   for (const p of FX.parts) {
-    if (PV.on && !pvAt(c, p.x, p.y + 60)) continue;
     const a = clamp(p.t / p.t0, 0, 1); c.globalAlpha = a;
     c.save(); c.translate(p.x, p.y); c.rotate(p.t * 9);
     c.beginPath(); for (let k = 0; k < 4; k++) { const an = k * Math.PI / 2; c.lineTo(Math.cos(an) * p.r, Math.sin(an) * p.r); c.lineTo(Math.cos(an + .785) * p.r * .4, Math.sin(an + .785) * p.r * .4); } c.closePath();
@@ -4606,6 +4381,7 @@ function nmWindow(c, x, y, w, h, box){
   if (box) { cel(c, cc => rr(cc, x - 4, y + h, w + 8, 10, 2), '#a8704a', '#7a4a2c', 1, 1, 2); for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(x + 4 + k * (w / 3.4), y + h - 1, 4.5, 0, 7); c.fillStyle = ['#ff6b8a', '#ffd23a', '#ffffff', '#b98cff'][k]; c.fill(); } }
 }
 function drawNongmak(c, x, y){
+  if (aB(c,'b_nm'+(nongmakLv()+1),x,y,NONGMAK_LV[nongmakLv()].w*1.2,1)) return;
   const lv = nongmakLv(), W2 = NONGMAK_LV[lv].w / 2;
   c.save(); c.translate(x, y);
   shadow(c, 0, 6, W2 + 30, 22, .22);
@@ -4721,7 +4497,7 @@ function drawHuntOverlay(ctx, T){
   else ctx.drawImage(miniBase, (o.x - WX0) * sB, (o.y - WY0) * sB, MM.w, MM.h, MM.x, MM.y, MM.w, MM.h);
   ctx.font = '11px Jua'; ctx.textAlign = 'center'; ctx.fillStyle = INK; for (const [t, x, y] of MM_LABELS()) ctx.fillText(t, mx(x), my(y));
   const vw = W / cam.z, vh = H / cam.z;
-  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; if (!PV.on) ctx.strokeRect(mx(cam.x - vw / 2), my(cam.y - vh / 2), vw * s, vh * s);
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(mx(cam.x - vw / 2), my(cam.y - vh / 2), vw * s, vh * s);
   ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🛖', mx(SPOT.nongmak.x), my(SPOT.nongmak.y) + 4);
   for (const r of RESTS) { const f = G.rests && G.rests[r.id]; ctx.globalAlpha = f ? 1 : .55; ctx.font = f ? '12px sans-serif' : 'bold 11px Jua'; ctx.fillStyle = INK; ctx.fillText(f ? '⛺' : '?', mx(r.x), my(r.y) + 4); }
   ctx.globalAlpha = 1; ctx.font = '13px sans-serif'; for (const D of DENS) ctx.fillText(D.ic, mx(D.x), my(D.y) + 4);
@@ -5434,7 +5210,6 @@ function updateBossFx(dt){
 }
 function drawBossFx(c){
   for (const z of BFX) {
-    if (PV.on && !pvAtG(c, z.x, z.y)) continue;
     const k = clamp(z.t / z.warn, 0, 1), ice = z.ice;
     const edge = ice ? '#4a9ad8' : '#d6372c', fill = ice ? '120,190,240' : '230,70,50';
     c.save();
@@ -7689,8 +7464,8 @@ function intro(){
 function bindUI(){
   document.querySelectorAll('.tb').forEach(b => b.onclick = () => openUI(b.dataset.ui));
   $('#sndBtn').onclick = () => { if (UI.free()) uiSound(); }; sndBtn();
-  $('#helpBtn').onclick = () => { const h = $('#help'); h.hidden = !h.hidden; store.set('haru-help', h.hidden ? '0' : '1'); };
-  $('#help').hidden = store.get('haru-help', '1') !== '1'; renderHelp();
+  $('#helpBtn').onclick = () => { const h = $('#help'); h.hidden = !h.hidden; store.set('haru-help2', h.hidden ? '0' : '1'); };
+  $('#help').hidden = store.get('haru-help2', '0') !== '1'; renderHelp();
   const fold = store.get('haru-todo', '0') === '1';
   $('#todo').classList.toggle('fold', fold); $('#todoArrow').textContent = fold ? '▸' : '▾';
   $('#todoH').onclick = () => { const f = !$('#todo').classList.contains('fold'); $('#todo').classList.toggle('fold', f); $('#todoArrow').textContent = f ? '▸' : '▾'; store.set('haru-todo', f ? '1' : '0'); };
@@ -9055,7 +8830,6 @@ function drawLotTags(ctx){
     const d = Math.hypot(D.bossX - P.x, D.bossY - P.y); if (d > 300) continue;
     ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
     const tw = ctx.measureText(D.boss).width + 18, ty = D.bossY - 136;
-    if (PV.on && !pvAt(ctx, D.bossX, D.bossY)) continue;
     ctx.globalAlpha = clamp((300 - d) / 80, 0, 1);
     ctx.beginPath(); rr(ctx, D.bossX - tw / 2, ty - 18, tw, 25, 10); ctx.fillStyle = 'rgba(255,250,241,.92)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
     ctx.fillStyle = INK; ctx.fillText(D.boss, D.bossX, ty);
@@ -10185,10 +9959,10 @@ function drawTaxiStand(c, p){
 // ===== 키 설정 (2026-10-13): 기본은 마우스 왼쪽 = 공격, 오른쪽 = 막기. 플레이어가 직접 바꿀 수 있어요 =====
 const KEY_ACTS = [
   ['attack', '⚔️ 공격 (휘두르기)'], ['block', '🛡️ 막기 (누르고 있기)'], ['interact', '✋ 일하기·말 걸기'],
-  ['gong', '🥁 꽹과리'], ['recall', '🏡 귀환 (과수원으로)'], ['bag', '🎒 가방'], ['ride', '🐯 호랑이 타기·내리기'], ['view', '🎥 시점 바꾸기'], ['map', '🗺️ 전체 지도'],
+  ['gong', '🥁 꽹과리'], ['recall', '🏡 귀환 (과수원으로)'], ['bag', '🎒 가방'], ['ride', '🐯 호랑이 타기·내리기'], ['map', '🗺️ 전체 지도'],
   ['up', '⬆️ 위로 걷기'], ['down', '⬇️ 아래로 걷기'], ['left', '⬅️ 왼쪽으로 걷기'], ['right', '➡️ 오른쪽으로 걷기']
 ];
-const KEY_DEF = {attack:['Mouse0', 'Space'], block:['Mouse2', 'KeyF'], interact:['KeyF', ''], gong:['KeyQ', ''], recall:['KeyB', ''], bag:['KeyI', ''], ride:['KeyR', ''], view:['KeyV', ''], map:['KeyM', ''],
+const KEY_DEF = {attack:['Mouse0', 'Space'], block:['Mouse2', 'KeyF'], interact:['KeyF', ''], gong:['KeyQ', ''], recall:['KeyB', ''], bag:['KeyI', ''], ride:['KeyR', ''], map:['KeyM', ''],
   up:['KeyW', ''], down:['KeyS', ''], left:['KeyA', ''], right:['KeyD', '']};
 let KB = JSON.parse(JSON.stringify(KEY_DEF));
 (function loadKeys(){ try { const s = JSON.parse(store.get('haru-keys', 'null')); if (s) for (const k in KEY_DEF) if (Array.isArray(s[k])) KB[k] = [s[k][0] || '', s[k][1] || '']; } catch (e) {} })();
@@ -10217,7 +9991,6 @@ function pressAct(act, ev){
   if (act === 'recall') { if (UI.free()) heroRecall(); return true; }
   if (act === 'ride') { if (UI.free()) toggleRide(); return true; }
   if (act === 'map') { if (UI.free()) toggleBigMap(); return true; }
-  if (act === 'view') { if (UI.free()) toggleView(); return true; }
   if (act === 'bag') { if (UI.modal && UI.modal.inv) UI.close(); else if (UI.free()) uiInv(); return true; }
   return false;
 }
@@ -11280,7 +11053,6 @@ function treeInfo(i){
 
 // ----- 매 프레임 -----
 function update(dt){
-  if (pvLocked() && !UI.free()) document.exitPointerLock(); // 창이 뜨면 마우스를 풀어 줘요
   if (UI.free() && speed > 0 && !ssAnim) advance(dt / DAY_SEC * 14 * speed); // 2026-10-18 달 요청: 숲(사냥터)에서도 시간이 똑같이 흘러요 (예전 .5배)
   updateSS(dt);
   // 하루 이동
@@ -11289,7 +11061,6 @@ function update(dt){
     if (actDown('up') || keys.ArrowUp) my -= 1; if (actDown('down') || keys.ArrowDown) my += 1;
     if (actDown('left') || keys.ArrowLeft) mx -= 1; if (actDown('right') || keys.ArrowRight) mx += 1;
     if (joy.on) { mx = joy.x; my = joy.y; }
-    if (PV.on && PV.yaw && (mx || my)) { const a = mx * PV.cs - my * PV.sn, b = mx * PV.sn + my * PV.cs; mx = a; my = b; } // 3인칭: 보는 방향 기준으로 걸어요
     if (mx || my) { P.tgt = null; P.pend = null; }
     else if (P.tgt) {
       followNpc(dt);
@@ -11474,7 +11245,7 @@ function autoBuy(){
 
 // ----- 입력 -----
 function stagePt(e){ const r = $('#stage').getBoundingClientRect(), s = r.width / W; return {x:(e.clientX - r.left) / s, y:(e.clientY - r.top) / s}; }
-function toWorld(p){ if (PV.on) return s2w(p); return {x:cam.x + (p.x - W / 2) / cam.z, y:cam.y + (p.y - H / 2) / cam.z}; }
+function toWorld(p){ return {x:cam.x + (p.x - W / 2) / cam.z, y:cam.y + (p.y - H / 2) / cam.z}; }
 addEventListener('keydown', e => {
   if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
   if (keyWait) { e.preventDefault(); setKey(e.code); return; } // 키 설정 창에서 새 키 받는 중
@@ -11512,8 +11283,8 @@ const ptrs = new Map(); let drag = null, pinch = null;
 function mouseBtnDown(btn, p){
   const code = 'Mouse' + btn; MB[code] = true;
   const w = toWorld(p), acts = actsOf(code).filter(a => !['block', 'up', 'down', 'left', 'right'].includes(a));
-  if (btn !== 0) { for (const a of acts) pressAct(a, {wx:PV.on ? null : w.x}); return true; }
-  if (acts.includes('attack') && fightMode() && UI.free()) { for (const a of acts) pressAct(a, {wx:PV.on ? null : w.x}); return true; }
+  if (btn !== 0) { for (const a of acts) pressAct(a, {wx:w.x}); return true; }
+  if (acts.includes('attack') && fightMode() && UI.free()) { for (const a of acts) pressAct(a, {wx:w.x}); return true; }
   for (const a of acts) if (a !== 'attack') pressAct(a);
   return false;
 }
@@ -11525,7 +11296,7 @@ cv.addEventListener('pointermove', e => {
   if (e.buttons & mask) { if (!MB[code]) mouseBtnDown(e.button, stagePt(e)); } else MB[code] = false;
 });
 cv.addEventListener('pointerdown', e => {
-  if (!pvLocked()) try { cv.setPointerCapture(e.pointerId); } catch (er) {} // 2026-10-15 마우스가 잠긴 3인칭에선 이게 에러를 내서 공격·막기가 안 됐어요
+  try { cv.setPointerCapture(e.pointerId); } catch (er) {} // 2026-10-15 마우스가 잠긴 3인칭에선 이게 에러를 내서 공격·막기가 안 됐어요
   const p = stagePt(e);
   if (BIGMAP && UI.free()) { bigMapDown(p); e.preventDefault(); return; } // 전체 지도: 끌면 옮기고, 그냥 떼면 순간이동 지점 누르기
   if (UI.free() && inMM(p)) { e.preventDefault(); return; } // 2026-10-16 달 요청: 작은 지도 '누르면 온 세상' 없앰
@@ -11539,7 +11310,7 @@ cv.addEventListener('pointermove', e => {
   const p = stagePt(e); ptrs.set(e.pointerId, p);
   if (drag) {
     if (Math.hypot(p.x - drag.sx, p.y - drag.sy) > 10) drag.moved = true;
-    if (drag.moved && !PV.on) { cam.ox -= (p.x - drag.x) / cam.z; cam.oy -= (p.y - drag.y) / cam.z; cam.ox = clamp(cam.ox, -900, 900); cam.oy = clamp(cam.oy, -700, 700); }
+    if (drag.moved) { cam.ox -= (p.x - drag.x) / cam.z; cam.oy -= (p.y - drag.y) / cam.z; cam.ox = clamp(cam.ox, -900, 900); cam.oy = clamp(cam.oy, -700, 700); }
     drag.x = p.x; drag.y = p.y;
   }
 });
@@ -11548,7 +11319,7 @@ const endPtr = e => {
   if (!ptrs.has(e.pointerId)) return;
   ptrs.delete(e.pointerId);
   if (ptrs.size < 2) pinch = null;
-  if (drag && !drag.moved && e.type === 'pointerup' && UI.free() && !pvLocked()) clickWorld(toWorld(stagePt(e)));
+  if (drag && !drag.moved && e.type === 'pointerup' && UI.free()) clickWorld(toWorld(stagePt(e)));
   if (!ptrs.size) drag = null;
 };
 cv.addEventListener('pointerup', e => { if (BIGMAP && BMV.drag) bigMapUp(stagePt(e)); }); cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
@@ -11589,12 +11360,7 @@ $('#fBtn').addEventListener('pointerdown', e => { e.preventDefault(); pressF(); 
 const fUp = () => { P.touchBlock = false; };
 $('#atkBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroAttack(); });
 // 2026-10-15 3인칭에서 화면을 누르면 마우스가 잠기고, 좌우로 움직이면 둘러봐요(Esc로 풀기)
-cv.addEventListener('pointerdown', () => { if (PV.on && UI.free() && !BIGMAP && !pvLocked() && cv.requestPointerLock) { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} } });
 // 2026-10-15 달 요청: 마우스가 잠겨 있을 때만 시점이 돌아요. Esc로 풀면 화면은 멈추고 마우스만 자유로워요
-addEventListener('keydown', e => { if (e.code === 'Escape' && pvLocked()) document.exitPointerLock(); });
-document.addEventListener('mousemove', e => { if (PV.on && UI.free() && pvLocked()) pvLook(e.movementX || 0, e.movementY || 0); });
-$('#viewBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleView(); });
-viewBtnSync();
 $('#rideBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (UI.free()) toggleRide(); });
 $('#gongBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (UI.free()) heroGong(); });
 $('#homeBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (UI.free()) heroRecall(); });
