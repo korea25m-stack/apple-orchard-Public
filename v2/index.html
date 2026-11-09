@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-8+rJvYtEmNRQx0+jCOlzPGFuA3D+K3fdITKGlHKj6Dc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-yij7IiEqmMUdFhBCWZvimNR7LKJ60VJxsvzDGV5odC8='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -6063,9 +6063,11 @@ function spzEar2(c, bx, by, w, h, lean, face){
     line(c, [cx, by - 3, bx + lean * .7 + sh * .3, by - h * .55], 1.1, '#ffffff'); } // 귀 안 하얀 솜털
   else if (face < 0) line(c, [bx, by - 2, bx + lean * .7, by - h * .65], 1.2, '#d6dce6');
 }
-let DOG_SET='a';
+let DOG_SET='a'; const DOG_ASK={};
+// 처음 그릴 때 그 강아지 그림을 전부 불러오고, 아직 안 온 프레임은 이미 온 그림으로 대신해요(옛 그림으로 돌아가지 않게)
+function dogFrame(s,v,q){ if(!DOG_ASK[s]){ DOG_ASK[s]=1; for(const a of ['d','dr','r','ur','u']) for(const b of ['s','w1','w2']) if(s==='a'||b!=='w2') AA.cv['dog/'+s+'_'+a+'_'+b]; } const st=AA_ST; return st['dog/'+s+'_'+v+'_'+q]||st['dog/'+s+'_'+v+'_s']||st['dog/'+s+'_d_s']||st['dog/'+s+'_r_s']||null; }
 function drawSpitz8(c, d8, t, walk, happy){
-  { const fl=[3,4,5].includes(d8), v={0:'r',4:'r',1:'dr',3:'dr',2:'d',6:'u',5:'ur',7:'ur'}[d8], ph=walk?Math.floor(t*6.5)%(DOG_SET==='a'?4:2):0, q=!walk?'s':DOG_SET==='a'?['w1','s','w2','s'][ph]:['w1','s'][ph], im=AA.cv['dog/'+DOG_SET+'_'+v+'_'+q]; if (im) { shadow(c,0,1,v==='r'?38:24,6); c.save(); if(fl)c.scale(-1,1); const H=74, w=H*im.width/im.height; c.drawImage(im,-w/2,-H+3,w,H); c.restore(); return; } }
+  { const fl=[3,4,5].includes(d8), v={0:'r',4:'r',1:'dr',3:'dr',2:'d',6:'u',5:'ur',7:'ur'}[d8], ph=walk?Math.floor(t*6.5)%(DOG_SET==='a'?4:2):0, q=!walk?'s':DOG_SET==='a'?['w1','s','w2','s'][ph]:['w1','s'][ph], im=dogFrame(DOG_SET,v,q); if (im) { shadow(c,0,1,v==='r'?38:24,6); c.save(); if(fl)c.scale(-1,1); const H=74, w=H*im.width/im.height; c.drawImage(im,-w/2,-H+3,w,H); c.restore(); return; } }
   c.save();
   if ([3, 4, 5].includes(d8)) { c.scale(-1, 1); d8 = d8 === 3 ? 1 : d8 === 4 ? 0 : 7; }
   const sw = walk ? Math.sin(t * 13) * 3.5 : 0, bob = walk ? -Math.abs(Math.sin(t * 13)) * 1.6 : 0, wag = Math.sin(t * (happy ? 18 : 5)) * (happy ? .14 : .04), pant = walk || happy;
