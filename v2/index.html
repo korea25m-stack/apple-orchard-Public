@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-7zT/2sInCLt9U/SjQDf5f/7Kz0PVH1bdJeccP1PHhvA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-M8HdfZkMAdtv2r0uWLhYofjmaAkYmcVzQVLme7YRK4M='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10576,7 +10576,7 @@ function uiHeroPick(done){
 }
 
 // ===== 소리: 효과음 + 배경음악 (파일 없이 Web Audio로 직접 만들어요) =====
-const SND = {ctx:null, master:null, bgmG:null, sfxG:null, on:{bgm:true, sfx:true}, vol:{bgm:.18, sfx:.6}, step:0, nextT:0, timer:null, mode:'home'};
+const SND = {ctx:null, master:null, bgmG:null, sfxG:null, on:{bgm:true, sfx:true}, vol:{bgm:.11, sfx:.6}, step:0, nextT:0, timer:null, mode:'home'};
 (function loadSndPrefs(){
   try { const s = JSON.parse(store.get('haru-sound', 'null')); if (s) { Object.assign(SND.on, s.on || {}); Object.assign(SND.vol, s.vol || {}); } } catch (e) {}
 })();
@@ -10684,15 +10684,76 @@ function sfx(k){
 }
 // 배경음악: 잔잔한 4마디 반복. 사냥터에선 조금 더 모험 느낌
 const BGM = {
-  home:{bpm:84, chords:[[48, 64, 67, 72], [45, 60, 64, 69], [41, 57, 60, 65], [43, 59, 62, 67]], mel:[76, 79, 81, 79, 76, 74, 72, -1, 74, 76, 79, 76, 74, 72, 69, -1, 72, 74, 76, 74, 72, 69, 67, -1, 69, 72, 74, 72, 71, 67, 71, -1]},
-  // 호랑이 굴: 느리고 어두운 단조 + 심장 박동 북소리
-  den:{bpm:72, chords:[[38, 53, 56, 62], [37, 52, 55, 61], [38, 53, 56, 62], [36, 51, 54, 60]], mel:[74, -1, -1, 73, -1, -1, 70, -1, 69, -1, -1, -1, 70, -1, 73, -1, 74, -1, -1, 75, -1, -1, 74, -1, 73, -1, 70, -1, 69, -1, -1, -1]},
-  // 2026-10-15 달 요청: 한 곡만 계속 나와서 곡을 늘리고 돌아가며 틀어요 (곳마다 4번 돌면 다음 곡)
-  meadow:{bpm:92, lead:'sine', chords:[[41, 57, 60, 65], [48, 60, 64, 67], [43, 59, 62, 67], [45, 60, 64, 69]], mel:[72, 74, 76, -1, 77, 76, 74, -1, 72, -1, 76, 79, 79, -1, 76, -1, 74, 76, 74, 72, 71, -1, 67, -1, 69, 72, 76, -1, 74, 72, 72, -1]},
-  village:{bpm:104, lead:'square', lv:.09, chords:[[43, 59, 62, 67], [40, 59, 64, 67], [48, 60, 64, 67], [50, 62, 66, 69]], mel:[79, -1, 78, 79, 81, 79, 76, -1, 76, -1, 74, 76, 79, -1, 74, -1, 72, 74, 76, 79, 76, 74, 72, -1, 74, -1, 78, 81, 79, -1, -1, -1]},
-  woods:{bpm:88, lead:'sine', chords:[[38, 53, 57, 62], [36, 52, 55, 60], [38, 53, 57, 62], [33, 52, 57, 60]], mel:[62, -1, 65, 67, 69, -1, 67, 65, 64, -1, 60, -1, 64, 67, -1, -1, 69, -1, 72, 71, 69, 67, 65, -1, 64, 65, 64, 62, 60, -1, 57, -1]},
-  trail:{bpm:110, lead:'square', lv:.08, chords:[[45, 60, 64, 69], [41, 57, 60, 65], [43, 59, 62, 67], [40, 56, 59, 64]], mel:[76, -1, 76, 77, 79, -1, 77, 76, 72, -1, 72, 74, 76, -1, 72, -1, 74, -1, 74, 76, 77, -1, 79, 77, 76, -1, 71, -1, 68, 71, -1, -1]},
-  hunt:{bpm:96, chords:[[45, 60, 64, 69], [41, 57, 60, 65], [43, 59, 62, 67], [40, 59, 64, 67]], mel:[69, -1, 72, 74, 76, -1, 74, 72, 69, -1, 67, 69, 72, -1, 71, -1, 69, -1, 72, 74, 76, 79, 76, 74, 72, -1, 71, 72, 71, -1, 67, -1]}
+  home: {
+    bpm: 62, lead: 'sine', lv: 0.09,
+    chords: [[48, 60, 64, 67], [45, 60, 64, 69], [41, 60, 65, 69], [43, 60, 62, 67]],
+    mel: [
+      72, 0, 74, 76, 0, 0, 74, 0,
+      72, 0, 0, 69, 0, 72, 0, 0,
+      74, 0, 76, 0, 74, 0, 72, 0,
+      69, 0, 0, 72, 0, 0, 0, 0
+    ]
+  },
+  meadow: {
+    bpm: 66, lead: 'triangle', lv: 0.08,
+    chords: [[41, 57, 60, 65], [48, 55, 60, 64], [45, 57, 60, 64], [43, 55, 60, 62]],
+    mel: [
+      69, 0, 72, 0, 74, 0, 0, 72,
+      0, 0, 74, 0, 76, 0, 74, 0,
+      72, 0, 0, 69, 0, 67, 0, 0,
+      69, 0, 72, 0, 0, 69, 0, 0
+    ]
+  },
+  village: {
+    bpm: 68, lead: 'sine', lv: 0.1,
+    chords: [[43, 55, 59, 62], [40, 55, 59, 64], [48, 55, 60, 64], [43, 57, 59, 62]],
+    mel: [
+      67, 0, 69, 0, 71, 0, 0, 69,
+      0, 67, 0, 0, 64, 0, 0, 0,
+      67, 0, 69, 71, 0, 0, 69, 0,
+      67, 0, 0, 64, 0, 67, 0, 0
+    ]
+  },
+  hunt: {
+    bpm: 70, lead: 'triangle', lv: 0.08,
+    chords: [[45, 57, 60, 64], [43, 55, 60, 64], [41, 57, 60, 64], [45, 55, 60, 64]],
+    mel: [
+      64, 0, 67, 0, 69, 0, 0, 67,
+      0, 64, 0, 62, 0, 0, 64, 0,
+      67, 0, 0, 64, 0, 62, 0, 0,
+      60, 0, 62, 0, 64, 0, 0, 0
+    ]
+  },
+  woods: {
+    bpm: 66, lead: 'sine', lv: 0.07,
+    chords: [[38, 53, 57, 64], [36, 52, 55, 62], [41, 53, 57, 62], [38, 52, 57, 62]],
+    mel: [
+      62, 0, 0, 64, 0, 67, 0, 0,
+      69, 0, 67, 0, 0, 64, 0, 0,
+      62, 0, 64, 0, 0, 62, 0, 60,
+      0, 0, 62, 0, 0, 0, 0, 0
+    ]
+  },
+  trail: {
+    bpm: 74, lead: 'triangle', lv: 0.085,
+    chords: [[40, 55, 59, 64], [43, 55, 59, 62], [45, 55, 60, 64], [40, 54, 59, 64]],
+    mel: [
+      64, 0, 66, 0, 67, 0, 0, 66,
+      0, 64, 0, 0, 62, 0, 64, 0,
+      67, 0, 69, 0, 0, 67, 0, 66,
+      0, 64, 0, 62, 0, 64, 0, 0
+    ]
+  },
+  den: {
+    bpm: 60, lead: 'sine', lv: 0.06,
+    chords: [[38, 50, 53, 64], [38, 50, 57, 60], [36, 50, 55, 60], [38, 50, 57, 64]],
+    mel: [
+      50, 0, 0, 0, 52, 0, 0, 0,
+      55, 0, 0, 0, 52, 0, 0, 0,
+      50, 0, 0, 52, 0, 0, 0, 0,
+      50, 0, 0, 0, 0, 0, 0, 0
+    ]
+  }
 };
 const BGM_SETS = {home:['home', 'meadow', 'village'], hunt:['hunt', 'woods', 'trail'], den:['den']}, BGM_LOOPS = 4;
 function bgmTick(){
@@ -10705,12 +10766,10 @@ function bgmTick(){
   while (SND.nextT < c.currentTime + .4) {
     const t = SND.nextT, i = SND.step % 32, bar = Math.floor(i / 8), ch = S.chords[bar], o = SND.bgmG;
     if (SND.on.bgm && SND.vol.bgm > 0) {
-      if (i % 8 === 0) { tone('sine', NOTE(ch[0]), t, st * 7.5, .35, o); ch.slice(1).forEach(n => tone('triangle', NOTE(n), t, st * 7.8, .07, o)); }
+      if (i % 8 === 0) { tone('sine', NOTE(ch[0]), t, st * 7.5, .2, o); ch.slice(1).forEach(n => tone('triangle', NOTE(n), t, st * 7.8, .07, o)); }
       if (i % 2 === 1) ch.slice(1).forEach((n, k) => k === (i >> 1) % 3 && tone('sine', NOTE(n + 12), t, st * 1.2, .06, o));
       const m = S.mel[i]; if (m > 0) tone(S.lead || 'triangle', NOTE(m), t, st * 1.7, S.lv || .16, o);
-      if (zone === 'hunt' && i % 4 === 0) tone('sine', 110, t, .18, .25, o, 55);
-      if (SND.song === 'trail' && i % 4 === 2) noise(t, .05, .08, o, 4000);
-      if (zone === 'den') { if (i % 4 === 0) { tone('sine', 62, t, .22, .55, o, 40); tone('sine', 58, t + st * .55, .2, .4, o, 38); } if (i % 8 === 4) tone('sawtooth', NOTE(ch[0] + 12), t, st * 3, .03, o); }
+      if (zone === 'den') { if (i % 8 === 0) tone('sine', 62, t, .3, .22, o, 40); if (i % 8 === 4) tone('sawtooth', NOTE(ch[0] + 12), t, st * 3, .03, o); }
     }
     SND.nextT += st; SND.step++;
     // 4번 돌면 같은 곳의 다음 곡으로
