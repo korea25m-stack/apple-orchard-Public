@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-M8HdfZkMAdtv2r0uWLhYofjmaAkYmcVzQVLme7YRK4M='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-8+rJvYtEmNRQx0+jCOlzPGFuA3D+K3fdITKGlHKj6Dc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1260,6 +1260,7 @@ AA_OBJ.push('t2_yellow','t1_red','t0_bare','t0_leaf','t0_fall');
 // 그림 둘레 빈 곳을 잘라 크기·발 위치를 맞춰요
 function aTrim(i){ const c=document.createElement('canvas'); c.width=i.naturalWidth; c.height=i.naturalHeight; const x=c.getContext('2d'); x.drawImage(i,0,0); const gd=x.getImageData(0,0,c.width,c.height), d=gd.data; for(let k=0;k<d.length;k+=4) if(d[k]-d[k+1]>40&&d[k+2]-d[k+1]>40) d[k+3]=0; else if(d[k+1]<150&&d[k]-d[k+1]>12&&d[k+2]-d[k+1]>12) d[k+2]=d[k+1]; x.putImageData(gd,0,0); let x0=c.width,x1=0,y0=c.height,y1=0; for(let y=0;y<c.height;y++) for(let q=0;q<c.width;q++) if(d[(y*c.width+q)*4+3]>40){ if(q<x0)x0=q; if(q>x1)x1=q; if(y<y0)y0=y; if(y>y1)y1=y; } const o=document.createElement('canvas'); o.width=x1-x0+1; o.height=y1-y0+1; o.getContext('2d').drawImage(c,-x0,-y0); return o; }
 // 그림은 처음 쓸 때 불러와요(첫 로딩을 가볍게)
+for (const s of ['a','b','p']) for (const v of ['d','dr','r','ur','u']) for (const q of ['s','w1','w2']) if (s==='a'||q!=='w2') AA_OBJ.push('dog/'+s+'_'+v+'_'+q);
 const AA_SET=new Set(AA_OBJ), AA_ST={}, AA_ASK={};
 AA.cv=new Proxy(AA_ST,{get(t,k){ if(!(k in t)&&AA_SET.has(k)&&!AA_ASK[k]){ AA_ASK[k]=1; const i=new Image(); i.onload=()=>{ t[k]=aTrim(i); }; i.src='art/'+k+'.webp'; } return t[k]; }});
 const aTex=n=>{ const i=AA.im[n]; return AA.on&&i&&i.complete&&i.naturalWidth?i:null; };
@@ -6062,7 +6063,9 @@ function spzEar2(c, bx, by, w, h, lean, face){
     line(c, [cx, by - 3, bx + lean * .7 + sh * .3, by - h * .55], 1.1, '#ffffff'); } // 귀 안 하얀 솜털
   else if (face < 0) line(c, [bx, by - 2, bx + lean * .7, by - h * .65], 1.2, '#d6dce6');
 }
+let DOG_SET='a';
 function drawSpitz8(c, d8, t, walk, happy){
+  { const fl=[3,4,5].includes(d8), v={0:'r',4:'r',1:'dr',3:'dr',2:'d',6:'u',5:'ur',7:'ur'}[d8], ph=walk?Math.floor(t*6.5)%(DOG_SET==='a'?4:2):0, q=!walk?'s':DOG_SET==='a'?['w1','s','w2','s'][ph]:['w1','s'][ph], im=AA.cv['dog/'+DOG_SET+'_'+v+'_'+q]; if (im) { shadow(c,0,1,v==='r'?38:24,6); c.save(); if(fl)c.scale(-1,1); const H=74, w=H*im.width/im.height; c.drawImage(im,-w/2,-H+3,w,H); c.restore(); return; } }
   c.save();
   if ([3, 4, 5].includes(d8)) { c.scale(-1, 1); d8 = d8 === 3 ? 1 : d8 === 4 ? 0 : 7; }
   const sw = walk ? Math.sin(t * 13) * 3.5 : 0, bob = walk ? -Math.abs(Math.sin(t * 13)) * 1.6 : 0, wag = Math.sin(t * (happy ? 18 : 5)) * (happy ? .14 : .04), pant = walk || happy;
@@ -6736,7 +6739,7 @@ function updateSpfam(dt){
 function drawSpfamOne(ctx, d){
   ctx.save(); ctx.translate(d.x, d.y); ctx.scale(d.sc, d.sc);
   const happy = d.pet > 0 || (d.pup && d.walk);
-  drawSpitz8(ctx, d.d8 ?? 2, d.t, d.walk, happy);
+  DOG_SET=d.pup?'p':'b'; drawSpitz8(ctx, d.d8 ?? 2, d.t, d.walk, happy); DOG_SET='a';
   // 리본(아내는 분홍, 새끼는 파랑·노랑·민트로 구별)
   const flip = [3, 4, 5].includes(d.d8), k = flip ? ({3:1, 4:0, 5:7})[d.d8] : d.d8, bx = (SPFAM_BOW_X[k] ?? 0) * (flip ? -1 : 1), by = k === 6 ? -82 : -80;
   {
