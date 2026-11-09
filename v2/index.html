@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-yij7IiEqmMUdFhBCWZvimNR7LKJ60VJxsvzDGV5odC8='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wf+rVdHXXi8HGaPBgwuPH57zXzasvTficErUQUKgxOY='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1270,9 +1270,10 @@ function aTreeName(t){ const L=treeLook(t), A=L.age, w=G.week; let s;
   if (L.ap) { const V=VARS[t.v], p=clamp((w-18)/Math.max(1,V.hv[0]-18),0,1); if (A===0) s='leaf'; else if (t.v==='aori'||p<.45) s='green'; else if (A===2&&p<.8) s='yellow'; else s='red'; }
   else if (L.bare) s='bare'; else if (L.bud) s=A?'bud':'leaf'; else if (L.bloom) s=A?'bloom':'leaf'; else if (w>=45&&w<=48) s='fall'; else s='leaf';
   return A===2&&s==='red'?'tree':'t'+A+'_'+s; }
-const AH_N=['d_stand','dr_stand','r_stand','ur_stand','u_stand','r_walk1','r_walk2','d_walk1','d_walk2','dr_walk1','dr_walk2','ur_walk1','ur_walk2','u_walk1','u_walk2'], AH_L={};
+const AH_N=['d_atk','dr_atk','r_atk','ur_atk','u_atk','d_stand','dr_stand','r_stand','ur_stand','u_stand','r_walk1','r_walk2','d_walk1','d_walk2','dr_walk1','dr_walk2','ur_walk1','ur_walk2','u_walk1','u_walk2'], AH_L={};
 function aHeroLoad(id){ if(AH_L[id]) return; AH_L[id]=1; const dir=id==='m1'?'hero':'hero_'+id; for (const n of AH_N) { const i=new Image(); i.onload=()=>{ AA.cv['h_'+id+'_'+n]=aTrim(i); }; i.src='art/'+dir+'/'+n+'.webp'; } }
-function aHeroFrame(dir,walk){ if(!AA.on) return null; const hid=heroSpec().id; aHeroLoad(hid); const g=ensureGear(); if(g.armor!=='cloth'||g.boots!=='rubber') return null; const ph=walk?((Math.floor(walk/Math.PI*2)%4)+4)%4:-1; const base=dir===0?'d':dir===1?'u':dir===2||dir===3?'r':dir===4||dir===5?'dr':'ur'; const flip=dir===2||dir===5||dir===7; let n=base+'_stand',step=false; if(walk){ step=true; n=ph===0?base+'_walk1':ph===2?base+'_walk2':(base==='r'?'r_walk2':base+'_stand'); if(base==='r'&&ph===2) n='r_walk1'; } let cv=AA.cv['h_'+hid+'_'+n]; if(!cv){ cv=AA.cv['h_'+hid+'_'+base+'_stand']; step=false; } return cv?{cv,flip,step}:null; }
+function aHeroFrame(dir,walk,act){ if(!AA.on) return null; const hid=heroSpec().id; aHeroLoad(hid);  const ph=walk?((Math.floor(walk/Math.PI*2)%4)+4)%4:-1; const base=dir===0?'d':dir===1?'u':dir===2||dir===3?'r':dir===4||dir===5?'dr':'ur'; const flip=dir===2||dir===5||dir===7; let n=base+'_stand',step=false; if(walk){ step=true; n=ph===0?base+'_walk1':ph===2?base+'_walk2':(base==='r'?'r_walk2':base+'_stand'); if(base==='r'&&ph===2) n='r_walk1'; } if (act) { n=base+'_atk'; step=true; }
+  let cv=AA.cv['h_'+hid+'_'+n]; if(!cv){ cv=AA.cv['h_'+hid+'_'+base+'_stand']; step=false; } return cv?{cv,flip,step}:null; }
 function aDraw(c,cv,x,y,w){ const hh=w*cv.height/cv.width; c.drawImage(cv,x-w/2,y-hh,w,hh); }
 const INK = '#2a1c17';
 function mk(w, h){ const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
@@ -1428,7 +1429,7 @@ const LOOKS = {
 const shd = (col, t = .28) => mix(col, '#3a1a10', t);
 // dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
 function drawPerson(c, x, y, who, dir, walk, act){
-  if (who === 'haru') { const hc=aHeroFrame(dir,walk); if (hc&&!act&&!HERO_SIT) { shadow(c,x,y,20,6); c.save(); c.translate(x,y-(walk&&!hc.step?Math.abs(Math.sin(walk))*3:0)); if(hc.flip)c.scale(-1,1); const w=125*hc.cv.width/hc.cv.height; c.drawImage(hc.cv,-w/2,-125,w,125); c.restore(); return; } return drawHuman(c, x, y, heroGearSpec(), dir, walk, act, true); }
+  if (who === 'haru') { const hc=aHeroFrame(dir,walk,act); if (hc&&!HERO_SIT) { shadow(c,x,y,20,6); c.save(); c.translate(x,y-(walk&&!hc.step?Math.abs(Math.sin(walk))*3:0)); heroGlow(c,1); if(hc.flip)c.scale(-1,1);  const w=125*hc.cv.width/hc.cv.height; c.drawImage(hc.cv,-w/2,-125,w,125); c.restore(); return; } return drawHuman(c, x, y, heroGearSpec(), dir, walk, act, true); }
   return drawHuman(c, x, y, toSpec(typeof who === 'string' ? LOOKS[who] : who), dir, walk, act, false);
   const L = who === 'haru' ? haruLook() : typeof who === 'string' ? LOOKS[who] : who;
   const kid = L.kid, sc = kid ? .72 : 1;
@@ -1583,7 +1584,11 @@ function drawHat(c, L, side, back, hy){
 }
 
 // ----- 동물 -----
+const BA_H={boar:62,deer:78,hare:36,snake:30,raccoon:42,badger:42,lynx:48,wdog:56,wolf:64,bear:88};
+for (const k in BA_H) for (const q of ['r_s','r_w1','d_s','u_s','dr_s','ur_s']) AA_SET.add('beast/'+k+'_'+q);
+function beastArt(c,kind,x,y,t,flip,V){ if(!BA_H[kind]||!AA.on) return false; const d8=V&&V.d8!=null?V.d8:(flip?4:0), fl=[3,4,5].includes(d8), v={0:'r',4:'r',1:'dr',3:'dr',2:'d',6:'u',5:'ur',7:'ur'}[d8], q=v==='r'?(t&&Math.floor(t*5)%2?'r_w1':'r_s'):v+'_s'; const st=AA_ST, im=AA.cv['beast/'+kind+'_'+q]||st['beast/'+kind+'_r_s']; if(!im){ AA.cv['beast/'+kind+'_r_s']; return false; } const H=BA_H[kind]*(1+((V&&V.tier)||0)*.04), w=H*im.width/im.height; shadow(c,x,y,w*.38,7); c.save(); c.translate(x,y); if(fl)c.scale(-1,1); c.drawImage(im,-w/2,-H+3,w,H); c.restore(); return true; }
 function drawAnimal(c, kind, x, y, t, flip, V){
+  if (beastArt(c,kind,x,y,t,flip,V)) return;
   c.save(); c.translate(x, y); if (flip) c.scale(-1, 1);
   if (V && (kind === 'dragon' || kind === 'trex' || kind === 'trike')) { c.restore(); c.save(); c.translate(x, y); ({dragon:drawDragonBoss, trex:drawTrex8, trike:drawTrike8})[kind](c, V.d8 != null ? V.d8 : flip ? 4 : 0, t, V); c.restore(); return; } // 2026-10-17 서리용·호위 공룡(8방향)
   if (V && kind === 'pbear') { c.restore(); c.save(); c.translate(x, y); drawPolarBoss(c, V.d8 != null ? V.d8 : flip ? 4 : 0, t, V); c.restore(); return; } // 2026-10-16 무섭고 멋진 흰곰 보스(8방향)
@@ -2366,7 +2371,7 @@ const PORT_FILE = {'오복순 할머니':'bokssun','황금비 사장님':'geumbi
 const PORT_IMG = {};
 for (const k of new Set(Object.values(PORT_FILE))) { const im = new Image(); im.dataset.s = 'portraits/npc_' + k + '_v1.webp'; PORT_IMG[k] = im; }
 function drawPortrait(cv, who, key){
-  const hg = who === 'haru' ? ensureGear() : null, hk = hg && hg.armor === 'cloth' && hg.boots === 'rubber' && hg.hat === 'straw' ? heroSpec().id : null;
+  const hg = who === 'haru' ? ensureGear() : null, hk = hg ? heroSpec().id : null;
   const pf = PORT_FILE[key || who], pim = hk ? HERO_IMG[hk] : pf && PORT_IMG[pf]; if (pim && !pim.getAttribute('src')) pim.src = pim.dataset.s;
   if (pim && pim.complete && pim.naturalWidth) { const pc = cv.getContext('2d'); pc.clearRect(0, 0, cv.width, cv.height); pc.drawImage(pim, 0, 0, cv.width, cv.width); return; }
   if (pim && !pim.complete && !pim._w) { pim._w = 1; pim.addEventListener('load', () => { if (cv.isConnected) drawPortrait(cv, who, key); }); }
