@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wf+rVdHXXi8HGaPBgwuPH57zXzasvTficErUQUKgxOY='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-zivgnbCMYD6kIxubR2rUVywr1JPL0m7Ypu6t+WK9l08='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1270,9 +1270,10 @@ function aTreeName(t){ const L=treeLook(t), A=L.age, w=G.week; let s;
   if (L.ap) { const V=VARS[t.v], p=clamp((w-18)/Math.max(1,V.hv[0]-18),0,1); if (A===0) s='leaf'; else if (t.v==='aori'||p<.45) s='green'; else if (A===2&&p<.8) s='yellow'; else s='red'; }
   else if (L.bare) s='bare'; else if (L.bud) s=A?'bud':'leaf'; else if (L.bloom) s=A?'bloom':'leaf'; else if (w>=45&&w<=48) s='fall'; else s='leaf';
   return A===2&&s==='red'?'tree':'t'+A+'_'+s; }
-const AH_N=['d_atk','dr_atk','r_atk','ur_atk','u_atk','d_stand','dr_stand','r_stand','ur_stand','u_stand','r_walk1','r_walk2','d_walk1','d_walk2','dr_walk1','dr_walk2','ur_walk1','ur_walk2','u_walk1','u_walk2'], AH_L={};
+const AH_N=['d_work','dr_work','r_work','ur_work','u_work','d_sit','r_sit','u_sit','d_atk','dr_atk','r_atk','ur_atk','u_atk','d_stand','dr_stand','r_stand','ur_stand','u_stand','r_walk1','r_walk2','d_walk1','d_walk2','dr_walk1','dr_walk2','ur_walk1','ur_walk2','u_walk1','u_walk2'], AH_L={};
 function aHeroLoad(id){ if(AH_L[id]) return; AH_L[id]=1; const dir=id==='m1'?'hero':'hero_'+id; for (const n of AH_N) { const i=new Image(); i.onload=()=>{ AA.cv['h_'+id+'_'+n]=aTrim(i); }; i.src='art/'+dir+'/'+n+'.webp'; } }
-function aHeroFrame(dir,walk,act){ if(!AA.on) return null; const hid=heroSpec().id; aHeroLoad(hid);  const ph=walk?((Math.floor(walk/Math.PI*2)%4)+4)%4:-1; const base=dir===0?'d':dir===1?'u':dir===2||dir===3?'r':dir===4||dir===5?'dr':'ur'; const flip=dir===2||dir===5||dir===7; let n=base+'_stand',step=false; if(walk){ step=true; n=ph===0?base+'_walk1':ph===2?base+'_walk2':(base==='r'?'r_walk2':base+'_stand'); if(base==='r'&&ph===2) n='r_walk1'; } if (act) { n=base+'_atk'; step=true; }
+function aHeroFrame(dir,walk,act){ if(!AA.on) return null; const hid=heroSpec().id; aHeroLoad(hid);  const ph=walk?((Math.floor(walk/Math.PI*2)%4)+4)%4:-1; const base=dir===0?'d':dir===1?'u':dir===2||dir===3?'r':dir===4||dir===5?'dr':'ur'; const flip=dir===2||dir===5||dir===7; let n=base+'_stand',step=false; if(walk){ step=true; n=ph===0?base+'_walk1':ph===2?base+'_walk2':(base==='r'?'r_walk2':base+'_stand'); if(base==='r'&&ph===2) n='r_walk1'; } if (HERO_SIT) { n=(base==='dr'?'d':base==='ur'?'u':base)+'_sit'; step=true; }
+  else if (act) { n=base+(P.asw>0||P.spin>0?'_atk':'_work'); step=true; if(!AA_ST['h_'+hid+'_'+n]) n=base+'_atk'; }
   let cv=AA.cv['h_'+hid+'_'+n]; if(!cv){ cv=AA.cv['h_'+hid+'_'+base+'_stand']; step=false; } return cv?{cv,flip,step}:null; }
 function aDraw(c,cv,x,y,w){ const hh=w*cv.height/cv.width; c.drawImage(cv,x-w/2,y-hh,w,hh); }
 const INK = '#2a1c17';
@@ -1429,7 +1430,7 @@ const LOOKS = {
 const shd = (col, t = .28) => mix(col, '#3a1a10', t);
 // dir: 0 아래, 1 위, 2 왼쪽, 3 오른쪽
 function drawPerson(c, x, y, who, dir, walk, act){
-  if (who === 'haru') { const hc=aHeroFrame(dir,walk,act); if (hc&&!HERO_SIT) { shadow(c,x,y,20,6); c.save(); c.translate(x,y-(walk&&!hc.step?Math.abs(Math.sin(walk))*3:0)); heroGlow(c,1); if(hc.flip)c.scale(-1,1);  const w=125*hc.cv.width/hc.cv.height; c.drawImage(hc.cv,-w/2,-125,w,125); c.restore(); return; } return drawHuman(c, x, y, heroGearSpec(), dir, walk, act, true); }
+  if (who === 'haru') { const hc=aHeroFrame(dir,walk,act); if (hc) { if(!HERO_SIT) shadow(c,x,y,20,6); c.save(); c.translate(x,y+(HERO_SIT?34:0)-(walk&&!hc.step?Math.abs(Math.sin(walk))*3:0)); heroGlow(c,1); if(hc.flip)c.scale(-1,1);  const w=125*hc.cv.width/hc.cv.height; c.drawImage(hc.cv,-w/2,-125,w,125); c.restore(); return; } return drawHuman(c, x, y, heroGearSpec(), dir, walk, act, true); }
   return drawHuman(c, x, y, toSpec(typeof who === 'string' ? LOOKS[who] : who), dir, walk, act, false);
   const L = who === 'haru' ? haruLook() : typeof who === 'string' ? LOOKS[who] : who;
   const kid = L.kid, sc = kid ? .72 : 1;
@@ -4321,7 +4322,7 @@ function drawHeroBody(c){
     c.save(); c.translate(P.x + Math.cos(an) * rr0, P.y - 38 + Math.sin(an) * rr0 * .5); drawWeapon(c, ensureGear().weapon, an + 1.57); c.restore();
     drawSpinGlow(c, sk, false);
   } else if (armed) {
-    c.save(); c.translate(P.x + (P.dir === 2 ? -11 : P.dir === 3 ? 11 : P.face * 16), P.y - 36);
+    const aHy = aHeroFrame(P.dir, 0) ? (P.asw > 0 ? 88 : 54) : 36; c.save(); c.translate(P.x + (P.dir === 2 ? -11 : P.dir === 3 ? 11 : P.face * 16) * (aHy > 36 ? 1.2 : 1), P.y - aHy);
     const sw = P.asw > 0 ? 1 - P.asw / .25 : 0;
     drawWeapon(c, ensureGear().weapon, P.face * (P.asw > 0 ? -1.4 + sw * 3 : .5));
     c.restore();
